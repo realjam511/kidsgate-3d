@@ -14,7 +14,7 @@
     <title>すくすく北欧もくいくゲート - こども知育＆あそびスタジオ</title>
     <link rel="stylesheet" href="00_ゲーム本体・Webデータ/css/kidsgate-themes.css">
     <style>
-        /* ポータル専用 北欧ナチュラル ＆ モバイル最適化スタイル */
+        /* ポータル専用 北欧ナチュラル ＆ 超コンパクト・アプリアイコンUI */
         :root {
             --bg-color: #FAF7F0;
             --card-bg: #FFFFFF;
@@ -25,6 +25,11 @@
             --wood-cream: #FEFAE0;
             --text-main: #2C352D;
             --text-sub: #556B2F;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body.style-nordic-clean {
@@ -40,11 +45,11 @@
 
         /* ヘッダー */
         .portal-header-clean {
-            background: rgba(254, 250, 224, 0.92);
+            background: rgba(254, 250, 224, 0.94);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             border-bottom: 2px solid var(--wood-light);
-            padding: 10px 16px;
+            padding: 8px 12px;
             position: sticky;
             top: 0;
             z-index: 100;
@@ -55,22 +60,55 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
+            gap: 8px;
         }
-        .portal-clean-logo {
+
+        /* 左側：ハンバーガーボタン ＆ ロゴ */
+        .header-left-box {
             display: flex;
             align-items: center;
             gap: 10px;
+        }
+        .btn-hamburger {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: #FFFFFF;
+            border: 1.5px solid var(--wood-light);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+        .btn-hamburger:active {
+            transform: scale(0.92);
+            background: var(--wood-cream);
+        }
+        .hamburger-bar {
+            width: 18px;
+            height: 2.5px;
+            background: var(--main-green);
+            border-radius: 2px;
+        }
+
+        .portal-clean-logo {
+            display: flex;
+            align-items: center;
+            gap: 6px;
             text-decoration: none;
             color: var(--main-green);
         }
         .logo-tree-badge {
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             line-height: 1;
-            filter: drop-shadow(0 2px 4px rgba(58, 90, 64, 0.15));
         }
         .logo-text-wrap h1 {
-            font-size: 1.15rem;
+            font-size: 1.05rem;
             font-weight: 900;
             margin: 0;
             line-height: 1.2;
@@ -78,28 +116,28 @@
             white-space: nowrap;
         }
         .logo-text-wrap span {
-            font-size: 0.72rem;
+            font-size: 0.65rem;
             color: var(--sub-green);
             font-weight: 700;
             display: block;
-            margin-top: 2px;
+            margin-top: 1px;
             white-space: nowrap;
         }
 
-        /* 右上のおうちの人⚙️ボタン */
+        /* 右側：おうちの人ボタン */
         .btn-gear-settings {
-            width: 42px;
-            height: 42px;
-            border-radius: 12px;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
             background: #FFFFFF;
-            border: 2px solid var(--wood-light);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+            border: 1.5px solid var(--wood-light);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.25rem;
+            font-size: 1.15rem;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.15s;
             flex-shrink: 0;
         }
         .btn-gear-settings:active {
@@ -111,37 +149,38 @@
         .quick-category-scroller {
             background: #FFFFFF;
             border-bottom: 1px solid var(--wood-light);
-            padding: 8px 12px;
+            padding: 6px 10px;
             overflow-x: auto;
             white-space: nowrap;
             -webkit-overflow-scrolling: touch;
             display: flex;
-            gap: 8px;
+            gap: 6px;
             scrollbar-width: none;
         }
         .quick-category-scroller::-webkit-scrollbar {
             display: none;
         }
         .cat-pill {
-            padding: 8px 14px;
+            padding: 5px 11px;
             border-radius: 999px;
-            border: 2px solid var(--wood-light);
+            border: 1.5px solid var(--wood-light);
             background: var(--wood-cream);
             color: var(--main-green);
-            font-size: 0.86rem;
+            font-size: 0.78rem;
             font-weight: 800;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            transition: all 0.2s;
+            gap: 4px;
+            transition: all 0.15s;
             user-select: none;
+            flex-shrink: 0;
         }
         .cat-pill.active {
             background: var(--main-green);
             border-color: var(--main-green);
             color: #FFFFFF;
-            box-shadow: 0 3px 8px rgba(58, 90, 64, 0.25);
+            box-shadow: 0 2px 6px rgba(58, 90, 64, 0.25);
             transform: translateY(-1px);
         }
 
@@ -150,123 +189,244 @@
             max-width: 1200px;
             margin: 0 auto;
             width: 100%;
-            padding: 16px 14px 40px;
+            padding: 10px 8px 30px;
             flex: 1;
         }
 
-        /* ゲームグリッド */
-        .portal-clean-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            gap: 16px;
+        /* グループセクション（見出し＋ミニアイコン一覧） */
+        .game-group-section {
+            margin-bottom: 14px;
         }
-        @media (max-width: 480px) {
-            .portal-clean-grid {
-                grid-template-columns: 1fr;
-                gap: 14px;
+        .group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FFFFFF;
+            border: 1.5px solid var(--wood-light);
+            border-left: 4px solid var(--main-green);
+            border-radius: 10px;
+            padding: 5px 10px;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        }
+        .group-header-title {
+            font-size: 0.86rem;
+            font-weight: 900;
+            color: var(--main-green);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .group-header-count {
+            font-size: 0.68rem;
+            font-weight: 800;
+            background: var(--wood-cream);
+            color: var(--sub-green);
+            border: 1px solid var(--wood-light);
+            padding: 1px 6px;
+            border-radius: 999px;
+        }
+
+        /* ===== 超コンパクト 3列アプリアイコングリッド ===== */
+        .portal-grid-compact {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        @media (min-width: 600px) {
+            .portal-grid-compact {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 10px;
+            }
+        }
+        @media (min-width: 900px) {
+            .portal-grid-compact {
+                grid-template-columns: repeat(6, 1fr);
+                gap: 12px;
             }
         }
 
-        /* ゲームカード */
-        .game-clean-card {
+        /* ミニ・アプリアイコンカード（アイコン＋短い名前のみ） */
+        .card-mini-app {
             background: #FFFFFF;
-            border: 2px solid var(--wood-light);
-            border-radius: 20px;
-            padding: 16px;
-            box-shadow: 0 4px 12px rgba(44, 53, 45, 0.05);
+            border: 1.5px solid var(--wood-light);
+            border-radius: 14px;
+            padding: 8px 4px 6px;
+            box-shadow: 0 1px 4px rgba(44, 53, 45, 0.04);
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            position: relative;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
             user-select: none;
+            position: relative;
         }
-        .game-clean-card:active {
-            transform: scale(0.97);
+        .card-mini-app:active {
+            transform: scale(0.92);
             border-color: var(--main-green);
-            background: #FAFAF7;
+            background: #F8F9F5;
+            box-shadow: 0 1px 2px rgba(58, 90, 64, 0.15);
         }
-        .card-top-row {
+        /* 極小可愛いアイコン（34px） */
+        .mini-icon-box {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--wood-cream);
+            border: 1px solid var(--wood-light);
             display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            margin-bottom: 10px;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+            margin-bottom: 4px;
+            flex-shrink: 0;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);
         }
-        .card-clean-icon {
-            font-size: 2.4rem;
-            width: 58px;
-            height: 58px;
-            border-radius: 16px;
+        /* 短いゲーム名 */
+        .mini-title {
+            font-size: 0.74rem;
+            font-weight: 800;
+            color: var(--text-main);
+            margin: 0;
+            line-height: 1.25;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 2px;
+            min-height: 2.5em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ===== ハンバーガーポップアップ・ドロワー ===== */
+        .drawer-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(44, 53, 45, 0.55);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .drawer-overlay.open {
+            display: block;
+            opacity: 1;
+        }
+        .drawer-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 82%;
+            max-width: 320px;
+            background: #FFFFFF;
+            box-shadow: 4px 0 24px rgba(0,0,0,0.2);
+            z-index: 1001;
+            transform: translateX(-100%);
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+        }
+        .drawer-overlay.open .drawer-panel {
+            transform: translateX(0);
+        }
+        .drawer-header {
+            background: var(--wood-cream);
+            border-bottom: 2px solid var(--wood-light);
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .drawer-header h3 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 900;
+            color: var(--main-green);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-drawer-close {
+            background: #FFFFFF;
+            border: 1.5px solid var(--wood-light);
+            border-radius: 8px;
+            width: 32px;
+            height: 32px;
+            font-size: 1rem;
+            cursor: pointer;
+            color: var(--main-green);
+            font-weight: 900;
+        }
+        .drawer-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .drawer-group-title {
+            font-size: 0.8rem;
+            font-weight: 900;
+            color: var(--sub-green);
+            margin: 12px 0 6px;
+            padding-left: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .drawer-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FFFFFF;
+            border: 1px solid var(--wood-light);
+            border-radius: 10px;
+            padding: 7px 10px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.12s;
+        }
+        .drawer-item:active {
+            background: var(--wood-cream);
+            border-color: var(--main-green);
+            transform: scale(0.98);
+        }
+        .drawer-item-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+        .drawer-item-icon {
+            font-size: 1.25rem;
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
             background: var(--wood-cream);
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 1px solid var(--wood-light);
             flex-shrink: 0;
         }
-        .card-badge-box {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 4px;
-        }
-        .badge-age {
-            background: #E8F5E9;
-            color: #2E7D32;
-            font-size: 0.74rem;
+        .drawer-item-title {
+            font-size: 0.82rem;
             font-weight: 800;
-            padding: 3px 8px;
-            border-radius: 8px;
-            border: 1px solid #C8E6C9;
-        }
-        .badge-tag {
-            background: #FFF3E0;
-            color: #E65100;
-            font-size: 0.72rem;
-            font-weight: 800;
-            padding: 2px 7px;
-            border-radius: 6px;
-        }
-        .card-clean-title {
-            font-size: 1.05rem;
-            font-weight: 900;
             color: var(--text-main);
-            margin: 4px 0 6px;
-            line-height: 1.35;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        .card-clean-desc {
-            font-size: 0.8rem;
-            color: #667085;
-            line-height: 1.45;
-            margin-bottom: 12px;
-            flex-grow: 1;
-        }
-        .card-bottom-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-top: 1px dashed var(--wood-light);
-            padding-top: 10px;
-            margin-top: 4px;
-        }
-        .card-cat-label {
-            font-size: 0.76rem;
-            font-weight: 700;
+        .drawer-item-arrow {
+            font-size: 0.72rem;
             color: var(--sub-green);
-        }
-        .btn-card-play {
-            background: var(--main-green);
-            color: #FFFFFF;
-            border: none;
-            padding: 7px 14px;
-            border-radius: 10px;
-            font-size: 0.84rem;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            box-shadow: 0 2px 6px rgba(58, 90, 64, 0.2);
+            font-weight: 900;
         }
 
         /* モーダル共通 */
@@ -284,40 +444,40 @@
         }
         .modal-clean-box {
             background: #FFFFFF;
-            border-radius: 24px;
-            border: 3px solid var(--wood-light);
+            border-radius: 20px;
+            border: 2px solid var(--wood-light);
             box-shadow: 0 16px 40px rgba(0,0,0,0.18);
             width: 100%;
-            max-width: 520px;
+            max-width: 480px;
             max-height: 90dvh;
             overflow-y: auto;
-            padding: 22px 20px;
+            padding: 16px 14px;
             position: relative;
         }
         .modal-clean-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             border-bottom: 2px solid var(--wood-light);
-            padding-bottom: 10px;
+            padding-bottom: 8px;
         }
         .modal-clean-header h3 {
-            font-size: 1.15rem;
+            font-size: 1.05rem;
             font-weight: 900;
             color: var(--main-green);
             margin: 0;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
         .btn-modal-close {
             background: var(--wood-light);
             border: none;
-            border-radius: 10px;
-            width: 34px;
-            height: 34px;
-            font-size: 1.1rem;
+            border-radius: 8px;
+            width: 32px;
+            height: 32px;
+            font-size: 1rem;
             cursor: pointer;
             color: var(--main-green);
             font-weight: 800;
@@ -327,12 +487,12 @@
         .diag-panel-box {
             background: #F8FAFC;
             border: 1px solid #E2E8F0;
-            border-radius: 12px;
-            padding: 12px;
-            font-size: 0.8rem;
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 0.75rem;
             font-family: monospace;
-            margin-top: 10px;
-            max-height: 160px;
+            margin-top: 8px;
+            max-height: 140px;
             overflow-y: auto;
             white-space: pre-wrap;
             word-break: break-all;
@@ -344,13 +504,23 @@
     <!-- ヘッダー -->
     <header class="portal-header-clean">
         <div class="header-clean-inner">
-            <a href="#" class="portal-clean-logo" onclick="location.reload(); return false;">
-                <span class="logo-tree-badge">🌲</span>
-                <div class="logo-text-wrap">
-                    <h1>すくすく北欧もくいくゲート</h1>
-                    <span>こども知育＆あそびスタジオ</span>
-                </div>
-            </a>
+            <div class="header-left-box">
+                <!-- 左上のハンバーガーボタン -->
+                <button class="btn-hamburger" id="btn-open-drawer" onclick="openNavDrawer()" title="メニューを開く">
+                    <span class="hamburger-bar"></span>
+                    <span class="hamburger-bar"></span>
+                    <span class="hamburger-bar"></span>
+                </button>
+                <a href="#" class="portal-clean-logo" onclick="location.reload(); return false;">
+                    <span class="logo-tree-badge">🌲</span>
+                    <div class="logo-text-wrap">
+                        <h1>すくすく北欧もくいくゲート</h1>
+                        <span>こども知育＆あそびスタジオ</span>
+                    </div>
+                </a>
+            </div>
+
+            <!-- 右上のおうちの人設定ボタン -->
             <button class="btn-gear-settings" onclick="openSettingsModal()" title="おうちの人・設定">
                 ⚙️
             </button>
@@ -362,39 +532,52 @@
         <button class="cat-pill active" data-cat="all" onclick="filterCategory('all', this)">
             🌟 ぜんぶ
         </button>
-        <button class="cat-pill" data-cat="vehicle" onclick="filterCategory('vehicle', this)">
-            🚅 のりもの・しんかんせん
+        <button class="cat-pill" data-cat="arcade" onclick="filterCategory('arcade', this)">
+            🎰 ゲーセン
         </button>
-        <button class="cat-pill" data-cat="number" onclick="filterCategory('number', this)">
-            🔢 かず・けいさん
+        <button class="cat-pill" data-cat="vehicle" onclick="filterCategory('vehicle', this)">
+            🚅 のりもの
         </button>
         <button class="cat-pill" data-cat="nature" onclick="filterCategory('nature', this)">
-            🦁 どうぶつ・しぜん
+            🦁 どうぶつ
         </button>
-        <button class="cat-pill" data-cat="touch" onclick="filterCategory('touch', this)">
-            🎈 タッチ・パズル
+        <button class="cat-pill" data-cat="puzzle" onclick="filterCategory('puzzle', this)">
+            🎈 パズル
         </button>
     </nav>
 
-    <!-- メインコンテンツ -->
+    <!-- メインコンテンツ（3列ミニ・アプリアイコン） -->
     <main class="portal-main-clean">
-        <div class="portal-clean-grid" id="portal-games-grid">
+        <div id="portal-games-container">
             <!-- ゲーム台帳から自動描画されます -->
         </div>
     </main>
 
     <!-- フッター -->
-    <footer style="text-align:center; padding:20px; font-size:0.78rem; color:#8C857B; border-top:1px solid var(--wood-light);">
-        <p><strong>すくすく北欧もくいくゲート</strong> - 自然のぬくもりで育むこども知育スタジオ</p>
-        <p style="margin-top:4px; opacity:0.8;">合言葉ロック保護・スマホ最適化対応</p>
+    <footer style="text-align:center; padding:16px 10px; font-size:0.75rem; color:#8C857B; border-top:1px solid var(--wood-light);">
+        <p style="margin:0;"><strong>すくすく北欧もくいくゲート</strong> - 自然のぬくもりで育むこども知育スタジオ</p>
+        <p style="margin:4px 0 0; opacity:0.8;">合言葉ロック保護・スマホ最適化対応</p>
     </footer>
+
+    <!-- 左上ハンバーガー用 ポップアップ・ドロワー -->
+    <div class="drawer-overlay" id="nav-drawer" onclick="closeNavDrawer(event)">
+        <div class="drawer-panel" onclick="event.stopPropagation()">
+            <div class="drawer-header">
+                <h3>🌲 ゲームをえらぶ</h3>
+                <button class="btn-drawer-close" onclick="closeNavDrawer()">✕</button>
+            </div>
+            <div class="drawer-body" id="drawer-games-list">
+                <!-- JSでグループ別に自動生成されます -->
+            </div>
+        </div>
+    </div>
 
     <!-- ゲームプレイ全画面モーダル (iframe) -->
     <div class="modal-clean-overlay" id="game-modal" style="display:none; padding:0;">
         <div style="width:100%; height:100%; display:flex; flex-direction:column; background:#000;">
-            <div style="background:#2C352D; color:#FFF; padding:8px 14px; display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid var(--wood-warm);">
-                <h4 id="modal-game-title" style="margin:0; font-size:1rem; font-weight:800; display:flex; align-items:center; gap:6px;">🎮 ゲーム</h4>
-                <button onclick="closeGameModal()" style="background:#BC6C25; color:#FFF; border:none; padding:6px 14px; border-radius:8px; font-weight:900; font-size:0.88rem; cursor:pointer;">
+            <div style="background:#2C352D; color:#FFF; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid var(--wood-warm);">
+                <h4 id="modal-game-title" style="margin:0; font-size:0.95rem; font-weight:800; display:flex; align-items:center; gap:6px;">🎮 ゲーム</h4>
+                <button onclick="closeGameModal()" style="background:#BC6C25; color:#FFF; border:none; padding:6px 12px; border-radius:8px; font-weight:900; font-size:0.84rem; cursor:pointer;">
                     ✕ おわる
                 </button>
             </div>
@@ -411,37 +594,25 @@
             </div>
 
             <!-- 合言葉ロック設定 -->
-            <div style="background:var(--wood-cream); border:1px solid var(--wood-light); border-radius:14px; padding:14px; margin-bottom:14px;">
-                <h4 style="margin:0 0 6px; font-size:0.95rem; font-weight:800; color:var(--main-green);">🔒 家族専用・合言葉設定</h4>
-                <p style="font-size:0.78rem; color:#556B2F; margin-bottom:10px; line-height:1.4;">
+            <div style="background:var(--wood-cream); border:1px solid var(--wood-light); border-radius:12px; padding:12px; margin-bottom:12px;">
+                <h4 style="margin:0 0 4px; font-size:0.9rem; font-weight:800; color:var(--main-green);">🔒 家族専用・合言葉設定</h4>
+                <p style="font-size:0.75rem; color:#556B2F; margin-bottom:8px; line-height:1.4;">
                     外出先のiPhoneでお子様に渡す際、部外者のアクセスを防ぎます（初期値: <strong>1234</strong>）。
                 </p>
                 <div style="display:flex; gap:8px;">
-                    <input type="text" id="family-pin-input" placeholder="新しい合言葉" style="flex:1; padding:10px; border-radius:10px; border:2px solid var(--wood-light); text-align:center; font-size:1.1rem; font-weight:800;">
-                    <button onclick="savePinSetting()" style="background:var(--main-green); color:#FFF; border:none; padding:0 14px; border-radius:10px; font-weight:800; cursor:pointer;">保存</button>
+                    <input type="text" id="family-pin-input" placeholder="新しい合言葉" style="flex:1; padding:8px; border-radius:8px; border:1.5px solid var(--wood-light); text-align:center; font-size:1rem; font-weight:800;">
+                    <button onclick="savePinSetting()" style="background:var(--main-green); color:#FFF; border:none; padding:0 12px; border-radius:8px; font-weight:800; cursor:pointer;">保存</button>
                 </div>
-                <button onclick="lockNow()" style="margin-top:8px; width:100%; background:#BC6C25; color:#FFF; border:none; padding:8px; border-radius:8px; font-size:0.8rem; font-weight:800; cursor:pointer;">
+                <button onclick="lockNow()" style="margin-top:8px; width:100%; background:#BC6C25; color:#FFF; border:none; padding:7px; border-radius:8px; font-size:0.78rem; font-weight:800; cursor:pointer;">
                     今すぐロック画面を試す
                 </button>
             </div>
 
-            <!-- ゲーム追加ガイド -->
-            <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:14px; padding:14px; margin-bottom:14px;">
-                <h4 style="margin:0 0 6px; font-size:0.95rem; font-weight:800; color:#166534;">➕ 新しいゲームの追加</h4>
-                <p style="font-size:0.78rem; color:#15803D; margin-bottom:10px; line-height:1.4;">
-                    Geminiなどで作ったHTMLファイルをフォルダに入れるだけで自動登録されます。ブラウザで今すぐ試すことも可能です。
-                </p>
-                <input type="file" id="game-file-input" accept=".html" onchange="handleHtmlFileSelect(event)" style="display:none;">
-                <button type="button" onclick="document.getElementById('game-file-input').click()" style="width:100%; background:#166534; color:#FFF; border:none; padding:10px; border-radius:10px; font-size:0.84rem; font-weight:800; cursor:pointer;">
-                    📁 HTMLファイルを選んで今すぐテスト
-                </button>
-            </div>
-
             <!-- デバッグ・自己診断パネル -->
-            <div style="border-top:1px dashed var(--wood-light); padding-top:12px;">
+            <div style="border-top:1px dashed var(--wood-light); padding-top:10px;">
                 <div style="display:flex; align-items:center; justify-content:space-between;">
-                    <h5 style="margin:0; font-size:0.86rem; color:#64748B;">🩺 動作診断パネル</h5>
-                    <button onclick="copyDiagLog()" style="background:#E2E8F0; border:none; padding:4px 8px; border-radius:6px; font-size:0.74rem; cursor:pointer;">📋 ログをコピー</button>
+                    <h5 style="margin:0; font-size:0.82rem; color:#64748B;">🩺 動作診断パネル</h5>
+                    <button onclick="copyDiagLog()" style="background:#E2E8F0; border:none; padding:3px 8px; border-radius:6px; font-size:0.72rem; cursor:pointer;">📋 ログをコピー</button>
                 </div>
                 <div class="diag-panel-box" id="diag-log-box">診断ログ初期化中...</div>
             </div>
@@ -450,21 +621,21 @@
 
     <!-- 家族専用・合言葉ロック画面 -->
     <div class="modal-clean-overlay" id="pin-lock-modal" style="display:none; background:rgba(44, 53, 45, 0.95);">
-        <div class="modal-clean-box" style="text-align:center; max-width:380px;">
-            <div style="font-size:3rem; margin-bottom:8px;">🌲🔒</div>
-            <h3 style="font-size:1.25rem; font-weight:900; margin-bottom:6px; color:var(--main-green);">すくすく北欧もくいくゲート</h3>
-            <p style="font-size:0.82rem; color:#582F0E; margin-bottom:16px;">
+        <div class="modal-clean-box" style="text-align:center; max-width:360px;">
+            <div style="font-size:2.6rem; margin-bottom:6px;">🌲🔒</div>
+            <h3 style="font-size:1.15rem; font-weight:900; margin-bottom:4px; color:var(--main-green);">すくすく北欧もくいくゲート</h3>
+            <p style="font-size:0.8rem; color:#582F0E; margin-bottom:14px;">
                 おうちのひとに <strong>あいことば</strong> を<br>いれてもらってね！（初期値: 1234）
             </p>
             <form onsubmit="handleUnlockSubmit(event)">
-                <input type="password" id="unlock-pin-input" placeholder="あいことば" style="width:180px; padding:12px; font-size:1.4rem; letter-spacing:4px; text-align:center; border:2px solid var(--wood-light); border-radius:14px; margin-bottom:12px; background:var(--wood-cream); outline:none;">
-                <div style="margin-bottom:16px;">
-                    <label style="font-size:0.8rem; color:#414833; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                <input type="password" id="unlock-pin-input" placeholder="あいことば" style="width:160px; padding:10px; font-size:1.3rem; letter-spacing:4px; text-align:center; border:2px solid var(--wood-light); border-radius:12px; margin-bottom:10px; background:var(--wood-cream); outline:none;">
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:0.78rem; color:#414833; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
                         <input type="checkbox" id="remember-device" checked>
                         <span>この端末では次回から自動で開く</span>
                     </label>
                 </div>
-                <button type="submit" style="width:100%; background:var(--main-green); color:#FFF; font-weight:900; border:none; padding:12px; border-radius:12px; font-size:1rem; cursor:pointer;">
+                <button type="submit" style="width:100%; background:var(--main-green); color:#FFF; font-weight:900; border:none; padding:10px; border-radius:10px; font-size:0.95rem; cursor:pointer;">
                     あそびをはじめる！ ▶
                 </button>
             </form>
@@ -486,6 +657,64 @@
 
         let currentCategory = 'all';
         let registeredGames = [];
+
+        // 4大グループ定義（直感的なテーマ分類）
+        const GAME_GROUPS = [
+            {
+                id: 'arcade',
+                title: '🎰 ゲーセンあそび',
+                icon: '🎰'
+            },
+            {
+                id: 'vehicle',
+                title: '🚅 のりもの・けいさん',
+                icon: '🚅'
+            },
+            {
+                id: 'nature',
+                title: '🦁 どうぶつ・たんけん',
+                icon: '🦁'
+            },
+            {
+                id: 'puzzle',
+                title: '🎈 パズル・カード',
+                icon: '🎈'
+            }
+        ];
+
+        // 短いゲーム名（アイコンと名前でパッと見やすい）
+        function getShortTitle(g) {
+            const t = g.title;
+            if (t.includes('コインプッシャー')) return 'コインプッシャー';
+            if (t.includes('クレーン')) return 'クレーンゲーム';
+            if (t.includes('パニック') || t.includes('ピョコピョコ')) return 'タッチでパニック';
+            if (t.includes('レーサー') || t.includes('バギー')) return 'ぷちレーサー';
+            if (t.includes('たしざん') || t.includes('ミックスランド')) return 'たしざん新幹線';
+            if (t.includes('ボウリング')) return 'どうぶつボウリング';
+            if (t.includes('オセロ')) return 'どうぶつオセロ';
+            if (t.includes('ライト') || t.includes('ピカリ')) return 'ライトでピカリ';
+            if (t.includes('まるばつ') || t.includes('○×')) return 'アンパンマン○×';
+            if (t.includes('しんけいすいじゃく')) return '神経衰弱';
+            if (t.includes('すごろく')) return '3Dすごろく';
+            return t.replace(/^★\s*|\s*★$/g, '').slice(0, 8);
+        }
+
+        // 各ゲームのグループ判定（重複を防止）
+        function getGameGroupId(g) {
+            if (g.id.includes('コインプッシャー') || g.id.includes('クレーン') || g.id.includes('パニック') || 
+                g.title.includes('コイン') || g.title.includes('クレーン') || g.title.includes('パニック')) {
+                return 'arcade';
+            }
+            if (g.category === 'vehicle' || g.category === 'number' || 
+                g.title.includes('レーサー') || g.title.includes('バギー') || g.title.includes('たしざん')) {
+                return 'vehicle';
+            }
+            if (g.category === 'nature' || g.title.includes('ボウリング') || g.title.includes('オセロ') || 
+                g.title.includes('たんけん') || g.title.includes('ライト')) {
+                return 'nature';
+            }
+            return 'puzzle';
+        }
 
         window.addEventListener('DOMContentLoaded', () => {
             logDiag('System boot: ' + window.innerWidth + 'x' + window.innerHeight);
@@ -546,7 +775,8 @@
             const base = window.KIDS_GAMES_REGISTRY || [];
             const custom = JSON.parse(localStorage.getItem('kids_custom_games') || '[]');
             registeredGames = [...custom, ...base];
-            renderGamesGrid();
+            renderGames();
+            renderDrawerMenu();
         }
 
         function filterCategory(cat, btnEl) {
@@ -554,54 +784,131 @@
             document.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('active'));
             if (btnEl) btnEl.classList.add('active');
             logDiag('Filtered category: ' + cat);
-            renderGamesGrid();
+            renderGames();
         }
 
-        function renderGamesGrid() {
-            const grid = document.getElementById('portal-games-grid');
-            if (!grid) return;
+        // ホーム画面のゲーム描画（3列ミニ・アプリアイコン）
+        function renderGames() {
+            const container = document.getElementById('portal-games-container');
+            if (!container) return;
 
-            let filtered = registeredGames;
-            if (currentCategory !== 'all') {
-                filtered = registeredGames.filter(g => {
-                    if (currentCategory === 'vehicle') return g.category === 'vehicle';
-                    if (currentCategory === 'number') return g.category === 'number';
-                    if (currentCategory === 'nature') return g.category === 'nature';
-                    if (currentCategory === 'touch') return g.category === 'touch' || g.category === 'puzzle';
-                    return g.category === currentCategory;
-                });
+            if (currentCategory === 'all') {
+                renderGroupedGames(container);
+            } else {
+                renderFilteredGames(container, currentCategory);
             }
+        }
+
+        // グループ別セクション描画
+        function renderGroupedGames(container) {
+            let html = '';
+            
+            GAME_GROUPS.forEach(grp => {
+                const groupGames = registeredGames.filter(g => getGameGroupId(g) === grp.id);
+                if (groupGames.length === 0) return;
+
+                html += `
+                    <section class="game-group-section">
+                        <div class="group-header">
+                            <span class="group-header-title">${grp.title}</span>
+                            <span class="group-header-count">${groupGames.length}本</span>
+                        </div>
+                        <div class="portal-grid-compact">
+                            ${groupGames.map(g => renderMiniCard(g)).join('')}
+                        </div>
+                    </section>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // 個別カテゴリフィルター描画
+        function renderFilteredGames(container, cat) {
+            const filtered = registeredGames.filter(g => getGameGroupId(g) === cat);
 
             if (filtered.length === 0) {
-                grid.innerHTML = `
-                    <div style="grid-column:1/-1; text-align:center; padding:40px 10px; color:#8C857B;">
-                        <div style="font-size:3rem; margin-bottom:8px;">🔍</div>
-                        <p style="font-weight:800; font-size:1rem;">このカテゴリのゲームは準備中だよ！</p>
+                container.innerHTML = `
+                    <div style="text-align:center; padding:40px 10px; color:#8C857B;">
+                        <div style="font-size:2.8rem; margin-bottom:8px;">🔍</div>
+                        <p style="font-weight:800; font-size:0.95rem;">このカテゴリのゲームは準備中だよ！</p>
                         <p style="font-size:0.8rem;">「🌟 ぜんぶ」をおしてみてね。</p>
                     </div>
                 `;
                 return;
             }
 
-            grid.innerHTML = filtered.map(g => `
-                <div class="game-clean-card" onclick="launchGame('${g.file}', '${g.title.replace(/'/g, "\\'")}', '${g.id}')">
-                    <div class="card-top-row">
-                        <div class="card-clean-icon">${g.icon || '🎮'}</div>
-                        <div class="card-badge-box">
-                            <span class="badge-age">${g.ageLabel || '幼児向け'}</span>
-                            <span class="badge-tag">${g.tag || '人気'}</span>
-                        </div>
-                    </div>
-                    <div>
-                        <h4 class="card-clean-title">${g.title}</h4>
-                        <p class="card-clean-desc">${g.desc || 'たのしい知育あそび。'}</p>
-                    </div>
-                    <div class="card-bottom-row">
-                        <span class="card-cat-label">${g.categoryLabel || '知育'}</span>
-                        <button class="btn-card-play">あそぶ ▶</button>
-                    </div>
+            container.innerHTML = `
+                <div class="portal-grid-compact">
+                    ${filtered.map(g => renderMiniCard(g)).join('')}
                 </div>
-            `).join('');
+            `;
+        }
+
+        // ミニ・アプリアイコンカード生成（アイコン＋短い名前のみ）
+        function renderMiniCard(g) {
+            const shortTitle = getShortTitle(g);
+            const safeTitleAttr = g.title.replace(/'/g, "\\'");
+
+            return `
+                <div class="card-mini-app" onclick="launchGame('${g.file}', '${safeTitleAttr}', '${g.id}')">
+                    <div class="mini-icon-box">${g.icon || '🎮'}</div>
+                    <div class="mini-title">${shortTitle}</div>
+                </div>
+            `;
+        }
+
+        // ===== ハンバーガー ドロワーメニュー描画 =====
+        function renderDrawerMenu() {
+            const listEl = document.getElementById('drawer-games-list');
+            if (!listEl) return;
+
+            let html = '';
+            GAME_GROUPS.forEach(grp => {
+                const groupGames = registeredGames.filter(g => getGameGroupId(g) === grp.id);
+                if (groupGames.length === 0) return;
+
+                html += `<div class="drawer-group-title">${grp.title}</div>`;
+                groupGames.forEach(g => {
+                    const shortTitle = getShortTitle(g);
+                    const safeTitleAttr = g.title.replace(/'/g, "\\'");
+                    html += `
+                        <div class="drawer-item" onclick="launchFromDrawer('${g.file}', '${safeTitleAttr}', '${g.id}')">
+                            <div class="drawer-item-left">
+                                <span class="drawer-item-icon">${g.icon || '🎮'}</span>
+                                <span class="drawer-item-title">${shortTitle}</span>
+                            </div>
+                            <span class="drawer-item-arrow">▶</span>
+                        </div>
+                    `;
+                });
+            });
+
+            listEl.innerHTML = html;
+        }
+
+        function openNavDrawer() {
+            const drawer = document.getElementById('nav-drawer');
+            if (drawer) {
+                drawer.classList.add('open');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeNavDrawer(e) {
+            if (e && e.target !== e.currentTarget && !e.target.classList.contains('btn-drawer-close')) {
+                return;
+            }
+            const drawer = document.getElementById('nav-drawer');
+            if (drawer) {
+                drawer.classList.remove('open');
+                document.body.style.overflow = '';
+            }
+        }
+
+        function launchFromDrawer(fileUrl, title, id) {
+            closeNavDrawer();
+            launchGame(fileUrl, title, id);
         }
 
         function launchGame(fileUrl, title, id) {
@@ -629,61 +936,35 @@
         function closeGameModal() {
             const modal = document.getElementById('game-modal');
             const frame = document.getElementById('game-iframe');
-            if (modal) modal.style.display = 'none';
-            if (frame) frame.src = 'about:blank';
-            document.body.style.overflow = '';
-            logDiag('Closed game modal.');
+            if (modal && frame) {
+                frame.src = 'about:blank';
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+                logDiag('Game closed.');
+            }
         }
 
         function openSettingsModal() {
-            document.getElementById('settings-modal').style.display = 'flex';
-            logDiag('Opened settings modal.');
-        }
-        function closeSettingsModal() {
-            document.getElementById('settings-modal').style.display = 'none';
-            logDiag('Closed settings modal.');
+            const modal = document.getElementById('settings-modal');
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
         }
 
-        function handleHtmlFileSelect(e) {
-            const file = e.target.files && e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                const rawHtml = evt.target.result;
-                let title = file.name.replace(/\.html$/i, '');
-                const titleMatch = rawHtml.match(/<title>(.*?)<\/title>/i);
-                if (titleMatch && titleMatch[1]) {
-                    title = titleMatch[1].trim();
-                }
-                const newGame = {
-                    id: 'custom_' + Date.now(),
-                    title: title,
-                    icon: '🎮',
-                    rawHtml: rawHtml,
-                    file: '',
-                    category: 'touch',
-                    categoryLabel: 'カスタム追加',
-                    age: 'baby',
-                    ageLabel: '全年齢',
-                    desc: '手元のファイルから追加されたゲームです。',
-                    tag: 'NEW'
-                };
-                const existing = JSON.parse(localStorage.getItem('kids_custom_games') || '[]');
-                existing.unshift(newGame);
-                localStorage.setItem('kids_custom_games', JSON.stringify(existing));
-                alert('🎉 「' + title + '」を追加しました！');
-                closeSettingsModal();
-                loadGames();
-            };
-            reader.readAsText(file, 'UTF-8');
+        function closeSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
         }
 
         function copyDiagLog() {
-            const text = diagLogs.join('\n');
-            navigator.clipboard.writeText(text).then(() => {
-                alert('📋 診断ログをコピーしました！');
+            navigator.clipboard.writeText(diagLogs.join('\n')).then(() => {
+                alert('📋 診断ログをクリップボードにコピーしました！');
             }).catch(() => {
-                prompt('以下をコピーしてください：', text);
+                alert('コピーに失敗しました。');
             });
         }
     </script>
