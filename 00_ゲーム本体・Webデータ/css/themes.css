@@ -1,0 +1,336 @@
+/* ========================================================
+   幼児向けサイト 10テーマ スタイル定義
+   各テーマごとの世界観・カラー・形状・エフェクト
+   ======================================================== */
+
+/* --------------------------------------------------------
+   1. forest: わくわく どうぶつのもり
+   -------------------------------------------------------- */
+body[data-theme="forest"] {
+    --primary: #40916C;
+    --primary-hover: #2D6A4F;
+    --bg-main: #F0F7EE;
+    --card-bg: #FFFFFF;
+    --text-color: #2D3748;
+    --text-muted: #5F7466;
+    --border-color: #D8F3DC;
+    --radius-sm: 16px;
+    --radius-md: 24px;
+    --radius-lg: 36px;
+    --shadow: 0 8px 20px rgba(64, 145, 108, 0.1);
+    background-image: radial-gradient(#95D5B2 1.5px, transparent 1.5px);
+    background-size: 24px 24px;
+}
+body[data-theme="forest"] .brand-icon::after { content: ' 🍃'; }
+body[data-theme="forest"] .play-action-btn {
+    background: linear-gradient(135deg, #52B788, #40916C);
+    box-shadow: 0 4px 10px rgba(64, 145, 108, 0.3);
+}
+
+/* --------------------------------------------------------
+   2. pop: ぽっぷ＆カラフル キッズパーク
+   -------------------------------------------------------- */
+body[data-theme="pop"] {
+    --primary: #FF595E;
+    --primary-hover: #E71D36;
+    --bg-main: #FFFBEA;
+    --card-bg: #FFFFFF;
+    --text-color: #1A1A1A;
+    --text-muted: #555555;
+    --border-color: #2B2D42;
+    --radius-sm: 14px;
+    --radius-md: 20px;
+    --radius-lg: 28px;
+    --shadow: 5px 5px 0px #2B2D42;
+    background-image: radial-gradient(#FFD166 2px, transparent 2px);
+    background-size: 20px 20px;
+}
+body[data-theme="pop"] .site-header,
+body[data-theme="pop"] .hero-banner,
+body[data-theme="pop"] .game-card,
+body[data-theme="pop"] .interactive-playground,
+body[data-theme="pop"] .animal-card,
+body[data-theme="pop"] .ctrl-btn {
+    border: 3px solid #2B2D42 !important;
+    box-shadow: 4px 4px 0px #2B2D42 !important;
+}
+body[data-theme="pop"] .play-action-btn {
+    background: #FFCA3A;
+    color: #1A1A1A;
+    border: 2px solid #2B2D42;
+    box-shadow: 3px 3px 0px #2B2D42;
+    font-weight: 900;
+}
+body[data-theme="pop"] .play-action-btn:hover {
+    background: #FF595E;
+    color: #fff;
+}
+
+/* --------------------------------------------------------
+   3. dream: ふわふわ くもとゆめのくに
+   -------------------------------------------------------- */
+body[data-theme="dream"] {
+    --primary: #9B5DE5;
+    --primary-hover: #7F39FB;
+    --bg-main: #F7F0FA;
+    --card-bg: rgba(255, 255, 255, 0.92);
+    --text-color: #4A3E56;
+    --text-muted: #8E7C9E;
+    --border-color: #EBD4F7;
+    --radius-sm: 20px;
+    --radius-md: 30px;
+    --radius-lg: 42px;
+    --shadow: 0 12px 28px rgba(155, 93, 229, 0.15);
+    background: linear-gradient(180deg, #F9EEFB 0%, #E8F0FE 100%);
+    background-attachment: fixed;
+}
+body[data-theme="dream"] .hero-banner {
+    border-radius: 40px;
+    background: linear-gradient(135deg, #FFFFFF, #FAF0FD);
+    box-shadow: 0 16px 36px rgba(155, 93, 229, 0.18);
+}
+body[data-theme="dream"] .play-action-btn {
+    background: linear-gradient(135deg, #F15BB5, #9B5DE5);
+    border-radius: 999px;
+    box-shadow: 0 6px 16px rgba(241, 91, 181, 0.35);
+}
+
+/* --------------------------------------------------------
+   4. space: きらきら うちゅうのぼうけん
+   -------------------------------------------------------- */
+body[data-theme="space"] {
+    --primary: #00F0FF;
+    --primary-hover: #00C4D4;
+    --bg-main: #0E1124;
+    --card-bg: #1A1F3D;
+    --text-color: #F0F4FF;
+    --text-muted: #9AA6D1;
+    --border-color: #2F3968;
+    --radius-sm: 14px;
+    --radius-md: 22px;
+    --radius-lg: 30px;
+    --shadow: 0 8px 30px rgba(0, 240, 255, 0.15);
+    background-color: #0E1124;
+    background-image: 
+        radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 40px),
+        radial-gradient(rgba(255,255,255,.8), rgba(255,255,255,.1) 1px, transparent 30px);
+    background-size: 350px 350px, 200px 200px;
+    background-position: 0 0, 40px 60px;
+}
+body[data-theme="space"] .site-header {
+    background: #141833;
+    border-color: #2F3968;
+}
+body[data-theme="space"] .play-action-btn {
+    background: linear-gradient(135deg, #00F0FF, #7000FF);
+    color: #FFFFFF;
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+}
+body[data-theme="space"] .hero-banner {
+    border-color: #43549C;
+    box-shadow: 0 0 25px rgba(112, 0, 255, 0.3);
+}
+
+/* --------------------------------------------------------
+   5. crayon: てがき クレヨン＆スケッチブック
+   -------------------------------------------------------- */
+body[data-theme="crayon"] {
+    --primary: #E65100;
+    --primary-hover: #BF360C;
+    --bg-main: #FAF5E9;
+    --card-bg: #FFFDF9;
+    --text-color: #372E29;
+    --text-muted: #7E6C60;
+    --border-color: #E2D3B8;
+    --radius-sm: 255px 15px 225px 15px/15px 225px 15px 255px;
+    --radius-md: 255px 25px 225px 25px/25px 225px 25px 255px;
+    --radius-lg: 255px 35px 225px 35px/35px 225px 35px 255px;
+    --shadow: 3px 5px 12px rgba(93, 64, 55, 0.12);
+}
+body[data-theme="crayon"] .game-card,
+body[data-theme="crayon"] .hero-banner,
+body[data-theme="crayon"] .interactive-playground,
+body[data-theme="crayon"] .animal-card {
+    border: 3px dashed #BCAAA4 !important;
+    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+    position: relative;
+}
+body[data-theme="crayon"] .game-card::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 40%;
+    width: 60px;
+    height: 18px;
+    background: rgba(255, 204, 128, 0.7);
+    transform: rotate(-3deg);
+    border-radius: 2px;
+}
+body[data-theme="crayon"] .play-action-btn {
+    background: #FB8C00;
+    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+    border: 2px solid #E65100;
+}
+
+/* --------------------------------------------------------
+   6. clay: ぽこぽこ 3Dクレイ＆おもちゃばこ
+   -------------------------------------------------------- */
+body[data-theme="clay"] {
+    --primary: #FF6584;
+    --primary-hover: #FF4770;
+    --bg-main: #F3EDF8;
+    --card-bg: #F7F1FB;
+    --text-color: #36293D;
+    --text-muted: #7A6985;
+    --border-color: rgba(255,255,255,0.7);
+    --radius-sm: 22px;
+    --radius-md: 32px;
+    --radius-lg: 44px;
+    --shadow: 10px 10px 24px #DDD1E7, -10px -10px 24px #FFFFFF;
+}
+body[data-theme="clay"] .hero-banner,
+body[data-theme="clay"] .game-card,
+body[data-theme="clay"] .interactive-playground,
+body[data-theme="clay"] .animal-card,
+body[data-theme="clay"] .ctrl-btn {
+    border: 2px solid rgba(255, 255, 255, 0.8) !important;
+    box-shadow: 8px 8px 18px #DED4E8, -8px -8px 18px #FFFFFF, inset 2px 2px 4px rgba(255,255,255,0.6) !important;
+}
+body[data-theme="clay"] .play-action-btn {
+    background: #FF6584;
+    border: 2px solid rgba(255,255,255,0.8);
+    box-shadow: 4px 4px 10px #D6B9CD, -3px -3px 8px #FFFFFF;
+    border-radius: 999px;
+}
+
+/* --------------------------------------------------------
+   7. picturebook: あたたか えほんのせかい
+   -------------------------------------------------------- */
+body[data-theme="picturebook"] {
+    --primary: #8D6E63;
+    --primary-hover: #6D4C41;
+    --bg-main: #FBF6ED;
+    --card-bg: #FFFDF9;
+    --text-color: #3E2723;
+    --text-muted: #795548;
+    --border-color: #D7CCC8;
+    --radius-sm: 10px;
+    --radius-md: 16px;
+    --radius-lg: 20px;
+    --shadow: 0 4px 12px rgba(62, 39, 35, 0.08);
+    font-family: 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+}
+body[data-theme="picturebook"] .site-header,
+body[data-theme="picturebook"] .hero-banner,
+body[data-theme="picturebook"] .game-card,
+body[data-theme="picturebook"] .interactive-playground {
+    border: 2px solid #D7CCC8;
+    border-top: 4px solid #8D6E63;
+}
+body[data-theme="picturebook"] .play-action-btn {
+    background: #A1887F;
+    border-radius: 8px;
+    letter-spacing: 2px;
+}
+body[data-theme="picturebook"] .hero-title {
+    font-family: serif;
+    font-weight: 700;
+    color: #4E342E;
+}
+
+/* --------------------------------------------------------
+   8. marine: すいすい マリン・アクアリウム
+   -------------------------------------------------------- */
+body[data-theme="marine"] {
+    --primary: #0096C7;
+    --primary-hover: #023E8A;
+    --bg-main: #E0F4F7;
+    --card-bg: rgba(255, 255, 255, 0.9);
+    --text-color: #03045E;
+    --text-muted: #0077B6;
+    --border-color: #ADE8F4;
+    --radius-sm: 18px;
+    --radius-md: 26px;
+    --radius-lg: 38px;
+    --shadow: 0 10px 25px rgba(0, 150, 199, 0.15);
+    background: linear-gradient(180deg, #E0F4F7 0%, #CAF0F8 100%);
+    background-attachment: fixed;
+}
+body[data-theme="marine"] .site-header {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    border-bottom: 3px solid #90E0EF;
+}
+body[data-theme="marine"] .play-action-btn {
+    background: linear-gradient(135deg, #48CAE4, #0096C7);
+    box-shadow: 0 4px 15px rgba(0, 150, 199, 0.35);
+}
+
+/* --------------------------------------------------------
+   9. natural: すくすく ナチュラル・ウッド＆マルシェ
+   -------------------------------------------------------- */
+body[data-theme="natural"] {
+    --primary: #6B705C;
+    --primary-hover: #3F4238;
+    --bg-main: #F7F5F0;
+    --card-bg: #FFFFFF;
+    --text-color: #2F3E46;
+    --text-muted: #6B705C;
+    --border-color: #E2DCD5;
+    --radius-sm: 12px;
+    --radius-md: 18px;
+    --radius-lg: 24px;
+    --shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+body[data-theme="natural"] .hero-banner {
+    background: #FFFDF9;
+    border: 1px solid #DDBEA9;
+}
+body[data-theme="natural"] .play-action-btn {
+    background: #A5A58D;
+    color: #FFFFFF;
+    border-radius: 8px;
+}
+body[data-theme="natural"] .game-card {
+    border: 1px solid #E2DCD5;
+}
+
+/* --------------------------------------------------------
+   10. pixel: ぴこぴこ ドット絵・レトロキッズ
+   -------------------------------------------------------- */
+body[data-theme="pixel"] {
+    --primary: #00F5D4;
+    --primary-hover: #00BBF9;
+    --bg-main: #1D1E2C;
+    --card-bg: #2B2D42;
+    --text-color: #F8F9FA;
+    --text-muted: #ADB5BD;
+    --border-color: #F72585;
+    --radius-sm: 0px;
+    --radius-md: 0px;
+    --radius-lg: 0px;
+    --shadow: 4px 4px 0px #F72585;
+    background-image: 
+        linear-gradient(rgba(247, 37, 133, 0.15) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(247, 37, 133, 0.15) 1px, transparent 1px);
+    background-size: 16px 16px;
+    font-family: 'Courier New', monospace, sans-serif;
+}
+body[data-theme="pixel"] .site-header,
+body[data-theme="pixel"] .hero-banner,
+body[data-theme="pixel"] .game-card,
+body[data-theme="pixel"] .interactive-playground,
+body[data-theme="pixel"] .ctrl-btn,
+body[data-theme="pixel"] .age-tabs,
+body[data-theme="pixel"] .animal-card {
+    border: 3px solid #00F5D4 !important;
+    border-radius: 0px !important;
+    box-shadow: 4px 4px 0px #F72585 !important;
+}
+body[data-theme="pixel"] .play-action-btn {
+    background: #F72585;
+    border: 2px solid #00F5D4;
+    border-radius: 0px;
+    box-shadow: 3px 3px 0px #00F5D4;
+    font-weight: 900;
+}

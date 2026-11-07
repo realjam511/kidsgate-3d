@@ -1,0 +1,2507 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta name="game-icon" content="🦁">
+    <meta name="game-tag" content="知育・定番">
+    <meta name="game-category" content="board">
+    <meta name="game-age" content="3">
+    <meta name="description" content="どうぶつえん＆すいぞくかんの仲間たちとあそぶ楽しい3Dパタパタオセロ！はさんでパタパタひっくり返そう！">
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>どうぶつえん＆すいぞくかん 3Dパタパタオセロ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            height: 100dvh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            transition: background 0.5s ease;
+        }
+
+        /* テーマ別背景グラデーション */
+        body.theme-zoo {
+            background: radial-gradient(circle at 50% 50%, #fefce8 0%, #d9f99d 48%, #4ade80 100%);
+        }
+        body.theme-aquarium {
+            background: radial-gradient(circle at 50% 50%, #f0f9ff 0%, #bae6fd 48%, #0284c7 100%);
+        }
+
+        /* 立体的なおもちゃ風ボタン */
+        .btn-toy {
+            transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 0 #b45309, 0 6px 12px rgba(0,0,0,0.2);
+            transform: translateY(0);
+        }
+        .btn-toy:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #b45309, 0 2px 4px rgba(0,0,0,0.18);
+        }
+
+        .btn-toy-slate {
+            transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 0 #334155, 0 6px 12px rgba(0,0,0,0.2);
+            transform: translateY(0);
+        }
+        .btn-toy-slate:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #334155, 0 2px 4px rgba(0,0,0,0.18);
+        }
+
+        /* キャラクターバッジのアニメーション */
+        .turn-badge {
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .turn-active {
+            transform: scale(1.03);
+            box-shadow: 0 8px 18px -4px rgba(0, 0, 0, 0.28), 0 0 0 3px #ffffff, 0 0 0 6px #f59e0b;
+            z-index: 5;
+        }
+        .turn-inactive {
+            transform: scale(0.95);
+            opacity: 0.72;
+            filter: grayscale(18%);
+        }
+
+        @keyframes pulseGentle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.025); }
+        }
+        .guide-pulse {
+            animation: pulseGentle 2.4s ease-in-out infinite;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.4); opacity: 0; }
+            70% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .modal-pop {
+            animation: popIn 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        /* カスタムスクロールバー（設定モーダル内） */
+        .custom-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 9999px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="theme-zoo">
+
+    <!-- ==========================================
+         上部ヘッダー領域（3Dボードと絶対に重ならない独立エリア）
+         ========================================== -->
+    <header id="top-ui-header" class="w-full flex-shrink-0 z-20 pt-2 pb-1 px-2 sm:px-4 bg-gradient-to-b from-white/90 via-white/75 to-transparent">
+        <div class="w-full max-w-xl mx-auto flex flex-col items-center gap-1.5 sm:gap-2">
+            
+            <!-- 最上部バー：タイトル ＆ 「もういっかい！」「せってい」ボタン -->
+            <div class="w-full flex justify-between items-center gap-1.5">
+                <!-- タイトルロゴ -->
+                <div id="title-pill" class="bg-white/95 px-2.5 sm:px-3.5 py-1.5 rounded-full shadow-sm border-2 border-emerald-500 flex items-center gap-1 flex-shrink-0">
+                    <span id="title-emoji" class="text-sm sm:text-base">🦁🐬</span>
+                    <span id="title-text" class="text-emerald-800 font-black text-xs sm:text-sm tracking-tight">3Dパタパタオセロ</span>
+                </div>
+
+                <!-- 上部コントロールボタン群（誤タップ防止のため上部に集約） -->
+                <div class="flex items-center gap-1.5 sm:gap-2">
+                    <!-- もういっかい！ボタン -->
+                    <button id="reset-btn" class="btn-toy bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-amber-950 font-black py-1.5 px-3 sm:px-4 rounded-full border-2 border-white flex items-center gap-1 text-xs sm:text-sm cursor-pointer">
+                        <span>✨</span>
+                        <span>もういっかい！</span>
+                    </button>
+
+                    <!-- せっていボタン -->
+                    <button id="settings-btn" class="btn-toy-slate bg-gradient-to-b from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white font-black py-1.5 px-3 sm:px-4 rounded-full border-2 border-white flex items-center gap-1 text-xs sm:text-sm cursor-pointer">
+                        <span>⚙️</span>
+                        <span>せってい</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- プレイヤーカード（せんこう / こうこう ＆ 現在のコマ数） -->
+            <div class="w-full grid grid-cols-2 gap-2.5 sm:gap-4 px-0.5">
+                
+                <!-- プレイヤー1（せんこう） -->
+                <div id="badge-p1" class=" turn-badge turn-active bg-gradient-to-b from-amber-500 to-orange-600 text-white p-1.5 sm:p-2.5 rounded-2xl sm:rounded-3xl border-[3px] border-white flex items-center justify-between shadow-md">
+                    <div class="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+                        <div class="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/95 border-2 border-white overflow-hidden flex-shrink-0 shadow-inner flex items-center justify-center">
+                            <canvas id="icon-p1" width="128" height="128" class="w-full h-full"></canvas>
+                        </div>
+                        <div class="leading-tight min-w-0">
+                            <div class="text-[9px] sm:text-[11px] font-bold text-white/95 bg-black/25 px-1.5 py-0.5 rounded-full inline-block mb-0.5">せんこう</div>
+                            <div id="name-p1" class="text-xs sm:text-base font-black tracking-tight drop-shadow truncate">ライオン</div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-center bg-white text-orange-600 rounded-xl sm:rounded-2xl px-2 py-0.5 sm:px-2.5 sm:py-1 shadow-inner flex-shrink-0 ml-1">
+                        <span class="text-[8px] sm:text-[9px] font-bold opacity-75 leading-none">まいすう</span>
+                        <span id="count-p1" class="font-black text-base sm:text-xl leading-tight">2</span>
+                    </div>
+                </div>
+
+                <!-- プレイヤー2（こうこう） -->
+                <div id="badge-p2" class="turn-badge turn-inactive bg-gradient-to-b from-emerald-500 to-teal-700 text-white p-1.5 sm:p-2.5 rounded-2xl sm:rounded-3xl border-[3px] border-white flex items-center justify-between shadow-md">
+                    <div class="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+                        <div class="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/95 border-2 border-white overflow-hidden flex-shrink-0 shadow-inner flex items-center justify-center">
+                            <canvas id="icon-p2" width="128" height="128" class="w-full h-full"></canvas>
+                        </div>
+                        <div class="leading-tight min-w-0">
+                            <div id="tag-p2" class="text-[9px] sm:text-[11px] font-bold text-white/95 bg-black/25 px-1.5 py-0.5 rounded-full inline-block mb-0.5">こうこう</div>
+                            <div id="name-p2" class="text-xs sm:text-base font-black tracking-tight drop-shadow truncate">パンダ</div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-center bg-white text-emerald-700 rounded-xl sm:rounded-2xl px-2 py-0.5 sm:px-2.5 sm:py-1 shadow-inner flex-shrink-0 ml-1">
+                        <span class="text-[8px] sm:text-[9px] font-bold opacity-75 leading-none">まいすう</span>
+                        <span id="count-p2" class="font-black text-base sm:text-xl leading-tight">2</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 現在のガイドメッセージ（ヘッダー内に収め、ボードに重ならないように配置） -->
+            <div id="guide-banner" class="guide-pulse bg-white/95 px-4 py-1 rounded-full shadow-sm border-2 border-amber-400 text-center">
+                <span id="guide-text" class="text-xs sm:text-sm font-black text-orange-600">
+                    ライオンのばん！ 光っているマスをタッチしてね
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==========================================
+         中央〜下部：3Dキャンバス領域（残りの高さを100%使用し、文字と重ならない）
+         ========================================== -->
+    <main id="canvas-container" class="flex-1 relative w-full min-h-0 overflow-hidden">
+        <!-- パス通知トースト（おける場所がない時に中央に表示） -->
+        <div id="pass-overlay" class="fixed inset-x-0 top-1/2 -translate-y-1/2 z-30 flex justify-center items-center pointer-events-none hidden px-4">
+            <div class="modal-pop bg-white/95 backdrop-blur-md border-4 border-amber-400 rounded-3xl px-6 py-4 shadow-2xl text-center">
+                <div class="text-2xl sm:text-3xl mb-1">⏭️</div>
+                <div id="pass-title" class="text-base sm:text-lg font-black text-amber-900">おける場所がないよ！</div>
+                <div id="pass-subtitle" class="text-xs sm:text-sm font-bold text-amber-700">つぎのプレイヤーに交代します</div>
+            </div>
+        </div>
+
+        <!-- 下部のさりげない操作ヒント（タップ透過） -->
+        <div class="pointer-events-none absolute bottom-1.5 inset-x-0 flex justify-center z-10">
+            <div class="text-slate-900/75 text-[11px] sm:text-xs font-bold bg-white/70 px-3 py-0.5 rounded-full backdrop-blur-sm shadow-sm">
+                💡 光っているマスにタッチしてね！ ゆびでボードの角度も動かせるよ
+            </div>
+        </div>
+    </main>
+
+    <!-- ==========================================
+         勝利・引き分けポップアップバナー
+         ========================================== -->
+    <div id="result-overlay" class="fixed inset-x-0 bottom-7 z-30 flex justify-center items-center pointer-events-none hidden px-4">
+        <div class="pointer-events-auto modal-pop bg-white/95 backdrop-blur-md border-4 border-amber-400 rounded-3xl p-4 sm:p-5 shadow-2xl max-w-sm w-full flex flex-col items-center text-center">
+            <div id="result-score-pill" class="bg-amber-100 text-amber-900 font-black text-xs sm:text-sm px-3 py-1 rounded-full mb-1 border border-amber-300">
+                ライオン 34まい - パンダ 30まい
+            </div>
+            <div id="result-title" class="text-xl sm:text-2xl font-black text-orange-600 drop-shadow-sm mb-1">
+                ライオンのかち！
+            </div>
+            <div id="result-subtitle" class="text-xs sm:text-sm font-bold text-amber-800 mb-3">
+                いっぱいひっくり返したね！🎉
+            </div>
+            <button onclick="resetGame()" class="btn-toy bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black text-base sm:text-lg py-2.5 px-7 rounded-full border-4 border-white shadow-xl flex items-center gap-2 cursor-pointer">
+                <span>🎮</span>
+                <span>もういっかいあそぶ！</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         ⚙️ せっていモーダル（動物園・水族館デザイン、盤面サイズ、対戦モード、音設定）
+         ========================================== -->
+    <div id="settings-modal" class="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden">
+        <div class="modal-pop bg-amber-50 border-4 border-amber-400 rounded-3xl max-w-lg w-full max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden">
+            
+            <!-- モーダルヘッダー -->
+            <div class="bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-3 flex items-center justify-between border-b-4 border-emerald-600 flex-shrink-0">
+                <div class="flex items-center gap-2 text-white font-black text-base sm:text-lg drop-shadow">
+                    <span>⚙️</span>
+                    <span>オセロのせってい・デザイン変更</span>
+                </div>
+                <button id="close-settings-btn" class="bg-white hover:bg-red-50 text-slate-800 font-black w-8 h-8 rounded-full border-2 border-slate-400 flex items-center justify-center shadow cursor-pointer text-base">
+                    ✕
+                </button>
+            </div>
+
+            <!-- モーダルコンテンツ（スクロール可能） -->
+            <div class="p-3.5 sm:p-5 overflow-y-auto custom-scroll space-y-4 text-slate-900">
+                
+                <!-- かんたんテーマセット（動物園・水族館ワンタッチ切替） -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-emerald-200 shadow-sm">
+                    <div class="text-xs sm:text-sm font-black text-emerald-800 mb-2 flex items-center gap-1.5">
+                        <span>🌟</span>
+                        <span>おすすめテーマセット（ワンタッチ）</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="applyThemePreset('lion', 'panda', 'zoo')" class="bg-lime-50 hover:bg-lime-100 border-2 border-lime-400 rounded-xl p-2 text-xs font-black text-lime-950 flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition">
+                            <span>🦁</span><span>どうぶつえん (ライオンvsパンダ)</span>
+                        </button>
+                        <button onclick="applyThemePreset('dolphin', 'sealion', 'aquarium')" class="bg-sky-50 hover:bg-sky-100 border-2 border-sky-400 rounded-xl p-2 text-xs font-black text-sky-950 flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition">
+                            <span>🐬</span><span>すいぞくかん (イルカvsアシカ)</span>
+                        </button>
+                        <button onclick="applyThemePreset('elephant', 'giraffe', 'zoo')" class="bg-amber-50 hover:bg-amber-100 border-2 border-amber-400 rounded-xl p-2 text-xs font-black text-amber-950 flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition">
+                            <span>🐘</span><span>サバンナ (ゾウvsキリン)</span>
+                        </button>
+                        <button onclick="applyThemePreset('penguin', 'whaleshark', 'aquarium')" class="bg-cyan-50 hover:bg-cyan-100 border-2 border-cyan-400 rounded-xl p-2 text-xs font-black text-cyan-950 flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition">
+                            <span>🐧</span><span>うみのなかま (ペンギンvsジンベエ)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- せんこう（プレイヤー1）のイラスト選択 -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-orange-200 shadow-sm">
+                    <div class="text-xs sm:text-sm font-black text-orange-600 mb-2 flex items-center justify-between">
+                        <span>🟠 せんこう（左カード）の生き物</span>
+                        <span id="setting-p1-current" class="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full">ライオン</span>
+                    </div>
+                    <div id="p1-selector-grid" class="grid grid-cols-4 gap-2">
+                        <!-- JSで生成 -->
+                    </div>
+                </div>
+
+                <!-- こうこう（プレイヤー2）のイラスト選択 -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-teal-200 shadow-sm">
+                    <div class="text-xs sm:text-sm font-black text-teal-700 mb-2 flex items-center justify-between">
+                        <span>🟢 こうこう（右カード）の生き物</span>
+                        <span id="setting-p2-current" class="text-xs bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full">パンダ</span>
+                    </div>
+                    <div id="p2-selector-grid" class="grid grid-cols-4 gap-2">
+                        <!-- JSで生成 -->
+                    </div>
+                </div>
+
+                <!-- ボードのデザインテーマ（どうぶつえん / すいぞくかん） -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-sky-200 shadow-sm">
+                    <div class="text-xs sm:text-sm font-black text-sky-800 mb-2 flex items-center gap-1.5">
+                        <span>🎨</span>
+                        <span>オセロボードのデザイン</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <button id="board-theme-zoo" onclick="setBoardTheme('zoo')" class="border-3 rounded-xl p-2.5 flex items-center gap-2 font-black text-xs sm:text-sm cursor-pointer transition">
+                            <span class="text-xl">🌳</span>
+                            <div class="text-left leading-tight">
+                                <div>どうぶつえんボード</div>
+                                <div class="text-[10px] font-bold opacity-75">木のわく＆草原のマス</div>
+                            </div>
+                        </button>
+                        <button id="board-theme-aquarium" onclick="setBoardTheme('aquarium')" class="border-3 rounded-xl p-2.5 flex items-center gap-2 font-black text-xs sm:text-sm cursor-pointer transition">
+                            <span class="text-xl">🫧</span>
+                            <div class="text-left leading-tight">
+                                <div>すいぞくかんボード</div>
+                                <div class="text-[10px] font-bold opacity-75">海のわく＆アクアのマス</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ボードの大きさ＆あそびかた設定 -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-amber-200 shadow-sm space-y-3">
+                    <div class="text-xs sm:text-sm font-black text-amber-800 flex items-center gap-1.5">
+                        <span>🎮</span>
+                        <span>マスの数・対戦モード・おとの設定</span>
+                    </div>
+
+                    <!-- マスの数（8×8 / 6×6 / 4×4） -->
+                    <div class="bg-amber-50/80 p-2.5 rounded-xl border border-amber-200">
+                        <div class="text-xs sm:text-sm font-black text-amber-950 mb-1.5">📏 ボードのマスの数（変更すると最初からになります）</div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button id="size-btn-8" onclick="changeBoardSize(8)" class="py-2 px-2 rounded-xl font-black text-xs cursor-pointer transition">
+                                8×8 (ふつう)
+                            </button>
+                            <button id="size-btn-6" onclick="changeBoardSize(6)" class="py-2 px-2 rounded-xl font-black text-xs cursor-pointer transition">
+                                6×6 (おすすめ)
+                            </button>
+                            <button id="size-btn-4" onclick="changeBoardSize(4)" class="py-2 px-2 rounded-xl font-black text-xs cursor-pointer transition">
+                                4×4 (ミニ)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 対戦モード（ふたりで / コンピュータと） -->
+                    <div class="flex items-center justify-between bg-amber-50/80 p-2.5 rounded-xl border border-amber-200">
+                        <div>
+                            <div class="text-xs sm:text-sm font-black text-amber-950">🤖 こうこう（右）をコンピュータにする</div>
+                            <div class="text-[10px] sm:text-xs font-bold text-amber-700">ONにすると1人でもオセロ対戦があそべます</div>
+                        </div>
+                        <button id="setting-cpu-btn" class="px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2">
+                            OFF (2人)
+                        </button>
+                    </div>
+
+                    <!-- おける場所のヒント表示 -->
+                    <div class="flex items-center justify-between bg-amber-50/80 p-2.5 rounded-xl border border-amber-200">
+                        <div>
+                            <div class="text-xs sm:text-sm font-black text-amber-950">✨ おける場所を光らせる（ヒント）</div>
+                            <div class="text-[10px] sm:text-xs font-bold text-amber-700">はさめる場所のマスにリングを表示します</div>
+                        </div>
+                        <button id="setting-hint-btn" class="px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2">
+                            ON
+                        </button>
+                    </div>
+
+                    <!-- おと ON/OFF -->
+                    <div class="flex items-center justify-between bg-amber-50/80 p-2.5 rounded-xl border border-amber-200">
+                        <div>
+                            <div class="text-xs sm:text-sm font-black text-amber-950">🔊 ゲームのおと（効果音）</div>
+                            <div class="text-[10px] sm:text-xs font-bold text-amber-700">パタパタひっくり返る音やファンファーレ</div>
+                        </div>
+                        <button id="setting-sound-btn" class="px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2">
+                            🔊 ON
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- モーダルフッター -->
+            <div class="bg-amber-100 px-4 py-3 border-t-2 border-amber-300 flex justify-center flex-shrink-0">
+                <button id="ok-settings-btn" class="btn-toy bg-gradient-to-r from-amber-400 to-orange-400 text-amber-950 font-black text-sm sm:text-base py-2 px-10 rounded-full border-2 border-white cursor-pointer">
+                    ✨ けってい（ゲームにもどる）
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================
+         * 1. サウンドエンジン (Web Audio API)
+         * パタパタ連鎖するドミノ反転音・設置音・パス音・ファンファーレを合成
+         * ========================================== */
+        class OthelloSoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            // 新しいコマを盤面にパチッ！と置いた音
+            playPlace() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(580, now + 0.09);
+
+                gain.gain.setValueAtTime(0.28, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.11);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.12);
+            }
+
+            // はさんだコマが順番にパタ・パタ・パタッ♪とひっくり返る音（連鎖するほど音程が上がる！）
+            playFlipStep(stepIndex = 0) {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                // ドレミファソラシド風に階段状にピッチアップ
+                const baseFreq = 420 * Math.pow(1.075, Math.min(stepIndex, 14));
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(baseFreq * 0.85, now);
+                osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.35, now + 0.13);
+
+                gain.gain.setValueAtTime(0.26, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.16);
+            }
+
+            // 置けないマスを触ったときの「ププッ」音
+            playInvalid() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(175, now);
+                osc.frequency.linearRampToValueAtTime(135, now + 0.12);
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.13);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.14);
+            }
+
+            // パス時の通知音
+            playPass() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [440, 392, 440];
+                notes.forEach((f, idx) => {
+                    const now = this.ctx.currentTime + idx * 0.11;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(f, now);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.13);
+                });
+            }
+
+            // ゲーム決着時のファンファーレ
+            playWinFanfare() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50];
+                const durations = [0.12, 0.12, 0.12, 0.22, 0.12, 0.45];
+                let timeOffset = 0;
+
+                notes.forEach((freq, idx) => {
+                    const now = this.ctx.currentTime + timeOffset;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now);
+
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + durations[idx]);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + durations[idx] + 0.02);
+
+                    timeOffset += durations[idx] * 0.95;
+                });
+            }
+
+            // リセット音
+            playReset() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [783.99, 659.25, 523.25, 659.25, 783.99];
+                notes.forEach((freq, i) => {
+                    const now = this.ctx.currentTime + i * 0.045;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now);
+                    gain.gain.setValueAtTime(0.16, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                });
+            }
+        }
+
+        const sound = new OthelloSoundEngine();
+
+        /* ==========================================
+         * 2. どうぶつえん＆すいぞくかん高解像度イラスト描画 (Canvas 2D)
+         * ========================================== */
+        // 円盤コマ＆アイコン用の共通サンバースト背景
+        function drawDiscBackdrop(ctx, innerColor, midColor, outerColor, rimColor) {
+            const bgGrad = ctx.createRadialGradient(256, 256, 30, 256, 256, 256);
+            bgGrad.addColorStop(0, innerColor);
+            bgGrad.addColorStop(0.68, midColor);
+            bgGrad.addColorStop(1, outerColor);
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, 512, 512);
+
+            // 放射状の光ライン
+            ctx.save();
+            ctx.translate(256, 256);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+            for (let i = 0; i < 12; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.arc(0, 0, 300, (i * Math.PI) / 6, (i * Math.PI) / 6 + Math.PI / 12);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+
+            // コマの丸い縁取りリング
+            ctx.lineWidth = 22;
+            ctx.strokeStyle = rimColor;
+            ctx.beginPath();
+            ctx.arc(256, 256, 236, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.lineWidth = 7;
+            ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+            ctx.beginPath();
+            ctx.arc(256, 256, 220, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // 🦁 1. ライオン (どうぶつえん)
+        function createLionCanvas(size = 512) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.scale(size / 512, size / 512);
+
+            drawDiscBackdrop(ctx, '#fffbeb', '#fde047', '#f97316', '#c2410c');
+
+            // もこもこのたてがみ（花びら状に12個の丸）
+            ctx.fillStyle = '#b45309';
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 9;
+            const maneCount = 12;
+            const maneRadius = 148;
+            for (let i = 0; i < maneCount; i++) {
+                const angle = (i * Math.PI * 2) / maneCount;
+                const mx = 256 + Math.cos(angle) * maneRadius;
+                const my = 266 + Math.sin(angle) * maneRadius;
+                ctx.beginPath();
+                ctx.arc(mx, my, 52, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            }
+            // たてがみ内側を塗りつぶし
+            ctx.beginPath();
+            ctx.arc(256, 266, 155, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 丸い耳（左右）
+            const drawEar = (ex, ey) => {
+                ctx.fillStyle = '#f59e0b';
+                ctx.strokeStyle = '#451a03';
+                ctx.lineWidth = 9;
+                ctx.beginPath();
+                ctx.arc(ex, ey, 38, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#b45309';
+                ctx.beginPath();
+                ctx.arc(ex, ey, 20, 0, Math.PI * 2);
+                ctx.fill();
+            };
+            drawEar(155, 165);
+            drawEar(357, 165);
+
+            // 顔本体
+            const faceGrad = ctx.createRadialGradient(235, 225, 20, 256, 270, 130);
+            faceGrad.addColorStop(0, '#fef08a');
+            faceGrad.addColorStop(0.7, '#fbbf24');
+            faceGrad.addColorStop(1, '#d97706');
+            ctx.fillStyle = faceGrad;
+            ctx.beginPath();
+            ctx.arc(256, 272, 122, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 9;
+            ctx.strokeStyle = '#451a03';
+            ctx.stroke();
+
+            // ぱっちりした目
+            ctx.fillStyle = '#292524';
+            ctx.beginPath();
+            ctx.ellipse(205, 248, 17, 23, 0, 0, Math.PI * 2);
+            ctx.ellipse(307, 248, 17, 23, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(199, 240, 7, 0, Math.PI * 2);
+            ctx.arc(301, 240, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ほっぺ
+            ctx.fillStyle = 'rgba(244, 63, 94, 0.55)';
+            ctx.beginPath();
+            ctx.ellipse(168, 285, 22, 15, 0, 0, Math.PI * 2);
+            ctx.ellipse(344, 285, 22, 15, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ぷっくりした白い口元（ω）
+            ctx.fillStyle = '#fffbeb';
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.arc(234, 302, 26, 0, Math.PI * 2);
+            ctx.arc(278, 302, 26, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 赤いかわいい口
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(256, 312, 24, 0, Math.PI, false);
+            ctx.fill();
+            ctx.stroke();
+
+            // ωのライン
+            ctx.fillStyle = '#fffbeb';
+            ctx.beginPath();
+            ctx.arc(234, 298, 25, 0.1 * Math.PI, 0.95 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(278, 298, 25, 0.05 * Math.PI, 0.9 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+
+            // 三角のお鼻
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.moveTo(234, 272);
+            ctx.lineTo(278, 272);
+            ctx.lineTo(256, 294);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // ヒゲ
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(155, 295); ctx.lineTo(190, 298);
+            ctx.moveTo(158, 315); ctx.lineTo(192, 312);
+            ctx.moveTo(357, 295); ctx.lineTo(322, 298);
+            ctx.moveTo(354, 315); ctx.lineTo(320, 312);
+            ctx.stroke();
+
+            ctx.restore();
+            return canvas;
+        }
+
+        // 🐼 2. パンダ (どうぶつえん)
+        function createPandaCanvas(size = 512) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.scale(size / 512, size / 512);
+
+            drawDiscBackdrop(ctx, '#f0fdf4', '#86efac', '#16a34a', '#15803d');
+
+            // 黒い丸耳（左右）
+            ctx.fillStyle = '#1e293b';
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 10;
+            ctx.beginPath();
+            ctx.arc(140, 148, 52, 0, Math.PI * 2);
+            ctx.arc(372, 148, 52, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // もちもちの白い顔
+            const faceGrad = ctx.createRadialGradient(235, 220, 20, 256, 275, 165);
+            faceGrad.addColorStop(0, '#ffffff');
+            faceGrad.addColorStop(0.8, '#f8fafc');
+            faceGrad.addColorStop(1, '#cbd5e1');
+            ctx.fillStyle = faceGrad;
+            ctx.beginPath();
+            ctx.ellipse(256, 278, 162, 148, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = '#0f172a';
+            ctx.stroke();
+
+            // パンダのたれ目模様（黒パッチ）
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath();
+            ctx.ellipse(192, 255, 42, 52, 0.35, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(320, 255, 42, 52, -0.35, 0, Math.PI * 2);
+            ctx.fill();
+
+            // キラキラの瞳
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(198, 244, 15, 0, Math.PI * 2);
+            ctx.arc(314, 244, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(188, 264, 7, 0, Math.PI * 2);
+            ctx.arc(324, 264, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ピンクのほっぺ
+            ctx.fillStyle = 'rgba(251, 113, 133, 0.65)';
+            ctx.beginPath();
+            ctx.ellipse(142, 305, 28, 19, 0, 0, Math.PI * 2);
+            ctx.ellipse(370, 305, 28, 19, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 鼻と口
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.ellipse(256, 290, 22, 15, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 8;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(238, 312, 18, 0, Math.PI * 0.85);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(274, 312, 18, Math.PI * 0.15, Math.PI);
+            ctx.stroke();
+
+            // にっこり舌
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath();
+            ctx.arc(256, 324, 16, 0, Math.PI);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+            return canvas;
+        }
+
+        // 🐘 3. ゾウ (どうぶつえん)
+        function createElephantCanvas(size = 512) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.scale(size / 512, size / 512);
+
+            drawDiscBackdrop(ctx, '#f0f9ff', '#93c5fd', '#2563eb', '#1d4ed8');
+
+            // 大きなパタパタ耳（左右）
+            const drawBigEar = (cx, cy, isLeft) => {
+                ctx.fillStyle = '#60a5fa';
+                ctx.strokeStyle = '#1e3a8a';
+                ctx.lineWidth = 9;
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, 82, 105, isLeft ? 0.2 : -0.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#fda4af';
+                ctx.beginPath();
+                ctx.ellipse(cx + (isLeft ? 8 : -8), cy + 6, 52, 72, isLeft ? 0.2 : -0.2, 0, Math.PI * 2);
+                ctx.fill();
+            };
+            drawBigEar(120, 265, true);
+            drawBigEar(392, 265, false);
+
+            // 丸い顔
+            const faceGrad = ctx.createRadialGradient(240, 210, 20, 256, 265, 145);
+            faceGrad.addColorStop(0, '#bae6fd');
+            faceGrad.addColorStop(0.7, '#60a5fa');
+            faceGrad.addColorStop(1, '#2563eb');
+            ctx.fillStyle = faceGrad;
+            ctx.beginPath();
+            ctx.arc(256, 260, 128, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 9;
+            ctx.strokeStyle = '#1e3a8a';
+            ctx.stroke();
+
+            // つぶらな目
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.ellipse(198, 232, 16, 22, 0, 0, Math.PI * 2);
+            ctx.ellipse(314, 232, 16, 22, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(193, 224, 6, 0, Math.PI * 2);
+            ctx.arc(309, 224, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ほっぺ
+            ctx.fillStyle = 'rgba(244, 63, 94, 0.55)';
+            ctx.beginPath();
+            ctx.ellipse(160, 272, 22, 15, 0, 0, Math.PI * 2);
+            ctx.ellipse(352, 272, 22, 15, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 笑顔の口
+            ctx.fillStyle = '#f43f5e';
+            ctx.strokeStyle = '#1e3a8a';
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.arc(256, 305, 38, 0.1 * Math.PI, 0.9 * Math.PI);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // くるんと上向きの長いお鼻
+            ctx.fillStyle = '#60a5fa';
+            ctx.strokeStyle = '#1e3a8a';
+            ctx.lineWidth = 9;
+            ctx.beginPath();
+            ctx.moveTo(228, 255);
+            ctx.quadraticCurveTo(225, 355, 285, 355);
+            ctx.quadraticCurveTo(325, 355, 320, 315);
+            ctx.quadraticCurveTo(315, 295, 295, 305);
+            ctx.quadraticCurveTo(275, 315, 275, 255);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // 鼻のシワ飾り線
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.arc(252, 285, 14, 0.2 * Math.PI, 0.8 * Math.PI);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(256, 310, 14, 0.2 * Math.PI, 0.8 * Math.PI);
+            ctx.stroke();
+
+            ctx.restore();
+            return canvas;
+        }
+
+        // 🦒 4. キリン (どうぶつえん)
+        function createGiraffeCanvas(size = 512) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.scale(size / 512, size / 512);
+
+            drawDiscBackdrop(ctx, '#fefce8', '#fde047', '#ca8a04', '#854d0e');
+
+            // 頭の2本のツノ（オシコーン）
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 9;
+            ctx.fillStyle = '#fef08a';
+            ctx.fillRect(204, 88, 22, 65);
+            ctx.strokeRect(204, 88, 22, 65);
+            ctx.fillRect(286, 88, 22, 65);
+            ctx.strokeRect(286, 88, 22, 65);
+
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.arc(215, 84, 22, 0, Math.PI * 2);
+            ctx.arc(297, 84, 22, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // 横向きの可愛い耳
+            const drawGiraffeEar = (cx, cy, angle) => {
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(angle);
+                ctx.fillStyle = '#facc15';
+                ctx.strokeStyle = '#451a03';
+                ctx.lineWidth = 9;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 46, 24, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            };
+            drawGiraffeEar(126, 195, -0.35);
+            drawGiraffeEar(386, 195, 0.35);
+
+            // 顔本体
+            ctx.fillStyle = '#fde047';
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 9;
+            ctx.beginPath();
+            ctx.ellipse(256, 265, 128, 138, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // キリンの茶色い模様スポット
+            ctx.fillStyle = '#a16207';
+            ctx.beginPath();
+            ctx.arc(175, 195, 22, 0, Math.PI * 2);
+            ctx.arc(335, 200, 20, 0, Math.PI * 2);
+            ctx.arc(256, 170, 18, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ぱっちりした目
+            ctx.fillStyle = '#292524';
+            ctx.beginPath();
+            ctx.ellipse(198, 240, 17, 23, 0, 0, Math.PI * 2);
+            ctx.ellipse(314, 240, 17, 23, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(192, 232, 7, 0, Math.PI * 2);
+            ctx.arc(308, 232, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 大きなクリーム色の口周り（マズル）
+            ctx.fillStyle = '#fef3c7';
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 9;
+            ctx.beginPath();
+            ctx.ellipse(256, 332, 98, 68, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // 鼻の穴（2つ）
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.ellipse(226, 306, 10, 14, -0.3, 0, Math.PI * 2);
+            ctx.ellipse(286, 306, 10, 14, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // にっこりスマイル
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(256, 338, 42, 0.1 * Math.PI, 0.9 * Math.PI);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+            return canvas;
+        }
+
+        // 🐬 5. イルカ (すいぞくかん)
+        function createDolphinCanvas(size = 512) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.scale(size / 512, size / 512);
+
+            drawDiscBackdrop(ctx, '#f0f9ff', '#38bdf8', '#0284c7', '#0369a1');
+
+            // 水しぶき・バブル装飾
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+            [[110, 160, 16], [400, 150, 20], [95, 330, 12], [410, 340, 15]].forEach(([bx, by, br]) => {
+                ctx.beginPath();
+                ctx.arc(bx, by, br, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 背びれ（頭の上）
+            ctx.fillStyle = '#0284c7';
+            ctx.strokeStyle = '#082f49';
+            ctx.lineWidth = 9;
+            ctx.beginPath();
+            ctx.moveTo(225, 125);
+            ctx.quadraticCurveTo(256, 65, 295, 85);
+            ctx.quadraticCurveTo(275, 115, 285, 130);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // 左右の胸びれ
+            ctx.beginPath();
+            ctx.ellipse(115, 310, 48, 24, -0.45, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.ellipse(397, 310, 48, 24, 0.45, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // イルカの丸い頭＆ボディ
+            const bodyGrad = ctx.createRadialGradient(230, 200, 20, 256, 270, 165);
+            bodyGrad.addColorStop(0, '#7dd3fc');
+            bodyGrad.addColorStop(0.6, '#0ea5e9');
+            bodyGrad.addColorStop(1, '#0369a1');
+            ctx.fillStyle = bodyGrad;
+            ctx.beginPath();
+            ctx.ellipse(256, 275, 150, 145, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // 白いおなか＆口周り
+            ctx.fillStyle = '#f0f9ff';
+            ctx.beginPath();
+            ctx.ellipse(256, 335, 115, 78, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // イルカの可愛い口吻（くちばし）と笑顔
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.ellipse(256, 295, 76, 34, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath();
+            ctx.arc(256, 315, 46, 0.08 * Math.PI, 0.92 * Math.PI);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // キラキラの目
+            ctx.fillStyle = '#082f49';
+            ctx.beginPath();
+            ctx.ellipse(185, 240, 18, 25, 0, 0, Math.PI * 2);
+            ctx.ellipse(327, 240, 18, 25, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(179, 230, 8, 0, Math.PI * 2);
+            ctx.arc(321, 230, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ピンクのほっぺ
+            ctx.fillStyle = 'rgba(244, 63, 94, 0.55)';
+            ctx.beginPath();
+            ctx.ellipse(145, 276, 24, 16, 0, 0, Math.PI * 2);
+            ctx.ellipse(367, 276, 24, 16, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+            return canvas;
+        }
+
+        // 🦭 6. アシカ (すいぞくかん)
+        function createSealionCanvas(size = 512) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.scale(size / 512, size / 512);
+
+            drawDiscBackdrop(ctx, '#fff1f2', '#fda4af', '#f43f5e', '#be123c');
+
+            // 頭の上に乗せたカラフルなビーチボール（水族館アシカショー風！）
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(256, 102, 44, 0, Math.PI * 2);
+            ctx.fillStyle = '#fde047';
+            ctx.fill();
+            ctx.clip();
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(230, 102, 35, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath();
+            ctx.arc(285, 102, 35, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#451a03';
+            ctx.beginPath();
+            ctx.arc(256, 102, 44, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // アシカの丸い頭
+            const headGrad = ctx.createRadialGradient(235, 225, 20, 256, 285, 155);
+            headGrad.addColorStop(0, '#fb923c');
+            headGrad.addColorStop(0.65, '#c2410c');
+            headGrad.addColorStop(1, '#7c2d12');
+            ctx.fillStyle = headGrad;
+            ctx.beginPath();
+            ctx.ellipse(256, 290, 145, 132, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 9;
+            ctx.strokeStyle = '#431407';
+            ctx.stroke();
+
+            // ちょこんとしたアシカの耳
+            ctx.fillStyle = '#9a3412';
+            ctx.beginPath();
+            ctx.ellipse(122, 255, 18, 28, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.ellipse(390, 255, 18, 28, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // くりくりした瞳
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath();
+            ctx.ellipse(198, 248, 17, 23, 0, 0, Math.PI * 2);
+            ctx.ellipse(314, 248, 17, 23, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(192, 240, 7, 0, Math.PI * 2);
+            ctx.arc(308, 240, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ぷっくりしたベージュの口元
+            ctx.fillStyle = '#ffedd5';
+            ctx.strokeStyle = '#431407';
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.ellipse(228, 308, 42, 32, 0, 0, Math.PI * 2);
+            ctx.ellipse(284, 308, 42, 32, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 笑顔の口
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(256, 322, 30, 0, Math.PI);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffedd5';
+            ctx.beginPath();
+            ctx.ellipse(228, 305, 40, 30, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.ellipse(284, 305, 40, 30, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // 丸い黒鼻
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath();
+            ctx.ellipse(256, 276, 22, 16, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(249, 272, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ヒゲ
+            ctx.strokeStyle = '#431407';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(155, 300); ctx.lineTo(195, 304);
+            ctx.moveTo(158, 320); ctx.lineTo(198, 316);
+            ctx.moveTo(357, 300); ctx.lineTo(317, 304);
+            ctx.moveTo(354, 320); ctx.lineTo(314, 316);
+            ctx.stroke();
+
+            ctx.restore();
+            return canvas;
+        }
+
+        // 🐧 7. ペンギン (すいぞくかん)
+        function createPenguinCanvas(size = 512) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.scale(size / 512, size / 512);
+
+            drawDiscBackdrop(ctx, '#f0f9ff', '#bae6fd', '#0284c7', '#1e3a8a');
+
+            // ペンギンの丸いネイビーの頭
+            const headGrad = ctx.createRadialGradient(230, 200, 20, 256, 275, 165);
+            headGrad.addColorStop(0, '#334155');
+            headGrad.addColorStop(0.7, '#1e293b');
+            headGrad.addColorStop(1, '#0f172a');
+            ctx.fillStyle = headGrad;
+            ctx.beginPath();
+            ctx.ellipse(256, 272, 156, 150, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = '#0f172a';
+            ctx.stroke();
+
+            // 白いハート型の顔面マスク
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(202, 255, 68, 0, Math.PI * 2);
+            ctx.arc(310, 255, 68, 0, Math.PI * 2);
+            ctx.ellipse(256, 308, 122, 85, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ぱっちりした瞳
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.ellipse(198, 245, 18, 24, 0, 0, Math.PI * 2);
+            ctx.ellipse(314, 245, 18, 24, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(192, 236, 7, 0, Math.PI * 2);
+            ctx.arc(308, 236, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ピンクのほっぺ
+            ctx.fillStyle = 'rgba(251, 113, 133, 0.65)';
+            ctx.beginPath();
+            ctx.ellipse(148, 290, 28, 19, 0, 0, Math.PI * 2);
+            ctx.ellipse(364, 290, 28, 19, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 黄色いぷっくりくちばし
+            const beakGrad = ctx.createRadialGradient(250, 280, 5, 256, 295, 50);
+            beakGrad.addColorStop(0, '#fef08a');
+            beakGrad.addColorStop(0.6, '#facc15');
+            beakGrad.addColorStop(1, '#ea580c');
+            ctx.fillStyle = beakGrad;
+            ctx.strokeStyle = '#78350f';
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.ellipse(256, 292, 46, 28, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+            return canvas;
+        }
+
+        // 🦈 8. ジンベエザメ (すいぞくかん)
+        function createWhalesharkCanvas(size = 512) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.scale(size / 512, size / 512);
+
+            drawDiscBackdrop(ctx, '#ecfeff', '#67e8f9', '#0891b2', '#155e75');
+
+            // 背びれ＆左右のヒレ
+            ctx.fillStyle = '#0e7490';
+            ctx.strokeStyle = '#083344';
+            ctx.lineWidth = 9;
+            ctx.beginPath();
+            ctx.moveTo(230, 145);
+            ctx.quadraticCurveTo(256, 85, 282, 145);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // ジンベエザメのワイドで丸みのあるフラットな頭
+            const bodyGrad = ctx.createRadialGradient(240, 210, 20, 256, 275, 175);
+            bodyGrad.addColorStop(0, '#22d3ee');
+            bodyGrad.addColorStop(0.6, '#0284c7');
+            bodyGrad.addColorStop(1, '#1e3a8a');
+            ctx.fillStyle = bodyGrad;
+            ctx.beginPath();
+            ctx.ellipse(256, 275, 178, 132, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // ジンベエザメ特有の可愛い白い水玉模様
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+            const spots = [
+                [175, 195, 11], [225, 180, 13], [285, 180, 13], [335, 195, 11],
+                [145, 232, 10], [202, 222, 12], [256, 212, 14], [310, 222, 12], [367, 232, 10]
+            ];
+            spots.forEach(([sx, sy, sr]) => {
+                ctx.beginPath();
+                ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 白いおなか部分
+            ctx.fillStyle = '#f0f9ff';
+            ctx.beginPath();
+            ctx.ellipse(256, 332, 148, 68, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 左右の離れた位置にある可愛い黒目
+            ctx.fillStyle = '#083344';
+            ctx.beginPath();
+            ctx.arc(140, 278, 17, 0, Math.PI * 2);
+            ctx.arc(372, 278, 17, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(135, 272, 6, 0, Math.PI * 2);
+            ctx.arc(367, 272, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ほっぺ
+            ctx.fillStyle = 'rgba(251, 113, 133, 0.55)';
+            ctx.beginPath();
+            ctx.ellipse(115, 306, 20, 13, 0, 0, Math.PI * 2);
+            ctx.ellipse(397, 306, 20, 13, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 横一文字の大きな優しい笑顔の口
+            ctx.fillStyle = '#fb7185';
+            ctx.strokeStyle = '#083344';
+            ctx.lineWidth = 9;
+            ctx.beginPath();
+            ctx.ellipse(256, 318, 95, 36, 0, 0, Math.PI);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+            return canvas;
+        }
+
+        /* ==========================================
+         * 3. どうぶつえん＆すいぞくかんキャラクターカタログ
+         * ========================================== */
+        const ANIMAL_CATALOG = {
+            lion: {
+                id: 'lion',
+                name: 'ライオン',
+                category: 'zoo',
+                drawFn: createLionCanvas,
+                badgeClass: 'from-amber-500 to-orange-600',
+                countTextClass: 'text-orange-600',
+                guideTextClass: 'text-orange-600',
+                sideHex: 0xfef08a,
+                confettiColors: [0xf59e0b, 0xfacc15, 0xef4444, 0xffffff, 0x84cc16]
+            },
+            panda: {
+                id: 'panda',
+                name: 'パンダ',
+                category: 'zoo',
+                drawFn: createPandaCanvas,
+                badgeClass: 'from-emerald-500 to-teal-700',
+                countTextClass: 'text-emerald-700',
+                guideTextClass: 'text-emerald-700',
+                sideHex: 0xdcfce7,
+                confettiColors: [0x22c55e, 0x86efac, 0xffffff, 0x1e293b, 0xfacc15]
+            },
+            elephant: {
+                id: 'elephant',
+                name: 'ゾウ',
+                category: 'zoo',
+                drawFn: createElephantCanvas,
+                badgeClass: 'from-blue-500 to-indigo-600',
+                countTextClass: 'text-blue-600',
+                guideTextClass: 'text-blue-600',
+                sideHex: 0xdbeafe,
+                confettiColors: [0x3b82f6, 0x93c5fd, 0xfda4af, 0xffffff, 0xfacc15]
+            },
+            giraffe: {
+                id: 'giraffe',
+                name: 'キリン',
+                category: 'zoo',
+                drawFn: createGiraffeCanvas,
+                badgeClass: 'from-yellow-500 to-amber-700',
+                countTextClass: 'text-amber-700',
+                guideTextClass: 'text-amber-700',
+                sideHex: 0xfef9c3,
+                confettiColors: [0xeab308, 0xfde047, 0xa16207, 0xffffff, 0x4ade80]
+            },
+            dolphin: {
+                id: 'dolphin',
+                name: 'イルカ',
+                category: 'aquarium',
+                drawFn: createDolphinCanvas,
+                badgeClass: 'from-sky-400 to-blue-600',
+                countTextClass: 'text-sky-600',
+                guideTextClass: 'text-sky-700',
+                sideHex: 0xe0f2fe,
+                confettiColors: [0x0ea5e9, 0x7dd3fc, 0xffffff, 0xfde047, 0xf472b6]
+            },
+            sealion: {
+                id: 'sealion',
+                name: 'アシカ',
+                category: 'aquarium',
+                drawFn: createSealionCanvas,
+                badgeClass: 'from-rose-500 to-pink-600',
+                countTextClass: 'text-rose-600',
+                guideTextClass: 'text-rose-600',
+                sideHex: 0xffe4e6,
+                confettiColors: [0xf43f5e, 0xfda4af, 0xfacc15, 0x3b82f6, 0xffffff]
+            },
+            penguin: {
+                id: 'penguin',
+                name: 'ペンギン',
+                category: 'aquarium',
+                drawFn: createPenguinCanvas,
+                badgeClass: 'from-indigo-500 to-slate-800',
+                countTextClass: 'text-indigo-700',
+                guideTextClass: 'text-indigo-700',
+                sideHex: 0xe0e7ff,
+                confettiColors: [0x6366f1, 0x38bdf8, 0xfacc15, 0xffffff, 0xfb7185]
+            },
+            whaleshark: {
+                id: 'whaleshark',
+                name: 'ジンベエザメ',
+                category: 'aquarium',
+                drawFn: createWhalesharkCanvas,
+                badgeClass: 'from-cyan-500 to-teal-700',
+                countTextClass: 'text-cyan-700',
+                guideTextClass: 'text-cyan-800',
+                sideHex: 0xcffafe,
+                confettiColors: [0x06b6d4, 0x67e8f9, 0xffffff, 0xfde047, 0xf472b6]
+            }
+        };
+
+        const ANIMAL_KEYS = Object.keys(ANIMAL_CATALOG);
+
+        // 現在のゲーム設定
+        let playerCharKeys = {
+            1: 'lion',
+            2: 'panda'
+        };
+        let boardTheme = 'zoo'; // 'zoo' | 'aquarium'
+        let gridSize = 8;       // 8 | 6 | 4
+        let vsCpu = false;      // trueならプレイヤー2をCPUが担当
+        let showHints = true;   // おける場所を光らせるヒント
+
+        // テクスチャ＆アイコンキャッシュ
+        const textureCache = {};
+        const iconCanvasCache = {};
+
+        function getAnimalTexture(charKey) {
+            if (!textureCache[charKey]) {
+                const canvas = ANIMAL_CATALOG[charKey].drawFn(512);
+                const tex = new THREE.CanvasTexture(canvas);
+                tex.anisotropy = 4;
+                textureCache[charKey] = tex;
+            }
+            return textureCache[charKey];
+        }
+
+        function getAnimalIconCanvas(charKey) {
+            if (!iconCanvasCache[charKey]) {
+                iconCanvasCache[charKey] = ANIMAL_CATALOG[charKey].drawFn(128);
+            }
+            return iconCanvasCache[charKey];
+        }
+
+        /* ==========================================
+         * 4. Three.js 3Dオセロボード＆コマ管理
+         * ========================================== */
+        let scene, camera, renderer;
+        let boardGroup;
+        let cellMeshes = [];      // 盤面のマス目（タップ判定用）
+        let hintMeshes = [];      // おける場所の光るリングマーカー
+        let pieceMeshes = [];     // 2D配列 [r][c] で3Dコマを保持
+        let confettiParticles = [];
+
+        // オセロの盤面状態
+        let boardState = [];      // [r][c] -> 0: 空, 1: P1, 2: P2
+        let currentPlayer = 1;
+        let isAnimating = false;  // コマがパタパタ反転アニメーション中か
+        let isGameOver = false;
+
+        // ボード全体の広さ（8x8でも4x4でも画面にちょうどよく収まるよう8.4ユニット基準）
+        const BOARD_INNER_SPAN = 8.0;
+
+        // カメラ・ボード角度ドラッグ用
+        let isDragging = false;
+        let dragStartPos = { x: 0, y: 0 };
+        let previousPointerPos = { x: 0, y: 0 };
+        let targetBoardRotation = { x: -0.22, y: 0 };
+
+        const DIRECTIONS = [
+            [-1, -1], [-1, 0], [-1, 1],
+            [0, -1],           [0, 1],
+            [1, -1],  [1, 0],  [1, 1]
+        ];
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+
+            const w = container.clientWidth || window.innerWidth;
+            const h = container.clientHeight || (window.innerHeight - 160);
+
+            camera = new THREE.PerspectiveCamera(40, w / h, 0.1, 100);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(w, h);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // ライティング
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.82);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xfffbeb, 0.85);
+            dirLight.position.set(6, 12, 11);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            dirLight.shadow.camera.near = 0.5;
+            dirLight.shadow.camera.far = 35;
+            const d = 8;
+            dirLight.shadow.camera.left = -d;
+            dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d;
+            dirLight.shadow.camera.bottom = -d;
+            scene.add(dirLight);
+
+            const rimLight = new THREE.DirectionalLight(0xfef08a, 0.3);
+            rimLight.position.set(-8, -6, 6);
+            scene.add(rimLight);
+
+            boardGroup = new THREE.Group();
+            boardGroup.rotation.x = targetBoardRotation.x;
+            boardGroup.rotation.y = targetBoardRotation.y;
+            scene.add(boardGroup);
+
+            buildBoardAndStartNewGame();
+            updateCameraAndRendererSize();
+
+            window.addEventListener('resize', updateCameraAndRendererSize);
+            if (window.ResizeObserver) {
+                const ro = new ResizeObserver(() => updateCameraAndRendererSize());
+                ro.observe(container);
+            }
+
+            setupPointerInteractions(renderer.domElement);
+        }
+
+        // #canvas-container の実寸に合わせて、3Dオセロボードが絶対に文字と重ならないようカメラ距離を自動計算
+        function updateCameraAndRendererSize() {
+            if (!camera || !renderer) return;
+            const container = document.getElementById('canvas-container');
+            const w = Math.max(100, container.clientWidth);
+            const h = Math.max(100, container.clientHeight);
+
+            renderer.setSize(w, h);
+            const aspect = w / h;
+            camera.aspect = aspect;
+
+            // 外枠を含めたボードサイズ（約9.4ユニット）＋余白＝10.6ユニットが収まる距離を計算
+            const totalBoardSpan = 10.7;
+            const fovRad = THREE.MathUtils.degToRad(camera.fov);
+
+            const distVertical = (totalBoardSpan / 2) / Math.tan(fovRad / 2);
+            const distHorizontal = (totalBoardSpan / 2) / (Math.tan(fovRad / 2) * aspect);
+
+            const finalDist = Math.max(distVertical, distHorizontal, 11.8);
+
+            camera.position.set(0, 0.08, finalDist);
+            camera.lookAt(0, 0.04, 0);
+            camera.updateProjectionMatrix();
+        }
+
+        // 3Dボードフレーム＆マス目を構築して初期配置をセット
+        function buildBoardAndStartNewGame() {
+            // 既存のボードオブジェクトをクリア
+            while (boardGroup.children.length > 0) {
+                boardGroup.remove(boardGroup.children[0]);
+            }
+            cellMeshes = [];
+            hintMeshes = [];
+            pieceMeshes = Array.from({ length: gridSize }, () => Array(gridSize).fill(null));
+            boardState = Array.from({ length: gridSize }, () => Array(gridSize).fill(0));
+
+            // テーマカラー設定
+            const isZoo = boardTheme === 'zoo';
+            const frameColor = isZoo ? 0xb45309 : 0x0284c7;
+            const innerRimColor = isZoo ? 0xfef3c7 : 0xe0f2fe;
+            const cellColorEven = isZoo ? 0x4ade80 : 0x38bdf8;
+            const cellColorOdd = isZoo ? 0x22c55e : 0x0ea5e9;
+            const pinColor = isZoo ? 0xfacc15 : 0xf472b6;
+            const hintColor = isZoo ? 0xfef08a : 0xffffff;
+
+            // 1. 外枠ベースプレート
+            const outerFrame = new THREE.Mesh(
+                new THREE.BoxGeometry(9.0, 9.0, 0.52),
+                new THREE.MeshStandardMaterial({ color: frameColor, roughness: 0.35 })
+            );
+            outerFrame.position.z = -0.35;
+            outerFrame.receiveShadow = true;
+            boardGroup.add(outerFrame);
+
+            // 2. 内枠プレート
+            const innerFrame = new THREE.Mesh(
+                new THREE.BoxGeometry(8.35, 8.35, 0.44),
+                new THREE.MeshStandardMaterial({ color: innerRimColor, roughness: 0.4 })
+            );
+            innerFrame.position.z = -0.26;
+            innerFrame.receiveShadow = true;
+            boardGroup.add(innerFrame);
+
+            // 四隅の飾りピン
+            const pinGeo = new THREE.CylinderGeometry(0.26, 0.26, 0.58, 20);
+            pinGeo.rotateX(Math.PI / 2);
+            const pinMat = new THREE.MeshStandardMaterial({ color: pinColor, roughness: 0.25 });
+            [[-4.05, -4.05], [4.05, -4.05], [-4.05, 4.05], [4.05, 4.05]].forEach(([px, py]) => {
+                const pin = new THREE.Mesh(pinGeo, pinMat);
+                pin.position.set(px, py, -0.25);
+                boardGroup.add(pin);
+            });
+
+            // 3. マス目（gridSize × gridSize）と光るヒントリングの生成
+            const cellStep = BOARD_INNER_SPAN / gridSize;
+            const tileSize = cellStep * 0.93;
+            const offsetStart = -BOARD_INNER_SPAN / 2 + cellStep / 2;
+
+            const cellGeo = new THREE.BoxGeometry(tileSize, tileSize, 0.22);
+            const matEven = new THREE.MeshStandardMaterial({ color: cellColorEven, roughness: 0.38 });
+            const matOdd = new THREE.MeshStandardMaterial({ color: cellColorOdd, roughness: 0.38 });
+
+            const hintGeo = new THREE.RingGeometry(cellStep * 0.18, cellStep * 0.31, 28);
+            const hintMat = new THREE.MeshBasicMaterial({
+                color: hintColor,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.85
+            });
+
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    const x = offsetStart + c * cellStep;
+                    const y = -offsetStart - r * cellStep;
+
+                    const cellMesh = new THREE.Mesh(cellGeo, (r + c) % 2 === 0 ? matEven : matOdd);
+                    cellMesh.position.set(x, y, -0.11);
+                    cellMesh.receiveShadow = true;
+                    cellMesh.userData = { r, c, x, y };
+                    boardGroup.add(cellMesh);
+                    cellMeshes.push(cellMesh);
+
+                    // おける場所を示す光るリングマーカー
+                    const hintMesh = new THREE.Mesh(hintGeo, hintMat.clone());
+                    hintMesh.position.set(x, y, 0.03);
+                    hintMesh.visible = false;
+                    hintMesh.userData = { r, c };
+                    boardGroup.add(hintMesh);
+                    hintMeshes.push(hintMesh);
+                }
+            }
+
+            // 4. オセロの初期4コマを中央に配置
+            const mid = gridSize / 2;
+            placePieceImmediate(mid - 1, mid - 1, 2);
+            placePieceImmediate(mid - 1, mid, 1);
+            placePieceImmediate(mid, mid - 1, 1);
+            placePieceImmediate(mid, mid, 2);
+
+            currentPlayer = 1;
+            isAnimating = false;
+            isGameOver = false;
+            document.getElementById('result-overlay').classList.add('hidden');
+            document.getElementById('pass-overlay').classList.add('hidden');
+
+            updatePieceCountsAndUI();
+            updateValidMoveHints();
+        }
+
+        // 指定マス座標を取得
+        function getCellPosition(r, c) {
+            const cellStep = BOARD_INNER_SPAN / gridSize;
+            const offsetStart = -BOARD_INNER_SPAN / 2 + cellStep / 2;
+            return {
+                x: offsetStart + c * cellStep,
+                y: -offsetStart - r * cellStep,
+                cellStep
+            };
+        }
+
+        // 3Dオセロコマ（表＝プレイヤー1、裏＝プレイヤー2の円盤）を生成
+        function createOthelloDiscMesh(r, c, initialOwner) {
+            const { x, y, cellStep } = getCellPosition(r, c);
+            const radius = cellStep * 0.41;
+            const thickness = Math.min(0.24, cellStep * 0.22);
+
+            // CylinderをX軸90度回転させて、+Z面（Cap1）と-Z面（Cap2）が正面・裏面を向く円盤にする
+            const geo = new THREE.CylinderGeometry(radius, radius, thickness, 36);
+            geo.rotateX(Math.PI / 2);
+            // CylinderのキャップUVの向きを整えるためZ回転調整
+            geo.rotateZ(Math.PI / 2);
+
+            const c1 = ANIMAL_CATALOG[playerCharKeys[1]];
+            const c2 = ANIMAL_CATALOG[playerCharKeys[2]];
+
+            const sideMat = new THREE.MeshStandardMaterial({
+                color: initialOwner === 1 ? c1.sideHex : c2.sideHex,
+                roughness: 0.25
+            });
+            // Cap 1 (+Z側): プレイヤー1のイラスト
+            const p1Mat = new THREE.MeshStandardMaterial({
+                map: getAnimalTexture(c1.id),
+                roughness: 0.22
+            });
+            // Cap 2 (-Z側): プレイヤー2のイラスト
+            const p2Mat = new THREE.MeshStandardMaterial({
+                map: getAnimalTexture(c2.id),
+                roughness: 0.22
+            });
+
+            const mesh = new THREE.Mesh(geo, [sideMat, p1Mat, p2Mat]);
+            const startRotY = initialOwner === 1 ? 0 : Math.PI;
+            mesh.position.set(x, y, thickness * 0.55);
+            mesh.rotation.y = startRotY;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+
+            mesh.userData = {
+                r, c,
+                baseZ: thickness * 0.55,
+                currentRotY: startRotY,
+                targetRotY: startRotY,
+                isFlipping: false,
+                flipProgress: 0
+            };
+
+            boardGroup.add(mesh);
+            pieceMeshes[r][c] = mesh;
+            return mesh;
+        }
+
+        // 初期配置用（アニメーションなしで即座に配置）
+        function placePieceImmediate(r, c, owner) {
+            boardState[r][c] = owner;
+            createOthelloDiscMesh(r, c, owner);
+        }
+
+        /* ==========================================
+         * 5. オセロのルール判定（挟めるかのチェック・有効手リスト）
+         * ========================================== */
+        // (r, c) に player が置いたときに裏返せる相手コマの配列 [{r, c, dist}, ...] を返す
+        function getFlippablePieces(r, c, player, stateMatrix = boardState) {
+            if (stateMatrix[r][c] !== 0) return [];
+            const opponent = player === 1 ? 2 : 1;
+            const allFlips = [];
+
+            for (const [dr, dc] of DIRECTIONS) {
+                const lineFlips = [];
+                let nr = r + dr;
+                let nc = c + dc;
+                let dist = 1;
+
+                while (nr >= 0 && nr < gridSize && nc >= 0 && nc < gridSize && stateMatrix[nr][nc] === opponent) {
+                    lineFlips.push({ r: nr, c: nc, dist });
+                    nr += dr;
+                    nc += dc;
+                    dist++;
+                }
+
+                // 自分のコマで挟めていれば有効
+                if (lineFlips.length > 0 && nr >= 0 && nr < gridSize && nc >= 0 && nc < gridSize && stateMatrix[nr][nc] === player) {
+                    allFlips.push(...lineFlips);
+                }
+            }
+
+            return allFlips;
+        }
+
+        // 指定プレイヤーが置けるすべての有効マスを取得
+        function getAllValidMoves(player, stateMatrix = boardState) {
+            const moves = [];
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    const flips = getFlippablePieces(r, c, player, stateMatrix);
+                    if (flips.length > 0) {
+                        moves.push({ r, c, flips });
+                    }
+                }
+            }
+            return moves;
+        }
+
+        // 3Dボード上の光るヒントリングを更新
+        function updateValidMoveHints() {
+            const isCpuTurn = vsCpu && currentPlayer === 2;
+            hintMeshes.forEach(hm => {
+                if (!showHints || isGameOver || isAnimating || isCpuTurn) {
+                    hm.visible = false;
+                    return;
+                }
+                const { r, c } = hm.userData;
+                const flips = getFlippablePieces(r, c, currentPlayer);
+                hm.visible = flips.length > 0;
+            });
+        }
+
+        /* ==========================================
+         * 6. タップ操作＆パタパタ連鎖反転アニメーション
+         * ========================================== */
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+
+        function setupPointerInteractions(domElement) {
+            domElement.addEventListener('pointerdown', (e) => {
+                isDragging = true;
+                dragStartPos.x = e.clientX;
+                dragStartPos.y = e.clientY;
+                previousPointerPos.x = e.clientX;
+                previousPointerPos.y = e.clientY;
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - previousPointerPos.x;
+                const dy = e.clientY - previousPointerPos.y;
+                previousPointerPos.x = e.clientX;
+                previousPointerPos.y = e.clientY;
+
+                targetBoardRotation.y = Math.max(-0.5, Math.min(0.5, targetBoardRotation.y + dx * 0.006));
+                targetBoardRotation.x = Math.max(-0.6, Math.min(0.32, targetBoardRotation.x + dy * 0.006));
+            });
+
+            window.addEventListener('pointerup', (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+
+                const moveDist = Math.hypot(e.clientX - dragStartPos.x, e.clientY - dragStartPos.y);
+                if (moveDist < 18) {
+                    handleBoardTap(e.clientX, e.clientY);
+                }
+            });
+        }
+
+        function handleBoardTap(clientX, clientY) {
+            if (isGameOver || isAnimating) return;
+            if (vsCpu && currentPlayer === 2) return; // CPUの番のときは待機
+
+            const rect = renderer.domElement.getBoundingClientRect();
+            pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+            pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(pointer, camera);
+            const intersects = raycaster.intersectObjects(cellMeshes);
+
+            if (intersects.length > 0) {
+                const { r, c } = intersects[0].object.userData;
+                attemptMove(r, c);
+            }
+        }
+
+        // (r, c) に現在のプレイヤーのコマを置く処理
+        function attemptMove(r, c) {
+            const flips = getFlippablePieces(r, c, currentPlayer);
+            if (flips.length === 0) {
+                // 置けないマスをタッチしたとき
+                sound.playInvalid();
+                if (pieceMeshes[r][c]) {
+                    pieceMeshes[r][c].userData.isFlipping = true;
+                    pieceMeshes[r][c].userData.flipProgress = 0;
+                }
+                return;
+            }
+
+            isAnimating = true;
+            updateValidMoveHints();
+
+            // 1. 新しいコマを置いてポンッ！と跳ねさせる
+            const placingPlayer = currentPlayer;
+            boardState[r][c] = placingPlayer;
+            const newDisc = createOthelloDiscMesh(r, c, placingPlayer);
+            newDisc.userData.isFlipping = true;
+            newDisc.userData.flipProgress = 0;
+            sound.playPlace();
+
+            // 置いた場所からの距離順にソートして、ドミノ倒しのように順番にパタパタ裏返す
+            flips.sort((a, b) => a.dist - b.dist);
+
+            const stepDelay = 95; // 1枚ごとの時間差(ms)
+            flips.forEach((f, idx) => {
+                setTimeout(() => {
+                    boardState[f.r][f.c] = placingPlayer;
+                    flipDiscMeshToPlayer(f.r, f.c, placingPlayer);
+                    sound.playFlipStep(idx);
+                    updatePieceCountsAndUI();
+                }, (idx + 1) * stepDelay);
+            });
+
+            // すべての反転が完了した後にターン進行チェック
+            const totalWait = (flips.length + 1) * stepDelay + 240;
+            setTimeout(() => {
+                advanceTurnAfterMove();
+            }, totalWait);
+        }
+
+        // 指定マスの3Dコマをくるっと180度回転＆ジャンプさせる
+        function flipDiscMeshToPlayer(r, c, targetPlayer) {
+            const mesh = pieceMeshes[r][c];
+            if (!mesh) return;
+
+            const charCfg = ANIMAL_CATALOG[playerCharKeys[targetPlayer]];
+            mesh.material[0].color.setHex(charCfg.sideHex);
+
+            // targetPlayer === 1 なら表(+Z: 偶数π)、targetPlayer === 2 なら裏(-Z: 奇数π)
+            const currentMult = Math.round(mesh.userData.targetRotY / Math.PI);
+            let nextMult = currentMult + 1;
+            if (targetPlayer === 1 && nextMult % 2 !== 0) nextMult++;
+            if (targetPlayer === 2 && nextMult % 2 === 0) nextMult++;
+
+            mesh.userData.targetRotY = nextMult * Math.PI;
+            mesh.userData.isFlipping = true;
+            mesh.userData.flipProgress = 0;
+        }
+
+        // 手番終了後のパス判定・終局判定・CPU思考トリガー
+        function advanceTurnAfterMove() {
+            const nextPlayer = currentPlayer === 1 ? 2 : 1;
+            const nextValidMoves = getAllValidMoves(nextPlayer);
+
+            if (nextValidMoves.length > 0) {
+                currentPlayer = nextPlayer;
+                isAnimating = false;
+                updatePieceCountsAndUI();
+                updateValidMoveHints();
+                checkAndTriggerCpuMove();
+                return;
+            }
+
+            // 次のプレイヤーに置ける場所がない場合、元のプレイヤーに置ける場所があるか確認
+            const currentValidMoves = getAllValidMoves(currentPlayer);
+            if (currentValidMoves.length === 0) {
+                // 両者とも置ける場所がない（または盤面がすべて埋まった）→ ゲーム終了！
+                isAnimating = false;
+                finishGame();
+                return;
+            }
+
+            // パス通知を表示してもう一度現在のプレイヤーの番にする
+            const passedChar = ANIMAL_CATALOG[playerCharKeys[nextPlayer]];
+            const activeChar = ANIMAL_CATALOG[playerCharKeys[currentPlayer]];
+            sound.playPass();
+
+            const passOverlay = document.getElementById('pass-overlay');
+            document.getElementById('pass-title').textContent = `${passedChar.name}はおける場所がないよ！`;
+            document.getElementById('pass-subtitle').textContent = `パスして、もういちど${activeChar.name}のばん！`;
+            passOverlay.classList.remove('hidden');
+
+            setTimeout(() => {
+                passOverlay.classList.add('hidden');
+                isAnimating = false;
+                updatePieceCountsAndUI();
+                updateValidMoveHints();
+                checkAndTriggerCpuMove();
+            }, 1650);
+        }
+
+        // CPU（コンピュータ）の手番思考
+        function checkAndTriggerCpuMove() {
+            if (isGameOver || !vsCpu || currentPlayer !== 2) return;
+
+            isAnimating = true;
+            updateValidMoveHints();
+
+            const c2 = ANIMAL_CATALOG[playerCharKeys[2]];
+            const guideText = document.getElementById('guide-text');
+            guideText.textContent = `🤖 ${c2.name}がどこにおくか考えています…`;
+
+            setTimeout(() => {
+                if (isGameOver) return;
+                const validMoves = getAllValidMoves(2);
+                if (validMoves.length === 0) {
+                    isAnimating = false;
+                    return;
+                }
+
+                // カド（四隅）があれば優先しつつ、裏返せる枚数やランダム性を混ぜた親しみやすいCPU
+                validMoves.forEach(m => {
+                    let score = m.flips.length + Math.random() * 2.5;
+                    const isCorner = (m.r === 0 || m.r === gridSize - 1) && (m.c === 0 || m.c === gridSize - 1);
+                    if (isCorner) score += 20;
+                    m.evalScore = score;
+                });
+                validMoves.sort((a, b) => b.evalScore - a.evalScore);
+
+                const chosen = validMoves[0];
+                attemptMove(chosen.r, chosen.c);
+            }, 680);
+        }
+
+        /* ==========================================
+         * 7. ゲーム終了判定＆紙吹雪セレブレーション
+         * ========================================== */
+        function finishGame() {
+            isGameOver = true;
+            updateValidMoveHints();
+
+            let count1 = 0;
+            let count2 = 0;
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    if (boardState[r][c] === 1) count1++;
+                    if (boardState[r][c] === 2) count2++;
+                }
+            }
+
+            const c1 = ANIMAL_CATALOG[playerCharKeys[1]];
+            const c2 = ANIMAL_CATALOG[playerCharKeys[2]];
+
+            const overlay = document.getElementById('result-overlay');
+            const scorePill = document.getElementById('result-score-pill');
+            const titleEl = document.getElementById('result-title');
+            const subEl = document.getElementById('result-subtitle');
+            const guideText = document.getElementById('guide-text');
+
+            scorePill.textContent = `${c1.name} ${count1}まい  vs  ${c2.name} ${count2}まい`;
+
+            if (count1 > count2) {
+                titleEl.textContent = `${c1.name}のかち！`;
+                titleEl.className = `text-xl sm:text-2xl font-black drop-shadow-sm mb-1 ${c1.guideTextClass}`;
+                subEl.textContent = `やったね！ ${count1}まい集めて大勝利！🎉`;
+                guideText.textContent = `🎉 ${c1.name}のかち！（${count1} 対 ${count2}） 🎉`;
+                guideText.className = `text-xs sm:text-sm font-black ${c1.guideTextClass}`;
+                spawn3DConfetti(c1.confettiColors);
+                sound.playWinFanfare();
+            } else if (count2 > count1) {
+                titleEl.textContent = `${c2.name}のかち！`;
+                titleEl.className = `text-xl sm:text-2xl font-black drop-shadow-sm mb-1 ${c2.guideTextClass}`;
+                subEl.textContent = `すごい！ ${count2}まい集めて大勝利！🎉`;
+                guideText.textContent = `🎉 ${c2.name}のかち！（${count2} 対 ${count1}） 🎉`;
+                guideText.className = `text-xs sm:text-sm font-black ${c2.guideTextClass}`;
+                spawn3DConfetti(c2.confettiColors);
+                sound.playWinFanfare();
+            } else {
+                titleEl.textContent = 'なかよし ひきわけ〜！';
+                titleEl.className = 'text-xl sm:text-2xl font-black text-amber-600 drop-shadow-sm mb-1';
+                subEl.textContent = `どっちも ${count1}まいでぴったり同じ！🤝`;
+                guideText.textContent = `🤝 なかよし ひきわけ！（${count1} 対 ${count2}） 🤝`;
+                spawn3DConfetti(c1.confettiColors);
+                sound.playReset();
+            }
+
+            overlay.classList.remove('hidden');
+        }
+
+        function spawn3DConfetti(colors) {
+            confettiParticles.forEach(p => scene.remove(p));
+            confettiParticles = [];
+
+            const geo = new THREE.PlaneGeometry(0.3, 0.19);
+            for (let i = 0; i < 80; i++) {
+                const mat = new THREE.MeshBasicMaterial({
+                    color: colors[i % colors.length],
+                    side: THREE.DoubleSide
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(
+                    (Math.random() - 0.5) * 10,
+                    5.0 + Math.random() * 4,
+                    1.8 + (Math.random() - 0.5) * 3
+                );
+                mesh.rotation.set(
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI
+                );
+                mesh.userData = {
+                    vy: -0.045 - Math.random() * 0.05,
+                    vx: (Math.random() - 0.5) * 0.03,
+                    vrx: (Math.random() - 0.5) * 0.14,
+                    vry: (Math.random() - 0.5) * 0.14
+                };
+                scene.add(mesh);
+                confettiParticles.push(mesh);
+            }
+        }
+
+        /* ==========================================
+         * 8. UI更新・設定モーダル・デザイン即時切替
+         * ========================================== */
+        function updatePieceCountsAndUI() {
+            let count1 = 0;
+            let count2 = 0;
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    if (boardState[r][c] === 1) count1++;
+                    if (boardState[r][c] === 2) count2++;
+                }
+            }
+
+            document.getElementById('count-p1').textContent = count1;
+            document.getElementById('count-p2').textContent = count2;
+
+            const c1 = ANIMAL_CATALOG[playerCharKeys[1]];
+            const c2 = ANIMAL_CATALOG[playerCharKeys[2]];
+
+            // アイコン描画
+            const ctx1 = document.getElementById('icon-p1').getContext('2d');
+            ctx1.clearRect(0, 0, 128, 128);
+            ctx1.drawImage(getAnimalIconCanvas(c1.id), 0, 0);
+
+            const ctx2 = document.getElementById('icon-p2').getContext('2d');
+            ctx2.clearRect(0, 0, 128, 128);
+            ctx2.drawImage(getAnimalIconCanvas(c2.id), 0, 0);
+
+            // 名前＆タグ更新
+            document.getElementById('name-p1').textContent = c1.name;
+            document.getElementById('name-p2').textContent = c2.name;
+            document.getElementById('tag-p2').textContent = vsCpu ? 'こうこう (CPU)' : 'こうこう';
+
+            // バッジ配色＆アクティブ状態
+            const badgeP1 = document.getElementById('badge-p1');
+            const badgeP2 = document.getElementById('badge-p2');
+            const activeClass1 = currentPlayer === 1 ? 'turn-active' : 'turn-inactive';
+            const activeClass2 = currentPlayer === 2 ? 'turn-active' : 'turn-inactive';
+
+            badgeP1.className = `turn-badge ${activeClass1} bg-gradient-to-b ${c1.badgeClass} text-white p-1.5 sm:p-2.5 rounded-2xl sm:rounded-3xl border-[3px] border-white flex items-center justify-between shadow-md`;
+            badgeP2.className = `turn-badge ${activeClass2} bg-gradient-to-b ${c2.badgeClass} text-white p-1.5 sm:p-2.5 rounded-2xl sm:rounded-3xl border-[3px] border-white flex items-center justify-between shadow-md`;
+
+            // ガイドメッセージ
+            if (!isGameOver) {
+                const activeChar = currentPlayer === 1 ? c1 : c2;
+                const guideText = document.getElementById('guide-text');
+                if (vsCpu && currentPlayer === 2) {
+                    guideText.textContent = `🤖 ${activeChar.name}のばん！ 考えています…`;
+                } else {
+                    guideText.textContent = `${activeChar.name}のばん！ 光っているマスをタッチしてね`;
+                }
+                guideText.className = `text-xs sm:text-sm font-black ${activeChar.guideTextClass}`;
+            }
+
+            // 背景テーマの反映
+            document.body.className = boardTheme === 'zoo' ? 'theme-zoo' : 'theme-aquarium';
+            const titlePill = document.getElementById('title-pill');
+            const titleEmoji = document.getElementById('title-emoji');
+            const titleText = document.getElementById('title-text');
+            if (boardTheme === 'zoo') {
+                titlePill.className = 'bg-white/95 px-2.5 sm:px-3.5 py-1.5 rounded-full shadow-sm border-2 border-emerald-500 flex items-center gap-1 flex-shrink-0';
+                titleEmoji.textContent = '🦁🐼';
+                titleText.className = 'text-emerald-800 font-black text-xs sm:text-sm tracking-tight';
+            } else {
+                titlePill.className = 'bg-white/95 px-2.5 sm:px-3.5 py-1.5 rounded-full shadow-sm border-2 border-sky-500 flex items-center gap-1 flex-shrink-0';
+                titleEmoji.textContent = '🐬🐧';
+                titleText.className = 'text-sky-800 font-black text-xs sm:text-sm tracking-tight';
+            }
+        }
+
+        // 盤面上の既存コマのイラストテクスチャを即時更新
+        function refreshExistingDiscTextures() {
+            const c1 = ANIMAL_CATALOG[playerCharKeys[1]];
+            const c2 = ANIMAL_CATALOG[playerCharKeys[2]];
+            const tex1 = getAnimalTexture(c1.id);
+            const tex2 = getAnimalTexture(c2.id);
+
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    const mesh = pieceMeshes[r][c];
+                    if (mesh) {
+                        const owner = boardState[r][c];
+                        mesh.material[0].color.setHex(owner === 1 ? c1.sideHex : c2.sideHex);
+                        mesh.material[1].map = tex1;
+                        mesh.material[1].needsUpdate = true;
+                        mesh.material[2].map = tex2;
+                        mesh.material[2].needsUpdate = true;
+                    }
+                }
+            }
+        }
+
+        // 設定モーダル内のUI一覧を描画
+        function renderSettingsModalUI() {
+            const p1Grid = document.getElementById('p1-selector-grid');
+            const p2Grid = document.getElementById('p2-selector-grid');
+            p1Grid.innerHTML = '';
+            p2Grid.innerHTML = '';
+
+            document.getElementById('setting-p1-current').textContent = ANIMAL_CATALOG[playerCharKeys[1]].name;
+            document.getElementById('setting-p2-current').textContent = ANIMAL_CATALOG[playerCharKeys[2]].name;
+
+            ANIMAL_KEYS.forEach(key => {
+                const animal = ANIMAL_CATALOG[key];
+                p1Grid.appendChild(createAnimalOptionBtn(animal, playerCharKeys[1] === key, 'orange', () => {
+                    selectAnimalForPlayer(1, key);
+                }));
+                p2Grid.appendChild(createAnimalOptionBtn(animal, playerCharKeys[2] === key, 'teal', () => {
+                    selectAnimalForPlayer(2, key);
+                }));
+            });
+
+            // ボードテーマ選択ボタン
+            const zooBtn = document.getElementById('board-theme-zoo');
+            const aquaBtn = document.getElementById('board-theme-aquarium');
+            if (boardTheme === 'zoo') {
+                zooBtn.className = 'border-3 border-emerald-500 bg-emerald-100 text-emerald-950 rounded-xl p-2.5 flex items-center gap-2 font-black text-xs sm:text-sm cursor-pointer shadow-inner';
+                aquaBtn.className = 'border-2 border-slate-200 bg-slate-50 text-slate-600 rounded-xl p-2.5 flex items-center gap-2 font-black text-xs sm:text-sm cursor-pointer hover:bg-sky-50';
+            } else {
+                aquaBtn.className = 'border-3 border-sky-500 bg-sky-100 text-sky-950 rounded-xl p-2.5 flex items-center gap-2 font-black text-xs sm:text-sm cursor-pointer shadow-inner';
+                zooBtn.className = 'border-2 border-slate-200 bg-slate-50 text-slate-600 rounded-xl p-2.5 flex items-center gap-2 font-black text-xs sm:text-sm cursor-pointer hover:bg-emerald-50';
+            }
+
+            // マスの数ボタン
+            [8, 6, 4].forEach(sz => {
+                const btn = document.getElementById(`size-btn-${sz}`);
+                if (gridSize === sz) {
+                    btn.className = 'py-2 px-2 rounded-xl font-black text-xs cursor-pointer bg-amber-500 text-white shadow border-2 border-amber-700';
+                } else {
+                    btn.className = 'py-2 px-2 rounded-xl font-black text-xs cursor-pointer bg-white text-amber-900 border-2 border-amber-300 hover:bg-amber-100';
+                }
+            });
+
+            // CPU対戦トグル
+            const cpuBtn = document.getElementById('setting-cpu-btn');
+            if (vsCpu) {
+                cpuBtn.textContent = '🤖 ON (CPU)';
+                cpuBtn.className = 'bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2';
+            } else {
+                cpuBtn.textContent = 'OFF (2人)';
+                cpuBtn.className = 'bg-slate-400 hover:bg-slate-500 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2';
+            }
+
+            // ヒント表示トグル
+            const hintBtn = document.getElementById('setting-hint-btn');
+            if (showHints) {
+                hintBtn.textContent = 'ON';
+                hintBtn.className = 'bg-emerald-500 hover:bg-emerald-400 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2';
+            } else {
+                hintBtn.textContent = 'OFF';
+                hintBtn.className = 'bg-slate-400 hover:bg-slate-500 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2';
+            }
+
+            // サウンドトグル
+            const soundBtn = document.getElementById('setting-sound-btn');
+            if (sound.enabled) {
+                soundBtn.textContent = '🔊 ON';
+                soundBtn.className = 'bg-amber-500 hover:bg-amber-400 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2';
+            } else {
+                soundBtn.textContent = '🔇 OFF';
+                soundBtn.className = 'bg-slate-400 hover:bg-slate-500 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2';
+            }
+        }
+
+        function createAnimalOptionBtn(animal, isSelected, colorName, onClick) {
+            const btn = document.createElement('button');
+            const activeRing = isSelected
+                ? (colorName === 'orange' ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-400 scale-105' : 'border-teal-600 bg-teal-50 ring-2 ring-teal-400 scale-105')
+                : 'border-slate-200 bg-slate-50 opacity-80 hover:opacity-100';
+
+            btn.className = `border-2 rounded-xl p-1.5 flex flex-col items-center gap-1 transition cursor-pointer ${activeRing}`;
+            btn.onclick = onClick;
+
+            const iconWrap = document.createElement('div');
+            iconWrap.className = 'w-11 h-11 rounded-full overflow-hidden shadow-sm border border-white bg-white';
+            const c = document.createElement('canvas');
+            c.width = 128;
+            c.height = 128;
+            c.className = 'w-full h-full';
+            c.getContext('2d').drawImage(getAnimalIconCanvas(animal.id), 0, 0);
+            iconWrap.appendChild(c);
+
+            const tag = document.createElement('span');
+            tag.className = 'text-[10px] font-black text-slate-800 truncate w-full text-center';
+            tag.textContent = animal.name;
+
+            btn.appendChild(iconWrap);
+            btn.appendChild(tag);
+            return btn;
+        }
+
+        function selectAnimalForPlayer(playerNum, newKey) {
+            const otherPlayer = playerNum === 1 ? 2 : 1;
+            if (playerCharKeys[otherPlayer] === newKey) {
+                playerCharKeys[otherPlayer] = playerCharKeys[playerNum];
+            }
+            playerCharKeys[playerNum] = newKey;
+
+            sound.playPlace();
+            updatePieceCountsAndUI();
+            refreshExistingDiscTextures();
+            renderSettingsModalUI();
+        }
+
+        window.applyThemePreset = function(key1, key2, theme) {
+            playerCharKeys[1] = key1;
+            playerCharKeys[2] = key2;
+            const themeChanged = boardTheme !== theme;
+            boardTheme = theme;
+
+            sound.playReset();
+            if (themeChanged) {
+                updateBoardColorsWithoutReset();
+            }
+            updatePieceCountsAndUI();
+            refreshExistingDiscTextures();
+            renderSettingsModalUI();
+        };
+
+        window.setBoardTheme = function(theme) {
+            boardTheme = theme;
+            sound.playPlace();
+            updateBoardColorsWithoutReset();
+            updatePieceCountsAndUI();
+            renderSettingsModalUI();
+        };
+
+        // ゲーム進行を壊さずにボードの枠・マス色だけをテーマに合わせて即時変更
+        function updateBoardColorsWithoutReset() {
+            const isZoo = boardTheme === 'zoo';
+            const frameColor = isZoo ? 0xb45309 : 0x0284c7;
+            const innerRimColor = isZoo ? 0xfef3c7 : 0xe0f2fe;
+            const cellColorEven = isZoo ? 0x4ade80 : 0x38bdf8;
+            const cellColorOdd = isZoo ? 0x22c55e : 0x0ea5e9;
+            const hintColor = isZoo ? 0xfef08a : 0xffffff;
+
+            if (boardGroup.children.length >= 2) {
+                boardGroup.children[0].material.color.setHex(frameColor);
+                boardGroup.children[1].material.color.setHex(innerRimColor);
+            }
+
+            cellMeshes.forEach(cm => {
+                const { r, c } = cm.userData;
+                cm.material.color.setHex((r + c) % 2 === 0 ? cellColorEven : cellColorOdd);
+            });
+
+            hintMeshes.forEach(hm => {
+                hm.material.color.setHex(hintColor);
+            });
+        }
+
+        window.changeBoardSize = function(newSize) {
+            if (gridSize === newSize) return;
+            gridSize = newSize;
+            sound.playReset();
+            buildBoardAndStartNewGame();
+            renderSettingsModalUI();
+        };
+
+        window.resetGame = function() {
+            sound.playReset();
+            confettiParticles.forEach(p => scene.remove(p));
+            confettiParticles = [];
+            targetBoardRotation.x = -0.22;
+            targetBoardRotation.y = 0;
+            buildBoardAndStartNewGame();
+        };
+
+        /* ==========================================
+         * 9. メインアニメーションループ
+         * ========================================== */
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const elapsedTime = clock.getElapsedTime();
+
+            if (boardGroup) {
+                boardGroup.rotation.x += (targetBoardRotation.x - boardGroup.rotation.x) * 0.12;
+                boardGroup.rotation.y += (targetBoardRotation.y - boardGroup.rotation.y) * 0.12;
+            }
+
+            // 光るヒントリングのアニメーション
+            hintMeshes.forEach((hm, idx) => {
+                if (hm.visible) {
+                    const s = 1 + Math.sin(elapsedTime * 5 + idx * 0.5) * 0.14;
+                    hm.scale.set(s, s, 1);
+                    hm.material.opacity = 0.65 + Math.sin(elapsedTime * 5 + idx * 0.5) * 0.25;
+                }
+            });
+
+            // 全コマの回転＆ジャンプアニメーション
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    const mesh = pieceMeshes[r]?.[c];
+                    if (!mesh) continue;
+                    const ud = mesh.userData;
+
+                    const rotDiff = ud.targetRotY - ud.currentRotY;
+                    if (Math.abs(rotDiff) > 0.001) {
+                        ud.currentRotY += rotDiff * 0.2;
+                        mesh.rotation.y = ud.currentRotY;
+                    } else {
+                        ud.currentRotY = ud.targetRotY;
+                        mesh.rotation.y = ud.targetRotY;
+                    }
+
+                    if (ud.isFlipping) {
+                        ud.flipProgress += 0.08;
+                        if (ud.flipProgress >= 1) {
+                            ud.flipProgress = 0;
+                            ud.isFlipping = false;
+                            mesh.position.z = ud.baseZ;
+                        } else {
+                            mesh.position.z = ud.baseZ + Math.sin(ud.flipProgress * Math.PI) * 1.1;
+                        }
+                    }
+                }
+            }
+
+            // 紙吹雪の落下
+            for (let i = confettiParticles.length - 1; i >= 0; i--) {
+                const p = confettiParticles[i];
+                p.position.y += p.userData.vy;
+                p.position.x += p.userData.vx + Math.sin(elapsedTime * 3 + i) * 0.01;
+                p.rotation.x += p.userData.vrx;
+                p.rotation.y += p.userData.vry;
+
+                if (p.position.y < -6) {
+                    p.position.y = 6;
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // 初期化＆ボタンイベント設定
+        window.onload = function() {
+            init3D();
+            renderSettingsModalUI();
+
+            // 「もういっかい！」ボタン
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                resetGame();
+            });
+
+            // 「せってい」モーダル開閉
+            const settingsModal = document.getElementById('settings-modal');
+            const openSettings = () => {
+                sound.playPlace();
+                renderSettingsModalUI();
+                settingsModal.classList.remove('hidden');
+            };
+            const closeSettings = () => {
+                sound.playPlace();
+                settingsModal.classList.add('hidden');
+                checkAndTriggerCpuMove();
+            };
+
+            document.getElementById('settings-btn').addEventListener('click', openSettings);
+            document.getElementById('close-settings-btn').addEventListener('click', closeSettings);
+            document.getElementById('ok-settings-btn').addEventListener('click', closeSettings);
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === settingsModal) closeSettings();
+            });
+
+            // CPU対戦ON/OFF
+            document.getElementById('setting-cpu-btn').addEventListener('click', () => {
+                vsCpu = !vsCpu;
+                sound.playPlace();
+                updatePieceCountsAndUI();
+                updateValidMoveHints();
+                renderSettingsModalUI();
+            });
+
+            // ヒント表示ON/OFF
+            document.getElementById('setting-hint-btn').addEventListener('click', () => {
+                showHints = !showHints;
+                sound.playPlace();
+                updateValidMoveHints();
+                renderSettingsModalUI();
+            });
+
+            // おとON/OFF
+            document.getElementById('setting-sound-btn').addEventListener('click', () => {
+                sound.enabled = !sound.enabled;
+                if (sound.enabled) sound.playPlace();
+                renderSettingsModalUI();
+            });
+
+            animate();
+        };
+    </script>
+</body>
+</html>

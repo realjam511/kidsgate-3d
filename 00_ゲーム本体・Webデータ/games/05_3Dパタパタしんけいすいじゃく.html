@@ -1,0 +1,2589 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta name="game-icon" content="🃏">
+    <meta name="game-tag" content="大人気・知育">
+    <meta name="game-category" content="puzzle">
+    <meta name="game-age" content="2">
+    <meta name="description" content="パネルをタッチして同じイラストをそろえよう！パンのなかま・どうぶつ・すいぞくかん・のりものから選べる楽しい3Dパタパタ神経衰弱！">
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>★ 3Dパタパタ しんけいすいじゃく ★</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            height: 100dvh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            transition: background 0.5s ease;
+        }
+
+        /* テーマ別背景グラデーション */
+        body.bg-bakery {
+            background: radial-gradient(circle at 50% 50%, #fffbeb 0%, #fde68a 48%, #f59e0b 100%);
+        }
+        body.bg-animals {
+            background: radial-gradient(circle at 50% 50%, #f0f9ff 0%, #bae6fd 48%, #0284c7 100%);
+        }
+        body.bg-vehicles {
+            background: radial-gradient(circle at 50% 50%, #f0fdf4 0%, #bbf7d0 48%, #16a34a 100%);
+        }
+        body.bg-mix {
+            background: radial-gradient(circle at 50% 50%, #fdf4ff 0%, #f5d0fe 48%, #c026d3 100%);
+        }
+
+        /* 立体的なおもちゃ風ボタン */
+        .btn-toy {
+            transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 0 #b45309, 0 6px 12px rgba(0,0,0,0.2);
+            transform: translateY(0);
+        }
+        .btn-toy:active:not(:disabled) {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #b45309, 0 2px 4px rgba(0,0,0,0.18);
+        }
+
+        .btn-toy-sky {
+            transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 0 #0369a1, 0 6px 12px rgba(0,0,0,0.2);
+            transform: translateY(0);
+        }
+        .btn-toy-sky:active:not(:disabled) {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #0369a1, 0 2px 4px rgba(0,0,0,0.18);
+        }
+        .btn-toy-sky:disabled {
+            opacity: 0.55;
+            filter: grayscale(30%);
+            cursor: not-allowed;
+        }
+
+        .btn-toy-slate {
+            transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 0 #334155, 0 6px 12px rgba(0,0,0,0.2);
+            transform: translateY(0);
+        }
+        .btn-toy-slate:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #334155, 0 2px 4px rgba(0,0,0,0.18);
+        }
+
+        /* プレイヤーカードのアニメーション */
+        .turn-badge {
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .turn-active {
+            transform: scale(1.03);
+            box-shadow: 0 8px 18px -4px rgba(0, 0, 0, 0.28), 0 0 0 3px #ffffff, 0 0 0 6px #f59e0b;
+            z-index: 5;
+        }
+        .turn-inactive {
+            transform: scale(0.95);
+            opacity: 0.72;
+            filter: grayscale(18%);
+        }
+
+        @keyframes pulseGentle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.025); }
+        }
+        .guide-pulse {
+            animation: pulseGentle 2.4s ease-in-out infinite;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.38); opacity: 0; }
+            70% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .modal-pop {
+            animation: popIn 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        /* 設定モーダル内スクロールバー */
+        .custom-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #fef3c7;
+            border-radius: 9999px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #f59e0b;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="bg-bakery">
+
+    <!-- ==========================================
+         上部ヘッダー領域（3Dボードやパネルと絶対に重ならない専用エリア）
+         ========================================== -->
+    <header id="top-ui-header" class="w-full flex-shrink-0 z-20 pt-2 pb-1 px-2 sm:px-4 bg-gradient-to-b from-white/95 via-white/80 to-transparent">
+        <div class="w-full max-w-xl mx-auto flex flex-col items-center gap-1.5">
+            
+            <!-- 最上部バー：タイトル ＆ 「もういっかい！」「チラ見」「せってい」ボタン -->
+            <div class="w-full flex justify-between items-center gap-1">
+                <!-- タイトルバッジ -->
+                <div class="bg-white/95 px-2.5 sm:px-3.5 py-1 rounded-full shadow-sm border-2 border-amber-400 flex items-center gap-1 flex-shrink-0">
+                    <span class="text-xs sm:text-sm text-amber-600 font-black tracking-tight">★ 3Dパタパタ しんけいすいじゃく ★</span>
+                </div>
+
+                <!-- 上部アクションボタン群（誤タップ防止のためすべて上部に集約） -->
+                <div class="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                    <!-- チラ見ボタン（お子様が場所を忘れたときに一瞬めくれるボタン） -->
+                    <button id="peek-btn" class="btn-toy-sky bg-gradient-to-b from-sky-400 to-sky-500 hover:from-sky-300 hover:to-sky-400 text-white font-black py-1.5 px-2.5 sm:px-3.5 rounded-full border-2 border-white flex items-center gap-1 text-xs sm:text-sm cursor-pointer">
+                        <span>👀</span>
+                        <span>チラ見</span>
+                    </button>
+
+                    <!-- もういっかい！ボタン -->
+                    <button id="reset-btn" class="btn-toy bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-amber-950 font-black py-1.5 px-2.5 sm:px-3.5 rounded-full border-2 border-white flex items-center gap-1 text-xs sm:text-sm cursor-pointer">
+                        <span>✨</span>
+                        <span>もういっかい！</span>
+                    </button>
+
+                    <!-- せっていボタン -->
+                    <button id="settings-btn" class="btn-toy-slate bg-gradient-to-b from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white font-black py-1.5 px-2.5 sm:px-3.5 rounded-full border-2 border-white flex items-center gap-1 text-xs sm:text-sm cursor-pointer">
+                        <span>⚙️</span>
+                        <span>せってい</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2人・CPU対戦時のプレイヤーカード（せんこう / こうこう） -->
+            <div id="two-player-cards" class="w-full grid grid-cols-2 gap-2.5 sm:gap-4 px-0.5">
+                
+                <!-- プレイヤー1（せんこう） -->
+                <div id="badge-p1" class="cursor-pointer turn-badge turn-active bg-gradient-to-b from-red-500 to-orange-500 text-white p-1.5 sm:p-2 rounded-2xl sm:rounded-3xl border-[3px] border-white flex items-center justify-between shadow-md" onclick="selectTurnManually(1)">
+                    <div class="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+                        <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white/95 border-2 border-white overflow-hidden flex-shrink-0 shadow-inner flex items-center justify-center">
+                            <canvas id="icon-p1" width="128" height="128" class="w-full h-full"></canvas>
+                        </div>
+                        <div class="leading-tight min-w-0">
+                            <div class="text-[9px] sm:text-[10px] font-bold text-white/95 bg-black/25 px-1.5 py-0.5 rounded-full inline-block mb-0.5">せんこう</div>
+                            <div id="name-p1" class="text-xs sm:text-sm font-black tracking-tight drop-shadow truncate">アンパンマン</div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-center bg-white text-red-600 rounded-xl sm:rounded-2xl px-2 py-0.5 sm:px-2.5 sm:py-1 shadow-inner flex-shrink-0 ml-1 min-w-[48px] sm:min-w-[56px]">
+                        <span id="score-p1" class="font-black text-base sm:text-xl leading-tight">0</span>
+                        <span class="text-[8px] sm:text-[9px] font-bold opacity-80 leading-none">ペア</span>
+                    </div>
+                </div>
+
+                <!-- プレイヤー2（こうこう） -->
+                <div id="badge-p2" class="cursor-pointer turn-badge turn-inactive bg-gradient-to-b from-purple-600 to-indigo-700 text-white p-1.5 sm:p-2 rounded-2xl sm:rounded-3xl border-[3px] border-white flex items-center justify-between shadow-md" onclick="selectTurnManually(2)">
+                    <div class="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+                        <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white/95 border-2 border-white overflow-hidden flex-shrink-0 shadow-inner flex items-center justify-center">
+                            <canvas id="icon-p2" width="128" height="128" class="w-full h-full"></canvas>
+                        </div>
+                        <div class="leading-tight min-w-0">
+                            <div id="tag-p2" class="text-[9px] sm:text-[10px] font-bold text-white/95 bg-black/25 px-1.5 py-0.5 rounded-full inline-block mb-0.5">こうこう</div>
+                            <div id="name-p2" class="text-xs sm:text-sm font-black tracking-tight drop-shadow truncate">ドキンちゃん</div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-center bg-white text-purple-700 rounded-xl sm:rounded-2xl px-2 py-0.5 sm:px-2.5 sm:py-1 shadow-inner flex-shrink-0 ml-1 min-w-[48px] sm:min-w-[56px]">
+                        <span id="score-p2" class="font-black text-base sm:text-xl leading-tight">0</span>
+                        <span class="text-[8px] sm:text-[9px] font-bold opacity-80 leading-none">ペア</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 1人であそぶモード時のワイドカード -->
+            <div id="solo-player-card" class="w-full px-0.5 hidden">
+                <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-pink-500 text-white p-2 sm:p-2.5 rounded-2xl sm:rounded-3xl border-[3px] border-white flex items-center justify-between shadow-md">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white/95 border-2 border-white overflow-hidden flex-shrink-0 shadow-inner flex items-center justify-center">
+                            <canvas id="icon-solo" width="128" height="128" class="w-full h-full"></canvas>
+                        </div>
+                        <div>
+                            <div class="text-[10px] font-bold bg-black/20 px-2 py-0.5 rounded-full inline-block">🎈 1人であそぶモード</div>
+                            <div class="text-xs sm:text-sm font-black drop-shadow">おなじイラストをぜんぶ見つけよう！</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="bg-white/95 text-orange-600 rounded-xl px-2.5 py-1 text-center shadow-inner">
+                            <div class="text-[9px] font-bold text-slate-500 leading-none">そろえた数</div>
+                            <div id="solo-pairs-text" class="text-sm sm:text-base font-black leading-tight">0 / 4 ペア</div>
+                        </div>
+                        <div class="bg-white/95 text-sky-700 rounded-xl px-2.5 py-1 text-center shadow-inner">
+                            <div class="text-[9px] font-bold text-slate-500 leading-none">めくった回数</div>
+                            <div id="solo-moves-text" class="text-sm sm:text-base font-black leading-tight">0 かい</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ガイドメッセージバナー -->
+            <div id="guide-banner" class="guide-pulse bg-white/95 px-4 py-1 rounded-full shadow-sm border-2 border-amber-400 text-center">
+                <span id="guide-text" class="text-xs sm:text-sm font-black text-red-600">
+                    1まいめの パネルを タッチしてね！
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==========================================
+         中央〜下部：3Dキャンバス領域（残りの高さを100%使用し、文字と重ならない）
+         ========================================== -->
+    <main id="canvas-container" class="flex-1 relative w-full min-h-0 overflow-hidden">
+        <!-- ペア成立時のキラキラトースト通知（タップ透過） -->
+        <div id="match-toast" class="fixed inset-x-0 top-1/2 -translate-y-1/2 z-30 flex justify-center items-center pointer-events-none hidden px-4">
+            <div class="modal-pop bg-white/95 backdrop-blur-md border-4 border-amber-400 rounded-3xl px-6 py-3.5 shadow-2xl flex items-center gap-3">
+                <div class="w-14 h-14 rounded-2xl bg-amber-50 border-2 border-amber-300 overflow-hidden flex-shrink-0 shadow-inner">
+                    <canvas id="toast-char-canvas" width="128" height="128" class="w-full h-full"></canvas>
+                </div>
+                <div class="text-left">
+                    <div id="toast-title" class="text-base sm:text-xl font-black text-red-600">やったー！ そろったよ！🎉</div>
+                    <div id="toast-subtitle" class="text-xs sm:text-sm font-bold text-amber-800">アンパンマン ペアゲット！</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 下部のさりげない操作ヒント（タップ透過） -->
+        <div class="pointer-events-none absolute bottom-1.5 inset-x-0 flex justify-center z-10 px-2">
+            <div class="text-slate-900/75 text-[10px] sm:text-xs font-bold bg-white/70 px-3 py-0.5 rounded-full backdrop-blur-sm shadow-sm text-center">
+                💡 パネルをタッチしてめくってね！ ゆびでボードの角度も動かせるよ
+            </div>
+        </div>
+    </main>
+
+    <!-- ==========================================
+         ゲームクリア・勝利ポップアップバナー
+         ========================================== -->
+    <div id="result-overlay" class="fixed inset-x-0 bottom-7 z-30 flex justify-center items-center pointer-events-none hidden px-4">
+        <div class="pointer-events-auto modal-pop bg-white/95 backdrop-blur-md border-4 border-amber-400 rounded-3xl p-4 sm:p-5 shadow-2xl max-w-sm w-full flex flex-col items-center text-center">
+            <div class="text-2xl sm:text-3xl mb-0.5">🎊👑🎊</div>
+            <div id="result-score-pill" class="bg-amber-100 text-amber-900 font-black text-xs sm:text-sm px-3 py-0.5 rounded-full mb-1 border border-amber-300">
+                ぜんぶそろったよ！
+            </div>
+            <div id="result-title" class="text-xl sm:text-2xl font-black text-red-600 drop-shadow-sm mb-1">
+                アンパンマンのかち！
+            </div>
+            <div id="result-subtitle" class="text-xs sm:text-sm font-bold text-amber-800 mb-3">
+                いっぱい絵をあわせたね！ すごい！✨
+            </div>
+            <button onclick="resetGame()" class="btn-toy bg-gradient-to-r from-red-500 to-amber-500 text-white font-black text-base sm:text-lg py-2.5 px-7 rounded-full border-4 border-white shadow-xl flex items-center gap-2 cursor-pointer">
+                <span>🎮</span>
+                <span>もういっかいあそぶ！</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         ⚙️ せっていモーダル（枚数・テーマ・裏面・対戦モード・おたすけ設定）
+         ========================================== -->
+    <div id="settings-modal" class="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden">
+        <div class="modal-pop bg-amber-50 border-4 border-amber-400 rounded-3xl max-w-lg w-full max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden">
+            
+            <!-- モーダルヘッダー -->
+            <div class="bg-gradient-to-r from-amber-400 to-orange-400 px-4 py-3 flex items-center justify-between border-b-4 border-amber-500 flex-shrink-0">
+                <div class="flex items-center gap-2 text-amber-950 font-black text-base sm:text-lg">
+                    <span>⚙️</span>
+                    <span>しんけいすいじゃくのせってい</span>
+                </div>
+                <button id="close-settings-btn" class="bg-white hover:bg-red-50 text-amber-900 font-black w-8 h-8 rounded-full border-2 border-amber-600 flex items-center justify-center shadow cursor-pointer text-base">
+                    ✕
+                </button>
+            </div>
+
+            <!-- モーダルコンテンツ（スクロール可能） -->
+            <div class="p-3.5 sm:p-5 overflow-y-auto custom-scroll space-y-4 text-slate-900">
+                
+                <!-- 1. カードのまいすう -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-amber-200 shadow-sm">
+                    <div class="text-xs sm:text-sm font-black text-amber-800 mb-2 flex items-center gap-1.5">
+                        <span>🃏</span>
+                        <span>カードのまいすう（変更すると最初からになります）</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <button id="count-btn-6" onclick="changeCardCount(6)" class="py-2 px-2 rounded-xl font-black text-xs cursor-pointer transition flex flex-col items-center">
+                            <span class="text-sm">6まい</span>
+                            <span class="text-[10px] opacity-80">かんたん(3ペア)</span>
+                        </button>
+                        <button id="count-btn-8" onclick="changeCardCount(8)" class="py-2 px-2 rounded-xl font-black text-xs cursor-pointer transition flex flex-col items-center">
+                            <span class="text-sm">8まい</span>
+                            <span class="text-[10px] opacity-80">おすすめ(4ペア)</span>
+                        </button>
+                        <button id="count-btn-12" onclick="changeCardCount(12)" class="py-2 px-2 rounded-xl font-black text-xs cursor-pointer transition flex flex-col items-center">
+                            <span class="text-sm">12まい</span>
+                            <span class="text-[10px] opacity-80">ふつう(6ペア)</span>
+                        </button>
+                        <button id="count-btn-16" onclick="changeCardCount(16)" class="py-2 px-2 rounded-xl font-black text-xs cursor-pointer transition flex flex-col items-center">
+                            <span class="text-sm">16まい</span>
+                            <span class="text-[10px] opacity-80">いっぱい(8ペア)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. イラストのテーマ -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-orange-200 shadow-sm">
+                    <div class="text-xs sm:text-sm font-black text-orange-700 mb-2 flex items-center gap-1.5">
+                        <span>🎨</span>
+                        <span>イラストのテーマ（全24種類のイラスト！）</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="theme-btn-bakery" onclick="changeTheme('bakery')" class="p-2.5 rounded-xl font-black text-xs cursor-pointer transition flex items-center gap-2 text-left">
+                            <span class="text-xl">🍞</span>
+                            <div>
+                                <div>パン＆なかまたち</div>
+                                <div class="text-[10px] opacity-75">アンパン・ドキン・パン</div>
+                            </div>
+                        </button>
+                        <button id="theme-btn-animals" onclick="changeTheme('animals')" class="p-2.5 rounded-xl font-black text-xs cursor-pointer transition flex items-center gap-2 text-left">
+                            <span class="text-xl">🐬</span>
+                            <div>
+                                <div>すいぞくかん＆どうぶつ</div>
+                                <div class="text-[10px] opacity-75">イルカ・パンダ・ライオン</div>
+                            </div>
+                        </button>
+                        <button id="theme-btn-vehicles" onclick="changeTheme('vehicles')" class="p-2.5 rounded-xl font-black text-xs cursor-pointer transition flex items-center gap-2 text-left">
+                            <span class="text-xl">🚄</span>
+                            <div>
+                                <div>のりもの＆おたから</div>
+                                <div class="text-[10px] opacity-75">新幹線・パトカー・王冠</div>
+                            </div>
+                        </button>
+                        <button id="theme-btn-mix" onclick="changeTheme('mix')" class="p-2.5 rounded-xl font-black text-xs cursor-pointer transition flex items-center gap-2 text-left">
+                            <span class="text-xl">🌟</span>
+                            <div>
+                                <div>ぜんぶミックス</div>
+                                <div class="text-[10px] opacity-75">毎回いろんな絵がでるよ</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. パネルのうらめん（めくる前のデザイン） -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-sky-200 shadow-sm">
+                    <div class="text-xs sm:text-sm font-black text-sky-800 mb-2 flex items-center gap-1.5">
+                        <span>🔢</span>
+                        <span>めくる前のパネルデザイン（すうじつきで覚えやすい！）</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <button id="back-btn-star" onclick="changeCardBackStyle('star')" class="rounded-xl p-2.5 flex items-center gap-2 font-black text-xs sm:text-sm cursor-pointer transition">
+                            <span class="text-xl">⭐</span>
+                            <div class="text-left leading-tight">
+                                <div>キラキラ星パネル</div>
+                                <div class="text-[10px] font-bold opacity-75">さわやかな空色と星</div>
+                            </div>
+                        </button>
+                        <button id="back-btn-bakery" onclick="changeCardBackStyle('bakery')" class="rounded-xl p-2.5 flex items-center gap-2 font-black text-xs sm:text-sm cursor-pointer transition">
+                            <span class="text-xl">🥐</span>
+                            <div class="text-left leading-tight">
+                                <div>やきたてパンパネル</div>
+                                <div class="text-[10px] font-bold opacity-75">かわいいパンデザイン</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 4. あそびかた（対戦・1人モード） -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-emerald-200 shadow-sm">
+                    <div class="text-xs sm:text-sm font-black text-emerald-800 mb-2 flex items-center gap-1.5">
+                        <span>👫</span>
+                        <span>あそびかたモード</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button id="mode-btn-2p" onclick="changePlayMode('2p')" class="py-2 px-1.5 rounded-xl font-black text-xs cursor-pointer transition text-center">
+                            👫 2人であそぶ
+                        </button>
+                        <button id="mode-btn-cpu" onclick="changePlayMode('cpu')" class="py-2 px-1.5 rounded-xl font-black text-xs cursor-pointer transition text-center">
+                            🤖 CPUとたいせん
+                        </button>
+                        <button id="mode-btn-solo" onclick="changePlayMode('solo')" class="py-2 px-1.5 rounded-xl font-black text-xs cursor-pointer transition text-center">
+                            🎈 1人でそろえる
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 5. おたすけ設定＆おと -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-amber-200 shadow-sm space-y-2.5">
+                    <div class="text-xs sm:text-sm font-black text-amber-800 flex items-center gap-1.5">
+                        <span>💡</span>
+                        <span>おたすけ機能・おとの設定</span>
+                    </div>
+
+                    <!-- スタート時のチラ見タイム -->
+                    <div class="flex items-center justify-between bg-amber-50/80 p-2.5 rounded-xl border border-amber-200">
+                        <div>
+                            <div class="text-xs sm:text-sm font-black text-amber-950">👀 スタート時のチラ見タイム</div>
+                            <div class="text-[10px] sm:text-xs font-bold text-amber-700">ゲーム開始時にすべての絵を2秒間だけ見せます</div>
+                        </div>
+                        <button id="setting-startpeek-btn" class="px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2">
+                            ON
+                        </button>
+                    </div>
+
+                    <!-- 2さいヒント（ペアがちょこっとゆれる） -->
+                    <div class="flex items-center justify-between bg-amber-50/80 p-2.5 rounded-xl border border-amber-200">
+                        <div>
+                            <div class="text-xs sm:text-sm font-black text-amber-950">💡 2さいおたすけヒント（ペアがゆれる）</div>
+                            <div class="text-[10px] sm:text-xs font-bold text-amber-700">1枚めくると、同じ絵のもう1枚がちょこっと動いて教えます</div>
+                        </div>
+                        <button id="setting-wigglehint-btn" class="px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2">
+                            OFF
+                        </button>
+                    </div>
+
+                    <!-- おと ON/OFF -->
+                    <div class="flex items-center justify-between bg-amber-50/80 p-2.5 rounded-xl border border-amber-200">
+                        <div>
+                            <div class="text-xs sm:text-sm font-black text-amber-950">🔊 ゲームのおと（効果音）</div>
+                            <div class="text-[10px] sm:text-xs font-bold text-amber-700">パネルをめくる音やペアがそろったチャイム</div>
+                        </div>
+                        <button id="setting-sound-btn" class="px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2">
+                            🔊 ON
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- モーダルフッター -->
+            <div class="bg-amber-100 px-4 py-3 border-t-2 border-amber-300 flex justify-center flex-shrink-0">
+                <button id="ok-settings-btn" class="btn-toy bg-gradient-to-r from-amber-400 to-orange-400 text-amber-950 font-black text-sm sm:text-base py-2 px-10 rounded-full border-2 border-white cursor-pointer">
+                    ✨ けってい（ゲームにもどる）
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================
+         * 1. サウンドエンジン (Web Audio API)
+         * パネルめくり音・ペア成立チャイム・不一致音・チラ見音・ファンファーレ
+         * ========================================== */
+        class MemorySoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            // カードをめくる音（1枚目と2枚目で少し高さを変えてワクワク感を演出）
+            playFlip(isSecondCard = false) {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                const startFreq = isSecondCard ? 392 : 330;
+                const endFreq = isSecondCard ? 784 : 659;
+                osc.frequency.setValueAtTime(startFreq, now);
+                osc.frequency.exponentialRampToValueAtTime(endFreq, now + 0.14);
+
+                gain.gain.setValueAtTime(0.28, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.19);
+            }
+
+            // ペアがそろったときのキラキラピンポンチャイム！
+            playMatchSuccess() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                notes.forEach((f, idx) => {
+                    const now = this.ctx.currentTime + idx * 0.085;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(f, now);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.26);
+                });
+            }
+
+            // 違ったときの優しい「ポヨン」音（小さなお子様が怖がらない柔らかい音）
+            playMismatch() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [349.23, 293.66]; // F4 -> D4
+                notes.forEach((f, idx) => {
+                    const now = this.ctx.currentTime + idx * 0.14;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(f, now);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.19);
+                });
+            }
+
+            // チラ見・リセット時のシャラン♪音
+            playWaveChime() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [523.25, 587.33, 659.25, 783.99, 880.00];
+                notes.forEach((f, i) => {
+                    const now = this.ctx.currentTime + i * 0.04;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(f, now);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                });
+            }
+
+            // 全ペア完成時の豪華ファンファーレ
+            playWinFanfare() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50];
+                const durations = [0.12, 0.12, 0.12, 0.22, 0.12, 0.5];
+                let timeOffset = 0;
+
+                notes.forEach((freq, idx) => {
+                    const now = this.ctx.currentTime + timeOffset;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now);
+                    gain.gain.setValueAtTime(0.32, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + durations[idx]);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + durations[idx] + 0.02);
+                    timeOffset += durations[idx] * 0.95;
+                });
+            }
+        }
+
+        const sound = new MemorySoundEngine();
+
+        /* ==========================================
+         * 2. Canvas 2D 高解像度イラスト生成 (全24種類＋裏面2種類)
+         * ========================================== */
+        function drawRoundedRect(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+        }
+
+        function drawCardBackdrop(ctx, isIcon, innerColor, midColor, outerColor, borderColor, labelText = '') {
+            const bgGrad = ctx.createRadialGradient(256, 256, 30, 256, 256, 330);
+            bgGrad.addColorStop(0, innerColor);
+            bgGrad.addColorStop(0.65, midColor);
+            bgGrad.addColorStop(1, outerColor);
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, 512, 512);
+
+            // サンバースト光線
+            ctx.save();
+            ctx.translate(256, 235);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.24)';
+            for (let i = 0; i < 12; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.arc(0, 0, 420, (i * Math.PI) / 6, (i * Math.PI) / 6 + Math.PI / 12);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+
+            if (!isIcon) {
+                ctx.lineWidth = 26;
+                ctx.strokeStyle = borderColor;
+                drawRoundedRect(ctx, 20, 20, 472, 472, 64);
+                ctx.stroke();
+
+                ctx.lineWidth = 8;
+                ctx.strokeStyle = '#ffffff';
+                drawRoundedRect(ctx, 35, 35, 442, 442, 52);
+                ctx.stroke();
+
+                // 下部にひらがな・カタカナの名前プレートを描画（知育＆見分けやすさ抜群）
+                if (labelText) {
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+                    ctx.strokeStyle = borderColor;
+                    ctx.lineWidth = 8;
+                    drawRoundedRect(ctx, 66, 405, 380, 66, 33);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.font = '900 38px "M PLUS Rounded 1c", sans-serif';
+                    ctx.fillStyle = borderColor;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(labelText, 256, 439);
+                    ctx.restore();
+                }
+            }
+        }
+
+        // --- テーマ1：🍞 パン＆なかまたち (8種) ---
+        function drawAnpanman(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#fffbeb', '#fde047', '#ef4444', '#dc2626', 'アンパンマン');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            // 顔
+            const fg = ctx.createRadialGradient(225, 190, 25, 256, 255, 165);
+            fg.addColorStop(0, '#f6ad55'); fg.addColorStop(0.7, '#dd6b20'); fg.addColorStop(1, '#9c4221');
+            ctx.fillStyle = fg; ctx.strokeStyle = '#4a1d05'; ctx.lineWidth = 10;
+            ctx.beginPath(); ctx.arc(256, 255, 148, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // 眉・目
+            ctx.lineWidth = 10; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.arc(200, 192, 32, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+            ctx.beginPath(); ctx.arc(312, 192, 32, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+            ctx.fillStyle = '#1e1b18';
+            ctx.beginPath(); ctx.ellipse(204, 208, 16, 23, 0, 0, Math.PI * 2); ctx.ellipse(308, 208, 16, 23, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(199, 200, 6, 0, Math.PI * 2); ctx.arc(303, 200, 6, 0, Math.PI * 2); ctx.fill();
+
+            // 口
+            ctx.fillStyle = '#c53030';
+            ctx.beginPath(); ctx.arc(256, 285, 68, 0.08 * Math.PI, 0.92 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            // ほっぺ＆鼻
+            ctx.fillStyle = '#f95738';
+            ctx.beginPath(); ctx.arc(156, 265, 40, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(356, 265, 40, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#e53e3e';
+            ctx.beginPath(); ctx.arc(256, 260, 44, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // ハイライト
+            ctx.fillStyle = '#ffffff';
+            drawRoundedRect(ctx, 236, 236, 18, 18, 4); ctx.fill();
+            drawRoundedRect(ctx, 142, 246, 14, 14, 3); ctx.fill();
+            drawRoundedRect(ctx, 342, 246, 14, 14, 3); ctx.fill();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawBaikinman(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#f3e8ff', '#a855f7', '#4c1d95', '#6b21a8', 'バイキンマン');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            // ツノ
+            ctx.fillStyle = '#312e81'; ctx.strokeStyle = '#0f0524'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(200, 140); ctx.lineTo(150, 82); ctx.lineTo(175, 75); ctx.lineTo(222, 138); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(155, 80, 16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(312, 140); ctx.lineTo(362, 82); ctx.lineTo(337, 75); ctx.lineTo(290, 138); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(357, 80, 16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // 頭
+            ctx.fillStyle = '#2e1065';
+            ctx.beginPath(); ctx.ellipse(256, 268, 152, 138, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // 目
+            ctx.fillStyle = '#f5d0fe';
+            ctx.beginPath(); ctx.ellipse(196, 215, 46, 54, -0.1, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(316, 215, 46, 54, 0.1, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1e1b4b';
+            ctx.beginPath(); ctx.arc(212, 224, 15, 0, Math.PI * 2); ctx.arc(300, 224, 15, 0, Math.PI * 2); ctx.fill();
+
+            // ギザギザ口
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.ellipse(256, 325, 112, 52, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(148, 325);
+            for (let i = 1; i <= 6; i++) ctx.lineTo(148 + i * 36, i % 2 === 1 ? 340 : 312);
+            ctx.stroke();
+
+            // 鼻
+            ctx.fillStyle = '#7e22ce';
+            ctx.beginPath(); ctx.arc(256, 255, 25, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawDokinchan(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#fff1f2', '#fda4af', '#e11d48', '#be123c', 'ドキンちゃん');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            // 1本ツノ
+            ctx.fillStyle = '#f97316'; ctx.strokeStyle = '#5c1906'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(234, 135); ctx.lineTo(256, 70); ctx.lineTo(278, 135); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fde047';
+            ctx.beginPath(); ctx.arc(256, 68, 20, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // 顔
+            ctx.fillStyle = '#ea580c';
+            ctx.beginPath(); ctx.ellipse(256, 268, 148, 136, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // 大きな瞳（エメラルド）
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.ellipse(200, 218, 42, 50, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(312, 218, 42, 50, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath(); ctx.ellipse(208, 224, 22, 28, 0, 0, Math.PI * 2); ctx.ellipse(304, 224, 22, 28, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(200, 215, 8, 0, Math.PI * 2); ctx.arc(296, 215, 8, 0, Math.PI * 2); ctx.fill();
+
+            // 口＆鼻
+            ctx.fillStyle = '#f43f5e';
+            ctx.beginPath(); ctx.arc(256, 290, 58, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fb923c';
+            ctx.beginPath(); ctx.arc(256, 258, 20, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawKokinchan(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#f0f9ff', '#7dd3fc', '#0284c7', '#0369a1', 'コキンちゃん');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            // ツノ
+            ctx.fillStyle = '#38bdf8'; ctx.strokeStyle = '#082f49'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(234, 135); ctx.lineTo(256, 70); ctx.lineTo(278, 135); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fde047';
+            ctx.beginPath(); ctx.arc(256, 68, 20, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // 顔
+            ctx.fillStyle = '#0ea5e9';
+            ctx.beginPath(); ctx.ellipse(256, 268, 148, 136, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // うるうる瞳
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.ellipse(198, 220, 44, 52, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(314, 220, 44, 52, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1d4ed8';
+            ctx.beginPath(); ctx.ellipse(206, 226, 25, 30, 0, 0, Math.PI * 2); ctx.ellipse(306, 226, 25, 30, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(198, 214, 10, 0, Math.PI * 2); ctx.arc(298, 214, 10, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(214, 236, 5, 0, Math.PI * 2); ctx.arc(314, 236, 5, 0, Math.PI * 2); ctx.fill();
+
+            // 口＆鼻
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath(); ctx.arc(256, 294, 52, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath(); ctx.arc(256, 260, 19, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawMelonpan(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#f7fee7', '#bef264', '#16a34a', '#15803d', 'メロンパン');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            ctx.fillStyle = '#d9f99d'; ctx.strokeStyle = '#365314'; ctx.lineWidth = 10;
+            ctx.beginPath(); ctx.arc(256, 255, 148, 0, Math.PI * 2); ctx.fill();
+            ctx.save(); ctx.clip();
+            ctx.strokeStyle = 'rgba(101, 163, 13, 0.55)'; ctx.lineWidth = 8;
+            for (let i = -3; i <= 3; i++) {
+                ctx.beginPath(); ctx.moveTo(256 + i * 60 - 130, 80); ctx.lineTo(256 + i * 60 + 130, 420); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(256 + i * 60 + 130, 80); ctx.lineTo(256 + i * 60 - 130, 420); ctx.stroke();
+            }
+            ctx.restore();
+            ctx.beginPath(); ctx.arc(256, 255, 148, 0, Math.PI * 2); ctx.stroke();
+
+            // 目と笑顔
+            ctx.fillStyle = '#365314';
+            ctx.beginPath(); ctx.ellipse(200, 225, 20, 26, 0, 0, Math.PI * 2); ctx.ellipse(312, 225, 20, 26, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(194, 216, 8, 0, Math.PI * 2); ctx.arc(306, 216, 8, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#f43f5e';
+            ctx.beginPath(); ctx.arc(256, 282, 46, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawShokupan(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#ffffff', '#fed7aa', '#ea580c', '#c2410c', 'しょくぱん');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            const breadPath = (s) => {
+                ctx.beginPath(); ctx.save(); ctx.translate(256, 260); ctx.scale(s, s);
+                ctx.moveTo(-130, -60);
+                ctx.bezierCurveTo(-155, -155, -20, -165, 0, -135);
+                ctx.bezierCurveTo(20, -165, 155, -155, 130, -60);
+                ctx.lineTo(122, 118); ctx.quadraticCurveTo(122, 145, 92, 145);
+                ctx.lineTo(-92, 145); ctx.quadraticCurveTo(-122, 145, -122, 118);
+                ctx.closePath(); ctx.restore();
+            };
+            ctx.fillStyle = '#d97706'; ctx.strokeStyle = '#78350f'; ctx.lineWidth = 10;
+            breadPath(1.0); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fffbeb'; breadPath(0.86); ctx.fill();
+
+            ctx.fillStyle = '#451a03';
+            ctx.beginPath(); ctx.ellipse(204, 220, 15, 22, 0, 0, Math.PI * 2); ctx.ellipse(308, 220, 15, 22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath(); ctx.arc(256, 286, 48, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawCurrypan(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#fef9c3', '#facc15', '#ca8a04', '#854d0e', 'カレーパン');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            ctx.fillStyle = '#d97706'; ctx.strokeStyle = '#451a03'; ctx.lineWidth = 10;
+            ctx.beginPath(); ctx.ellipse(256, 258, 165, 128, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.ellipse(200, 212, 26, 32, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(312, 212, 26, 32, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath(); ctx.arc(204, 215, 13, 0, Math.PI * 2); ctx.arc(308, 215, 13, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = '#f97316';
+            ctx.beginPath(); ctx.arc(140, 258, 28, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(372, 258, 28, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#991b1b';
+            ctx.beginPath(); ctx.ellipse(256, 305, 76, 36, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawShortcake(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#fff1f2', '#fbcfe8', '#ec4899', '#be185d', 'いちごケーキ');
+            ctx.save(); if (!isIcon) ctx.translate(0, -20);
+
+            // スポンジ＆生クリームの可愛いホールケーキ
+            ctx.strokeStyle = '#831843'; ctx.lineWidth = 10;
+            ctx.fillStyle = '#fde68a';
+            drawRoundedRect(ctx, 116, 225, 280, 140, 28); ctx.fill(); ctx.stroke();
+
+            // イチゴソース段
+            ctx.fillStyle = '#fb7185';
+            ctx.fillRect(122, 285, 268, 24);
+
+            // とろける白いホイップクリーム上面
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.moveTo(110, 235);
+            ctx.quadraticCurveTo(256, 195, 402, 235);
+            for (let i = 0; i < 6; i++) {
+                const x1 = 402 - i * 48.6;
+                const x2 = 402 - (i + 1) * 48.6;
+                ctx.quadraticCurveTo((x1 + x2) / 2, 275, x2, 245);
+            }
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            // 大きな真っ赤ないちご3粒
+            const drawBerry = (bx, by) => {
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.moveTo(bx, by - 36);
+                ctx.quadraticCurveTo(bx + 36, by + 10, bx, by + 28);
+                ctx.quadraticCurveTo(bx - 36, by + 10, bx, by - 36);
+                ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#22c55e';
+                ctx.beginPath(); ctx.ellipse(bx, by - 34, 18, 8, 0, 0, Math.PI * 2); ctx.fill();
+            };
+            drawBerry(176, 178);
+            drawBerry(336, 178);
+            drawBerry(256, 162);
+
+            // ケーキのにっこりお顔
+            ctx.fillStyle = '#831843';
+            ctx.beginPath(); ctx.arc(212, 315, 13, 0, Math.PI * 2); ctx.arc(300, 315, 13, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(256, 325, 22, 0.1 * Math.PI, 0.9 * Math.PI); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        // --- テーマ2：🐬 すいぞくかん＆どうぶつ (8種) ---
+        function drawDolphin(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#f0f9ff', '#38bdf8', '#0284c7', '#0369a1', 'いるか');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            ctx.fillStyle = '#0ea5e9'; ctx.strokeStyle = '#082f49'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(225, 125); ctx.quadraticCurveTo(256, 65, 290, 88); ctx.lineTo(280, 130); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(122, 295, 44, 22, -0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(390, 295, 44, 22, 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(256, 265, 140, 132, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#f0f9ff';
+            ctx.beginPath(); ctx.ellipse(256, 320, 105, 68, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath(); ctx.ellipse(256, 282, 70, 30, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath(); ctx.arc(256, 300, 42, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#082f49';
+            ctx.beginPath(); ctx.ellipse(190, 232, 16, 22, 0, 0, Math.PI * 2); ctx.ellipse(322, 232, 16, 22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(185, 224, 6, 0, Math.PI * 2); ctx.arc(317, 224, 6, 0, Math.PI * 2); ctx.fill();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawSealion(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#fff1f2', '#fda4af', '#f43f5e', '#be123c', 'あしか');
+            ctx.save(); if (!isIcon) ctx.translate(0, -20);
+
+            // ボール
+            ctx.fillStyle = '#fde047'; ctx.strokeStyle = '#431407'; ctx.lineWidth = 8;
+            ctx.beginPath(); ctx.arc(256, 102, 40, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(238, 102, 22, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = '#c2410c'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.ellipse(256, 275, 136, 122, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath(); ctx.ellipse(200, 236, 16, 22, 0, 0, Math.PI * 2); ctx.ellipse(312, 236, 16, 22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffedd5';
+            ctx.beginPath(); ctx.ellipse(230, 292, 36, 26, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(282, 292, 36, 26, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath(); ctx.ellipse(256, 265, 20, 14, 0, 0, Math.PI * 2); ctx.fill();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawPenguin(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#f0f9ff', '#bae6fd', '#0284c7', '#1e3a8a', 'ペンギン');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            ctx.fillStyle = '#1e293b'; ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 10;
+            ctx.beginPath(); ctx.ellipse(256, 260, 146, 140, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(204, 245, 62, 0, Math.PI * 2); ctx.arc(308, 245, 62, 0, Math.PI * 2); ctx.ellipse(256, 295, 114, 78, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath(); ctx.ellipse(202, 235, 16, 22, 0, 0, Math.PI * 2); ctx.ellipse(310, 235, 16, 22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#facc15'; ctx.lineWidth = 8;
+            ctx.beginPath(); ctx.ellipse(256, 280, 42, 25, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawWhaleshark(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#ecfeff', '#67e8f9', '#0891b2', '#155e75', 'ジンベエザメ');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            ctx.fillStyle = '#0284c7'; ctx.strokeStyle = '#083344'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(232, 140); ctx.quadraticCurveTo(256, 80, 280, 140); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(256, 265, 165, 122, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            [[180, 190], [230, 178], [282, 178], [332, 190], [205, 218], [256, 210], [307, 218]].forEach(([x, y]) => {
+                ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.fill();
+            });
+
+            ctx.fillStyle = '#f0f9ff';
+            ctx.beginPath(); ctx.ellipse(256, 318, 138, 62, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#083344';
+            ctx.beginPath(); ctx.arc(150, 265, 15, 0, Math.PI * 2); ctx.arc(362, 265, 15, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath(); ctx.ellipse(256, 305, 86, 32, 0, 0, Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawLion(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#fffbeb', '#fde047', '#f97316', '#c2410c', 'ライオン');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            ctx.fillStyle = '#b45309'; ctx.strokeStyle = '#451a03'; ctx.lineWidth = 8;
+            for (let i = 0; i < 12; i++) {
+                const a = (i * Math.PI * 2) / 12;
+                ctx.beginPath(); ctx.arc(256 + Math.cos(a) * 136, 255 + Math.sin(a) * 136, 44, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            }
+            ctx.fillStyle = '#fbbf24';
+            ctx.beginPath(); ctx.arc(256, 258, 114, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#292524';
+            ctx.beginPath(); ctx.ellipse(208, 236, 15, 21, 0, 0, Math.PI * 2); ctx.ellipse(304, 236, 15, 21, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fffbeb';
+            ctx.beginPath(); ctx.arc(236, 286, 22, 0, Math.PI * 2); ctx.arc(276, 286, 22, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath(); ctx.moveTo(236, 262); ctx.lineTo(276, 262); ctx.lineTo(256, 282); ctx.closePath(); ctx.fill();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawPanda(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#f0fdf4', '#86efac', '#16a34a', '#15803d', 'パンダ');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            ctx.fillStyle = '#1e293b'; ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.arc(146, 146, 48, 0, Math.PI * 2); ctx.arc(366, 146, 48, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.ellipse(256, 265, 148, 136, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath(); ctx.ellipse(196, 242, 38, 48, 0.35, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(316, 242, 38, 48, -0.35, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(202, 232, 13, 0, Math.PI * 2); ctx.arc(310, 232, 13, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath(); ctx.ellipse(256, 276, 20, 14, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath(); ctx.arc(256, 302, 22, 0, Math.PI); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawElephant(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#f0f9ff', '#93c5fd', '#2563eb', '#1d4ed8', 'ゾウ');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            ctx.fillStyle = '#60a5fa'; ctx.strokeStyle = '#1e3a8a'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.ellipse(125, 255, 74, 95, 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(387, 255, 74, 95, -0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(256, 250, 118, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath(); ctx.ellipse(202, 224, 15, 20, 0, 0, Math.PI * 2); ctx.ellipse(310, 224, 15, 20, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#60a5fa';
+            ctx.beginPath();
+            ctx.moveTo(232, 248); ctx.quadraticCurveTo(230, 340, 282, 340); ctx.quadraticCurveTo(316, 340, 312, 302);
+            ctx.quadraticCurveTo(272, 305, 272, 248); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawGiraffe(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#fefce8', '#fde047', '#ca8a04', '#854d0e', 'キリン');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            ctx.fillStyle = '#78350f'; ctx.strokeStyle = '#451a03'; ctx.lineWidth = 9;
+            ctx.fillRect(210, 88, 18, 55); ctx.strokeRect(210, 88, 18, 55);
+            ctx.fillRect(284, 88, 18, 55); ctx.strokeRect(284, 88, 18, 55);
+            ctx.beginPath(); ctx.arc(219, 84, 19, 0, Math.PI * 2); ctx.arc(293, 84, 19, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#fde047';
+            ctx.beginPath(); ctx.ellipse(256, 255, 118, 126, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#292524';
+            ctx.beginPath(); ctx.ellipse(202, 228, 15, 21, 0, 0, Math.PI * 2); ctx.ellipse(310, 228, 15, 21, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fef3c7';
+            ctx.beginPath(); ctx.ellipse(256, 316, 90, 60, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath(); ctx.arc(256, 322, 36, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        // --- テーマ3：🚄 のりもの＆おたから (8種) ---
+        function drawShinkansen(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#f0f9ff', '#38bdf8', '#1d4ed8', '#1e3a8a', 'しんかんせん');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 10;
+            ctx.beginPath();
+            ctx.moveTo(122, 338); ctx.quadraticCurveTo(118, 122, 256, 112);
+            ctx.quadraticCurveTo(394, 122, 390, 338); ctx.quadraticCurveTo(256, 380, 122, 338);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#2563eb';
+            ctx.beginPath(); ctx.rect(122, 295, 268, 38); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath(); ctx.ellipse(256, 208, 100, 44, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath(); ctx.arc(212, 208, 20, 0, Math.PI * 2); ctx.arc(300, 208, 20, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath(); ctx.arc(256, 268, 24, 0, Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawPatrolcar(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#f8fafc', '#93c5fd', '#1e40af', '#0f172a', 'パトカー');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            ctx.fillStyle = '#ef4444'; ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.ellipse(256, 118, 48, 24, 0, Math.PI, Math.PI * 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.moveTo(150, 238); ctx.lineTo(178, 128); ctx.lineTo(334, 128); ctx.lineTo(362, 238); ctx.closePath(); ctx.fill(); ctx.stroke();
+            drawRoundedRect(ctx, 112, 228, 288, 118, 32); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1e293b';
+            drawRoundedRect(ctx, 112, 290, 288, 56, 24); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#bae6fd';
+            ctx.beginPath(); ctx.moveTo(168, 225); ctx.lineTo(190, 146); ctx.lineTo(322, 146); ctx.lineTo(344, 225); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#facc15';
+            ctx.beginPath(); ctx.arc(256, 262, 20, 0, Math.PI * 2); ctx.arc(154, 262, 20, 0, Math.PI * 2); ctx.arc(358, 262, 20, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawFiretruck(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#fffbeb', '#fca5a5', '#dc2626', '#991b1b', 'しょうぼうしゃ');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            ctx.fillStyle = '#ef4444'; ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 10;
+            drawRoundedRect(ctx, 120, 130, 272, 218, 34); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#e0f2fe';
+            drawRoundedRect(ctx, 148, 155, 216, 86, 18); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath(); ctx.ellipse(212, 198, 15, 22, 0, 0, Math.PI * 2); ctx.ellipse(300, 198, 15, 22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#facc15';
+            ctx.beginPath(); ctx.arc(158, 285, 22, 0, Math.PI * 2); ctx.arc(354, 285, 22, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(256, 288, 38, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawRocket(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#fef9c3', '#38bdf8', '#1e1b4b', '#312e81', 'ロケット');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            // ジェット炎
+            ctx.fillStyle = '#f97316'; ctx.strokeStyle = '#7c2d12'; ctx.lineWidth = 8;
+            ctx.beginPath(); ctx.moveTo(212, 325); ctx.lineTo(256, 395); ctx.lineTo(300, 325); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            // 左右の赤いウイング
+            ctx.fillStyle = '#ef4444'; ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(185, 240); ctx.lineTo(125, 335); ctx.lineTo(195, 325); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(327, 240); ctx.lineTo(387, 335); ctx.lineTo(317, 325); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            // ロケット本体
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.moveTo(256, 85);
+            ctx.quadraticCurveTo(345, 175, 322, 330);
+            ctx.lineTo(190, 330);
+            ctx.quadraticCurveTo(167, 175, 256, 85);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            // 先端の赤コーン
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.moveTo(256, 85);
+            ctx.quadraticCurveTo(298, 128, 305, 162);
+            ctx.lineTo(207, 162);
+            ctx.quadraticCurveTo(214, 128, 256, 85);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            // 丸窓
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath(); ctx.arc(256, 232, 42, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(242, 218, 12, 0, Math.PI * 2); ctx.fill();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawCrown(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#fffbeb', '#fde047', '#d97706', '#92400e', 'おうかん');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            const cg = ctx.createLinearGradient(120, 120, 392, 340);
+            cg.addColorStop(0, '#fef08a'); cg.addColorStop(0.5, '#facc15'); cg.addColorStop(1, '#ca8a04');
+            ctx.fillStyle = cg; ctx.strokeStyle = '#78350f'; ctx.lineWidth = 10; ctx.lineJoin = 'round';
+
+            ctx.beginPath();
+            ctx.moveTo(115, 335);
+            ctx.lineTo(95, 165);
+            ctx.lineTo(185, 235);
+            ctx.lineTo(256, 125);
+            ctx.lineTo(327, 235);
+            ctx.lineTo(417, 165);
+            ctx.lineTo(397, 335);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+
+            // 宝石
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath(); ctx.arc(256, 275, 24, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath(); ctx.arc(172, 282, 18, 0, Math.PI * 2); ctx.arc(340, 282, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(95, 155, 18, 0, Math.PI * 2); ctx.arc(256, 115, 20, 0, Math.PI * 2); ctx.arc(417, 155, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawDiamond(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#f0f9ff', '#e879f9', '#7e22ce', '#581c87', 'ダイヤ');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            const dg = ctx.createLinearGradient(110, 120, 400, 360);
+            dg.addColorStop(0, '#a5f3fc'); dg.addColorStop(0.5, '#38bdf8'); dg.addColorStop(1, '#c084fc');
+            ctx.fillStyle = dg; ctx.strokeStyle = '#1e1b4b'; ctx.lineWidth = 10; ctx.lineJoin = 'round';
+
+            ctx.beginPath();
+            ctx.moveTo(165, 135);
+            ctx.lineTo(347, 135);
+            ctx.lineTo(412, 215);
+            ctx.lineTo(256, 368);
+            ctx.lineTo(100, 215);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+
+            // カットライン
+            ctx.beginPath();
+            ctx.moveTo(100, 215); ctx.lineTo(412, 215);
+            ctx.moveTo(165, 135); ctx.lineTo(205, 215); ctx.lineTo(256, 368);
+            ctx.moveTo(347, 135); ctx.lineTo(307, 215); ctx.lineTo(256, 368);
+            ctx.moveTo(205, 215); ctx.lineTo(256, 135); ctx.lineTo(307, 215);
+            ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawTulip(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#f0fdf4', '#bbf7d0', '#22c55e', '#15803d', 'チューリップ');
+            ctx.save(); if (!isIcon) ctx.translate(0, -20);
+
+            // 茎と葉っぱ
+            ctx.strokeStyle = '#14532d'; ctx.lineWidth = 10; ctx.fillStyle = '#22c55e';
+            ctx.fillRect(246, 265, 20, 110); ctx.strokeRect(246, 265, 20, 110);
+            ctx.beginPath(); ctx.ellipse(195, 325, 58, 24, 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(317, 325, 58, 24, -0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // チューリップの花びら
+            ctx.fillStyle = '#f43f5e';
+            ctx.beginPath();
+            ctx.moveTo(145, 205);
+            ctx.lineTo(155, 110);
+            ctx.lineTo(212, 165);
+            ctx.lineTo(256, 102);
+            ctx.lineTo(300, 165);
+            ctx.lineTo(357, 110);
+            ctx.lineTo(367, 205);
+            ctx.quadraticCurveTo(367, 295, 256, 295);
+            ctx.quadraticCurveTo(145, 295, 145, 205);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+
+            // にっこり顔
+            ctx.fillStyle = '#4c0519';
+            ctx.beginPath(); ctx.arc(216, 215, 14, 0, Math.PI * 2); ctx.arc(296, 215, 14, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(256, 232, 24, 0.1 * Math.PI, 0.9 * Math.PI); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawShootingStar(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawCardBackdrop(ctx, isIcon, '#fefce8', '#fde047', '#eab308', '#a16207', 'おほしさま');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            ctx.save();
+            ctx.translate(256, 245);
+            ctx.beginPath();
+            const spikes = 5, outerR = 148, innerR = 74;
+            for (let i = 0; i < spikes * 2; i++) {
+                const r = i % 2 === 0 ? outerR : innerR;
+                const a = (i * Math.PI) / spikes - Math.PI / 2;
+                if (i === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+                else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+            }
+            ctx.closePath();
+            ctx.fillStyle = '#facc15'; ctx.strokeStyle = '#854d0e'; ctx.lineWidth = 12; ctx.lineJoin = 'round';
+            ctx.fill(); ctx.stroke();
+
+            // 顔
+            ctx.fillStyle = '#451a03';
+            ctx.beginPath(); ctx.ellipse(-34, -8, 14, 20, 0, 0, Math.PI * 2); ctx.ellipse(34, -8, 14, 20, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#f43f5e';
+            ctx.beginPath(); ctx.arc(0, 18, 22, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill();
+            ctx.restore();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        // --- カード裏面（めくる前の番号付きパネル） ---
+        function createCardBackCanvas(numberIndex, style = 'star', size = 512) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size; canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const s = size / 512;
+            ctx.save(); ctx.scale(s, s);
+
+            if (style === 'bakery') {
+                // 🥐 やきたてパンパネル
+                const bgGrad = ctx.createRadialGradient(256, 256, 20, 256, 256, 340);
+                bgGrad.addColorStop(0, '#fffbeb');
+                bgGrad.addColorStop(0.65, '#fde68a');
+                bgGrad.addColorStop(1, '#f59e0b');
+                ctx.fillStyle = bgGrad;
+                ctx.fillRect(0, 0, 512, 512);
+
+                ctx.lineWidth = 26;
+                ctx.strokeStyle = '#b45309';
+                drawRoundedRect(ctx, 22, 22, 468, 468, 70);
+                ctx.stroke();
+
+                ctx.lineWidth = 8;
+                ctx.strokeStyle = '#fef3c7';
+                drawRoundedRect(ctx, 38, 38, 436, 436, 56);
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(256, 260);
+                const bunGrad = ctx.createRadialGradient(-30, -35, 15, 0, 0, 145);
+                bunGrad.addColorStop(0, '#fcd34d');
+                bunGrad.addColorStop(0.55, '#d97706');
+                bunGrad.addColorStop(1, '#78350f');
+                ctx.fillStyle = bunGrad;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 142, 124, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 12;
+                ctx.strokeStyle = '#451a03';
+                ctx.stroke();
+
+                ctx.fillStyle = '#fffbeb';
+                ctx.strokeStyle = '#451a03';
+                ctx.lineWidth = 14;
+                ctx.font = '900 112px "M PLUS Rounded 1c", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.strokeText(String(numberIndex + 1), 0, 8);
+                ctx.fillText(String(numberIndex + 1), 0, 8);
+                ctx.restore();
+            } else {
+                // ⭐ キラキラ星パネル
+                const bgGrad = ctx.createRadialGradient(256, 256, 20, 256, 256, 340);
+                bgGrad.addColorStop(0, '#ffffff');
+                bgGrad.addColorStop(0.6, '#bae6fd');
+                bgGrad.addColorStop(1, '#38bdf8');
+                ctx.fillStyle = bgGrad;
+                ctx.fillRect(0, 0, 512, 512);
+
+                ctx.lineWidth = 26;
+                ctx.strokeStyle = '#0284c7';
+                drawRoundedRect(ctx, 22, 22, 468, 468, 70);
+                ctx.stroke();
+
+                ctx.lineWidth = 8;
+                ctx.strokeStyle = '#ffffff';
+                drawRoundedRect(ctx, 38, 38, 436, 436, 56);
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(256, 256);
+                ctx.beginPath();
+                const spikes = 5, outerR = 145, innerR = 72;
+                for (let i = 0; i < spikes * 2; i++) {
+                    const r = i % 2 === 0 ? outerR : innerR;
+                    const angle = (i * Math.PI) / spikes - Math.PI / 2;
+                    const x = Math.cos(angle) * r;
+                    const y = Math.sin(angle) * r;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+
+                const starGrad = ctx.createRadialGradient(-25, -35, 10, 0, 0, 150);
+                starGrad.addColorStop(0, '#fef08a');
+                starGrad.addColorStop(0.6, '#facc15');
+                starGrad.addColorStop(1, '#ea580c');
+                ctx.fillStyle = starGrad;
+                ctx.fill();
+
+                ctx.lineJoin = 'round';
+                ctx.lineWidth = 14;
+                ctx.strokeStyle = '#b45309';
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = '#9a3412';
+                ctx.lineWidth = 12;
+                ctx.font = '900 110px "M PLUS Rounded 1c", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.strokeText(String(numberIndex + 1), 0, 8);
+                ctx.fillText(String(numberIndex + 1), 0, 8);
+                ctx.restore();
+            }
+
+            ctx.restore();
+            return canvas;
+        }
+
+        /* ==========================================
+         * 3. 全24種イラストのカタログ定義
+         * ========================================== */
+        const CARD_CATALOG = {
+            // 🍞 パン＆なかまたち
+            anpanman:    { id: 'anpanman',    name: 'アンパンマン', theme: 'bakery',   drawFn: drawAnpanman },
+            baikinman:   { id: 'baikinman',   name: 'バイキンマン', theme: 'bakery',   drawFn: drawBaikinman },
+            dokinchan:   { id: 'dokinchan',   name: 'ドキンちゃん', theme: 'bakery',   drawFn: drawDokinchan },
+            kokinchan:   { id: 'kokinchan',   name: 'コキンちゃん', theme: 'bakery',   drawFn: drawKokinchan },
+            melonpan:    { id: 'melonpan',    name: 'メロンパン',   theme: 'bakery',   drawFn: drawMelonpan },
+            shokupan:    { id: 'shokupan',    name: 'しょくぱん',   theme: 'bakery',   drawFn: drawShokupan },
+            currypan:    { id: 'currypan',    name: 'カレーパン',   theme: 'bakery',   drawFn: drawCurrypan },
+            shortcake:   { id: 'shortcake',   name: 'いちごケーキ', theme: 'bakery',   drawFn: drawShortcake },
+
+            // 🐬 すいぞくかん＆どうぶつ
+            dolphin:     { id: 'dolphin',     name: 'いるか',       theme: 'animals',  drawFn: drawDolphin },
+            sealion:     { id: 'sealion',     name: 'あしか',       theme: 'animals',  drawFn: drawSealion },
+            penguin:     { id: 'penguin',     name: 'ペンギン',     theme: 'animals',  drawFn: drawPenguin },
+            whaleshark:  { id: 'whaleshark',  name: 'ジンベエザメ', theme: 'animals',  drawFn: drawWhaleshark },
+            lion:        { id: 'lion',        name: 'ライオン',     theme: 'animals',  drawFn: drawLion },
+            panda:       { id: 'panda',       name: 'パンダ',       theme: 'animals',  drawFn: drawPanda },
+            elephant:    { id: 'elephant',    name: 'ゾウ',         theme: 'animals',  drawFn: drawElephant },
+            giraffe:     { id: 'giraffe',     name: 'キリン',       theme: 'animals',  drawFn: drawGiraffe },
+
+            // 🚄 のりもの＆おたから
+            shinkansen:  { id: 'shinkansen',  name: 'しんかんせん', theme: 'vehicles', drawFn: drawShinkansen },
+            patrolcar:   { id: 'patrolcar',   name: 'パトカー',     theme: 'vehicles', drawFn: drawPatrolcar },
+            firetruck:   { id: 'firetruck',   name: 'しょうぼうしゃ', theme: 'vehicles', drawFn: drawFiretruck },
+            rocket:      { id: 'rocket',      name: 'ロケット',     theme: 'vehicles', drawFn: drawRocket },
+            crown:       { id: 'crown',       name: 'おうかん',     theme: 'vehicles', drawFn: drawCrown },
+            diamond:     { id: 'diamond',     name: 'ダイヤ',       theme: 'vehicles', drawFn: drawDiamond },
+            tulip:       { id: 'tulip',       name: 'チューリップ', theme: 'vehicles', drawFn: drawTulip },
+            shootingstar:{ id: 'shootingstar',name: 'おほしさま',   theme: 'vehicles', drawFn: drawShootingStar }
+        };
+
+        const faceTexCache = {};
+        const iconCanvasCache = {};
+
+        function getCardFaceTexture(cardId) {
+            if (!faceTexCache[cardId]) {
+                const tex = new THREE.CanvasTexture(CARD_CATALOG[cardId].drawFn(512, false));
+                tex.anisotropy = 4;
+                faceTexCache[cardId] = tex;
+            }
+            return faceTexCache[cardId];
+        }
+
+        function getCardIconCanvas(cardId) {
+            if (!iconCanvasCache[cardId]) {
+                iconCanvasCache[cardId] = CARD_CATALOG[cardId].drawFn(128, true);
+            }
+            return iconCanvasCache[cardId];
+        }
+
+        /* ==========================================
+         * 4. ゲーム設定＆進行ステート管理
+         * ========================================== */
+        let totalCards = 8;           // 6 | 8 | 12 | 16
+        let currentTheme = 'bakery';  // 'bakery' | 'animals' | 'vehicles' | 'mix'
+        let cardBackStyle = 'star';   // 'star' | 'bakery'
+        let playMode = '2p';          // '2p' | 'cpu' | 'solo'
+        let startPeekEnabled = true;  // 開始時に2秒間チラ見するか
+        let wiggleHintEnabled = false;// 2さいヒント（1枚めくるとペア相手が揺れる）
+
+        // 現在のゲーム状態
+        let deckCards = [];           // [{ cardId, matched, flipped }, ...]
+        let firstPickedIdx = null;
+        let secondPickedIdx = null;
+        let currentPlayer = 1;
+        let pairScores = { 1: 0, 2: 0 };
+        let soloMovesCount = 0;
+        let isInputLocked = false;
+        let isGameOver = false;
+        let cpuMemory = {};           // CPUが覚えたカード位置 { idx: cardId }
+
+        /* ==========================================
+         * 5. Three.js 3Dシーン＆パタパタカード構築
+         * ========================================== */
+        let scene, camera, renderer;
+        let boardGroup;
+        let tileMeshes = [];
+        let confettiParticles = [];
+
+        // ボード全体の広さ記録（カメラ距離の自動計算用）
+        let currentBoardSpanW = 9.0;
+        let currentBoardSpanH = 6.5;
+
+        // ドラッグでボード角度を傾ける用
+        let isDragging = false;
+        let dragStartPos = { x: 0, y: 0 };
+        let previousPointerPos = { x: 0, y: 0 };
+        let targetBoardRotation = { x: -0.16, y: 0 };
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+
+            const w = container.clientWidth || window.innerWidth;
+            const h = container.clientHeight || (window.innerHeight - 165);
+
+            camera = new THREE.PerspectiveCamera(40, w / h, 0.1, 100);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(w, h);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // ライティング
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.84);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xfffbeb, 0.85);
+            dirLight.position.set(6, 12, 11);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            const d = 9.5;
+            dirLight.shadow.camera.left = -d;
+            dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d;
+            dirLight.shadow.camera.bottom = -d;
+            scene.add(dirLight);
+
+            const rimLight = new THREE.DirectionalLight(0xfde047, 0.32);
+            rimLight.position.set(-8, -6, 6);
+            scene.add(rimLight);
+
+            boardGroup = new THREE.Group();
+            boardGroup.rotation.x = targetBoardRotation.x;
+            boardGroup.rotation.y = targetBoardRotation.y;
+            scene.add(boardGroup);
+
+            setupNewGameBoard();
+            updateCameraAndRendererSize();
+
+            window.addEventListener('resize', updateCameraAndRendererSize);
+            if (window.ResizeObserver) {
+                const ro = new ResizeObserver(() => updateCameraAndRendererSize());
+                ro.observe(container);
+            }
+
+            setupPointerInteractions(renderer.domElement);
+        }
+
+        // 画面とコンテナの縦横比、および現在のカード枚数（グリッドの広さ）に合わせてカメラ距離を自動調整
+        function updateCameraAndRendererSize() {
+            if (!camera || !renderer) return;
+            const container = document.getElementById('canvas-container');
+            const w = Math.max(100, container.clientWidth);
+            const h = Math.max(100, container.clientHeight);
+
+            renderer.setSize(w, h);
+            const aspect = w / h;
+            camera.aspect = aspect;
+
+            const fovRad = THREE.MathUtils.degToRad(camera.fov);
+            const padW = currentBoardSpanW + 1.5;
+            const padH = currentBoardSpanH + 1.5;
+
+            const distV = (padH / 2) / Math.tan(fovRad / 2);
+            const distH = (padW / 2) / (Math.tan(fovRad / 2) * aspect);
+
+            const finalDist = Math.max(distV, distH, 9.8);
+            camera.position.set(0, 0.06, finalDist);
+            camera.lookAt(0, 0.03, 0);
+            camera.updateProjectionMatrix();
+        }
+
+        // カード枚数に応じた行数・列数を返す
+        function getGridDimensions(count) {
+            if (count === 6)  return { cols: 3, rows: 2 };
+            if (count === 8)  return { cols: 4, rows: 2 };
+            if (count === 12) return { cols: 4, rows: 3 };
+            return { cols: 4, rows: 4 }; // 16
+        }
+
+        // デッキのシャッフル生成と3Dボード＆タイルの構築
+        function setupNewGameBoard() {
+            while (boardGroup.children.length > 0) {
+                boardGroup.remove(boardGroup.children[0]);
+            }
+            tileMeshes = [];
+            confettiParticles.forEach(p => scene.remove(p));
+            confettiParticles = [];
+
+            firstPickedIdx = null;
+            secondPickedIdx = null;
+            currentPlayer = 1;
+            pairScores = { 1: 0, 2: 0 };
+            soloMovesCount = 0;
+            cpuMemory = {};
+            isGameOver = false;
+
+            document.getElementById('result-overlay').classList.add('hidden');
+            document.getElementById('match-toast').classList.add('hidden');
+
+            // 1. テーマに合わせてペアにするイラストを選出
+            const allKeys = Object.keys(CARD_CATALOG);
+            let poolKeys = currentTheme === 'mix'
+                ? [...allKeys]
+                : allKeys.filter(k => CARD_CATALOG[k].theme === currentTheme);
+
+            // シャッフルして totalCards / 2 個のイラストを選ぶ
+            poolKeys.sort(() => Math.random() - 0.5);
+            const numPairs = totalCards / 2;
+            const chosenKeys = poolKeys.slice(0, numPairs);
+
+            // ペア（2枚ずつ）にしてシャッフル
+            const pairArray = [...chosenKeys, ...chosenKeys];
+            pairArray.sort(() => Math.random() - 0.5);
+
+            deckCards = pairArray.map((cardId, idx) => ({
+                index: idx,
+                cardId,
+                matched: false,
+                flipped: false
+            }));
+
+            // 2. グリッド寸法とボード枠の生成
+            const { cols, rows } = getGridDimensions(totalCards);
+            const spacing = 2.02;
+            const boardInnerW = cols * spacing + 0.45;
+            const boardInnerH = rows * spacing + 0.45;
+            const boardOuterW = boardInnerW + 0.65;
+            const boardOuterH = boardInnerH + 0.65;
+
+            currentBoardSpanW = boardOuterW;
+            currentBoardSpanH = boardOuterH;
+
+            // テーマごとのボード枠カラー
+            const frameColors = {
+                bakery:   { outer: 0xd97706, inner: 0xfef3c7, pin: 0xfacc15 },
+                animals:  { outer: 0x0284c7, inner: 0xe0f2fe, pin: 0x38bdf8 },
+                vehicles: { outer: 0x15803d, inner: 0xdcfce7, pin: 0xfacc15 },
+                mix:      { outer: 0x9333ea, inner: 0xfdf4ff, pin: 0xf472b6 }
+            }[currentTheme];
+
+            const outerMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(boardOuterW, boardOuterH, 0.5),
+                new THREE.MeshStandardMaterial({ color: frameColors.outer, roughness: 0.35 })
+            );
+            outerMesh.position.z = -0.42;
+            outerMesh.receiveShadow = true;
+            boardGroup.add(outerMesh);
+
+            const innerMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(boardInnerW, boardInnerH, 0.42),
+                new THREE.MeshStandardMaterial({ color: frameColors.inner, roughness: 0.4 })
+            );
+            innerMesh.position.z = -0.34;
+            innerMesh.receiveShadow = true;
+            boardGroup.add(innerMesh);
+
+            // 四隅の飾りピン
+            const pinGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.56, 20);
+            pinGeo.rotateX(Math.PI / 2);
+            const pinMat = new THREE.MeshStandardMaterial({ color: frameColors.pin, roughness: 0.25 });
+            const px = boardOuterW / 2 - 0.34;
+            const py = boardOuterH / 2 - 0.34;
+            [[-px, -py], [px, -py], [-px, py], [px, py]].forEach(([cx, cy]) => {
+                const pin = new THREE.Mesh(pinGeo, pinMat);
+                pin.position.set(cx, cy, -0.32);
+                boardGroup.add(pin);
+            });
+
+            // 3. 各カードタイルの3Dメッシュ生成
+            const tileGeo = new THREE.BoxGeometry(1.76, 1.76, 0.32);
+
+            for (let i = 0; i < totalCards; i++) {
+                const r = Math.floor(i / cols);
+                const c = i % cols;
+                const x = (c - (cols - 1) / 2) * spacing;
+                const y = ((rows - 1) / 2 - r) * spacing;
+
+                const backTex = new THREE.CanvasTexture(createCardBackCanvas(i, cardBackStyle, 512));
+                backTex.anisotropy = 4;
+
+                const sideMat = new THREE.MeshStandardMaterial({
+                    color: 0xffffff,
+                    roughness: 0.25
+                });
+                // Front (+Z): めくる前の番号つき星・パンパネル
+                const frontMat = new THREE.MeshStandardMaterial({
+                    map: backTex,
+                    roughness: 0.22
+                });
+                // Back (-Z): めくった後のキャラクターイラスト
+                const charMat = new THREE.MeshStandardMaterial({
+                    map: getCardFaceTexture(deckCards[i].cardId),
+                    roughness: 0.22
+                });
+
+                const materials = [sideMat, sideMat, sideMat, sideMat, frontMat, charMat];
+                const tileMesh = new THREE.Mesh(tileGeo, materials);
+                tileMesh.position.set(x, y, 0);
+                tileMesh.castShadow = true;
+                tileMesh.receiveShadow = true;
+
+                tileMesh.userData = {
+                    index: i,
+                    baseX: x,
+                    baseY: y,
+                    baseZ: 0,
+                    currentRotY: 0,
+                    targetRotY: 0,
+                    isFlipping: false,
+                    flipProgress: 0,
+                    celebrateTimer: 0
+                };
+
+                boardGroup.add(tileMesh);
+                tileMeshes.push(tileMesh);
+            }
+
+            updateCameraAndRendererSize();
+            updateHeaderAndTurnUI();
+
+            // スタート時のチラ見タイムがONなら、最初に全カードをくるっと見せてから裏返す
+            if (startPeekEnabled) {
+                triggerPeekAllCards(1800);
+            } else {
+                isInputLocked = false;
+            }
+        }
+
+        // 指定タイルの3D回転角度をセット（showFace = true で裏面(-Z: π)、false で表面(+Z: 0)）
+        function setTileFlipState(idx, showFace) {
+            const mesh = tileMeshes[idx];
+            if (!mesh) return;
+            const ud = mesh.userData;
+
+            const currentMult = Math.round(ud.targetRotY / Math.PI);
+            let nextMult = currentMult + 1;
+            if (showFace && nextMult % 2 === 0) nextMult++;
+            if (!showFace && nextMult % 2 !== 0) nextMult++;
+
+            ud.targetRotY = nextMult * Math.PI;
+            ud.isFlipping = true;
+            ud.flipProgress = 0;
+        }
+
+        // 👀 チラ見機能（まだ揃っていないカードを少しの間だけ全部見せる）
+        function triggerPeekAllCards(durationMs = 1500) {
+            if (isGameOver) return;
+            isInputLocked = true;
+            updateHeaderAndTurnUI();
+
+            sound.playWaveChime();
+            const guideText = document.getElementById('guide-text');
+            guideText.textContent = '👀 チラ見タイム！ どこになにがあるか見てみよう！';
+
+            deckCards.forEach((card, idx) => {
+                if (!card.matched && !card.flipped) {
+                    setTimeout(() => {
+                        setTileFlipState(idx, true);
+                    }, idx * 35);
+                }
+            });
+
+            setTimeout(() => {
+                sound.playWaveChime();
+                deckCards.forEach((card, idx) => {
+                    if (!card.matched && !card.flipped) {
+                        setTimeout(() => {
+                            setTileFlipState(idx, false);
+                        }, idx * 35);
+                    }
+                });
+
+                setTimeout(() => {
+                    isInputLocked = false;
+                    updateHeaderAndTurnUI();
+                    checkAndTriggerCpuTurn();
+                }, totalCards * 35 + 320);
+            }, durationMs);
+        }
+
+        /* ==========================================
+         * 6. タップ操作＆絵合わせ判定ロジック
+         * ========================================== */
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+
+        function setupPointerInteractions(domElement) {
+            domElement.addEventListener('pointerdown', (e) => {
+                isDragging = true;
+                dragStartPos.x = e.clientX;
+                dragStartPos.y = e.clientY;
+                previousPointerPos.x = e.clientX;
+                previousPointerPos.y = e.clientY;
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - previousPointerPos.x;
+                const dy = e.clientY - previousPointerPos.y;
+                previousPointerPos.x = e.clientX;
+                previousPointerPos.y = e.clientY;
+
+                targetBoardRotation.y = Math.max(-0.48, Math.min(0.48, targetBoardRotation.y + dx * 0.006));
+                targetBoardRotation.x = Math.max(-0.55, Math.min(0.32, targetBoardRotation.x + dy * 0.006));
+            });
+
+            window.addEventListener('pointerup', (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+
+                const moveDist = Math.hypot(e.clientX - dragStartPos.x, e.clientY - dragStartPos.y);
+                if (moveDist < 18) {
+                    handleBoardTap(e.clientX, e.clientY);
+                }
+            });
+        }
+
+        function handleBoardTap(clientX, clientY) {
+            if (isInputLocked || isGameOver) return;
+            if (playMode === 'cpu' && currentPlayer === 2) return;
+
+            const rect = renderer.domElement.getBoundingClientRect();
+            pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+            pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(pointer, camera);
+            const intersects = raycaster.intersectObjects(tileMeshes);
+
+            if (intersects.length > 0) {
+                const idx = intersects[0].object.userData.index;
+                onCardSelected(idx);
+            }
+        }
+
+        function onCardSelected(idx) {
+            const card = deckCards[idx];
+            // すでにめくられている、または揃っているカードを触ったときは楽しくちょこんと跳ねる
+            if (card.flipped || card.matched) {
+                tileMeshes[idx].userData.isFlipping = true;
+                tileMeshes[idx].userData.flipProgress = 0;
+                sound.playFlip(false);
+                return;
+            }
+
+            // カードを表（イラスト面）にめくる
+            card.flipped = true;
+            cpuMemory[idx] = card.cardId; // CPUの記憶にも記録
+
+            if (firstPickedIdx === null) {
+                // 1枚目の選択
+                firstPickedIdx = idx;
+                setTileFlipState(idx, true);
+                sound.playFlip(false);
+                updateHeaderAndTurnUI();
+                return;
+            }
+
+            // 2枚目の選択
+            secondPickedIdx = idx;
+            isInputLocked = true;
+            soloMovesCount++;
+            setTileFlipState(idx, true);
+            sound.playFlip(true);
+            updateHeaderAndTurnUI();
+
+            const card1 = deckCards[firstPickedIdx];
+            const card2 = deckCards[secondPickedIdx];
+
+            if (card1.cardId === card2.cardId) {
+                // 🎉 ペア成立！
+                setTimeout(() => {
+                    handleMatchSuccess(firstPickedIdx, secondPickedIdx);
+                }, 480);
+            } else {
+                // 💭 違った場合：お子様が2枚目の絵をしっかり覚えられるよう1.15秒待ってから裏返す
+                const guideText = document.getElementById('guide-text');
+                guideText.textContent = 'おしい！ どこの数字だったか覚えておこう♪';
+
+                setTimeout(() => {
+                    sound.playMismatch();
+                    card1.flipped = false;
+                    card2.flipped = false;
+                    setTileFlipState(firstPickedIdx, false);
+                    setTileFlipState(secondPickedIdx, false);
+
+                    firstPickedIdx = null;
+                    secondPickedIdx = null;
+
+                    // 2人またはCPUモードならプレイヤー交代
+                    if (playMode !== 'solo') {
+                        currentPlayer = currentPlayer === 1 ? 2 : 1;
+                    }
+
+                    setTimeout(() => {
+                        isInputLocked = false;
+                        updateHeaderAndTurnUI();
+                        checkAndTriggerCpuTurn();
+                    }, 340);
+                }, 1150);
+            }
+        }
+
+        // ペアがそろったときの祝福演出
+        function handleMatchSuccess(idx1, idx2) {
+            const card1 = deckCards[idx1];
+            const card2 = deckCards[idx2];
+            card1.matched = true;
+            card2.matched = true;
+
+            delete cpuMemory[idx1];
+            delete cpuMemory[idx2];
+
+            pairScores[currentPlayer]++;
+            sound.playMatchSuccess();
+
+            // そろった2枚のカードの側面をゴールドに輝かせてバウンスさせる
+            [idx1, idx2].forEach(i => {
+                const m = tileMeshes[i];
+                for (let s = 0; s < 4; s++) {
+                    m.material[s].color.setHex(0xfacc15);
+                    m.material[s].emissive.setHex(0xf59e0b);
+                    m.material[s].emissiveIntensity = 0.35;
+                }
+                m.userData.celebrateTimer = 1.0;
+                spawnLocalSparkles(m.position.x, m.position.y);
+            });
+
+            // トースト通知を表示
+            const charInfo = CARD_CATALOG[card1.cardId];
+            showMatchToast(charInfo);
+
+            firstPickedIdx = null;
+            secondPickedIdx = null;
+            updateHeaderAndTurnUI();
+
+            // 全ペアそろったか確認
+            const allMatched = deckCards.every(c => c.matched);
+            if (allMatched) {
+                setTimeout(() => {
+                    handleGameComplete();
+                }, 900);
+                return;
+            }
+
+            // そろったときは続けてもう1回めくれる！（一般的な神経衰弱ルール＆お子様が喜ぶ連続チャンス）
+            setTimeout(() => {
+                isInputLocked = false;
+                updateHeaderAndTurnUI();
+                checkAndTriggerCpuTurn();
+            }, 950);
+        }
+
+        function showMatchToast(charInfo) {
+            const toast = document.getElementById('match-toast');
+            const canvas = document.getElementById('toast-char-canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 128, 128);
+            ctx.drawImage(getCardIconCanvas(charInfo.id), 0, 0);
+
+            document.getElementById('toast-title').textContent = 'やったー！ そろったよ！🎉';
+            document.getElementById('toast-subtitle').textContent = `「${charInfo.name}」のペアをゲット！`;
+            toast.classList.remove('hidden');
+
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 1150);
+        }
+
+        // そろったカードの位置からキラキラ紙吹雪を飛ばす
+        function spawnLocalSparkles(x, y) {
+            const colors = [0xfacc15, 0xf43f5e, 0x38bdf8, 0x4ade80, 0xffffff];
+            const geo = new THREE.PlaneGeometry(0.24, 0.24);
+            for (let i = 0; i < 18; i++) {
+                const mat = new THREE.MeshBasicMaterial({
+                    color: colors[i % colors.length],
+                    side: THREE.DoubleSide
+                });
+                const p = new THREE.Mesh(geo, mat);
+                p.position.set(x, y, 0.35);
+                const angle = (Math.PI * 2 * i) / 18;
+                const speed = 0.04 + Math.random() * 0.05;
+                p.userData = {
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed + 0.03,
+                    vz: 0.04 + Math.random() * 0.04,
+                    vrx: (Math.random() - 0.5) * 0.2,
+                    vry: (Math.random() - 0.5) * 0.2,
+                    life: 45
+                };
+                boardGroup.add(p);
+                confettiParticles.push(p);
+            }
+        }
+
+        /* ==========================================
+         * 7. コンピュータ（CPU）思考ロジック
+         * ========================================== */
+        function checkAndTriggerCpuTurn() {
+            if (isGameOver || isInputLocked || playMode !== 'cpu' || currentPlayer !== 2) return;
+            isInputLocked = true;
+            updateHeaderAndTurnUI();
+
+            const guideText = document.getElementById('guide-text');
+            guideText.textContent = '🤖 コンピュータがどれをめくるか考えています…';
+
+            setTimeout(() => {
+                if (isGameOver) return;
+                const availableIndices = deckCards.filter(c => !c.matched && !c.flipped).map(c => c.index);
+                if (availableIndices.length < 2) return;
+
+                // 記憶しているペアがあるか探す（幼児でも勝てるように65%の確率で記憶を活用）
+                let pick1 = null;
+                let pick2 = null;
+
+                if (Math.random() < 0.65) {
+                    const seenByCardId = {};
+                    for (const [idxStr, cId] of Object.entries(cpuMemory)) {
+                        const idx = Number(idxStr);
+                        if (deckCards[idx] && !deckCards[idx].matched) {
+                            if (seenByCardId[cId] !== undefined) {
+                                pick1 = seenByCardId[cId];
+                                pick2 = idx;
+                                break;
+                            }
+                            seenByCardId[cId] = idx;
+                        }
+                    }
+                }
+
+                // 1枚目を決定
+                if (pick1 === null) {
+                    pick1 = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+                }
+
+                isInputLocked = false;
+                onCardSelected(pick1);
+                isInputLocked = true;
+
+                // 1枚目を見た結果、そのペアの位置を記憶していたら70%の確率でそこを選ぶ
+                setTimeout(() => {
+                    if (isGameOver) return;
+                    const firstCardId = deckCards[pick1].cardId;
+                    if (pick2 === null && Math.random() < 0.7) {
+                        for (const [idxStr, cId] of Object.entries(cpuMemory)) {
+                            const idx = Number(idxStr);
+                            if (idx !== pick1 && cId === firstCardId && !deckCards[idx].matched) {
+                                pick2 = idx;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (pick2 === null) {
+                        const remaining = availableIndices.filter(i => i !== pick1);
+                        pick2 = remaining[Math.floor(Math.random() * remaining.length)];
+                    }
+
+                    isInputLocked = false;
+                    onCardSelected(pick2);
+                }, 850);
+            }, 750);
+        }
+
+        /* ==========================================
+         * 8. 全ペア完成セレブレーション
+         * ========================================== */
+        function handleGameComplete() {
+            isGameOver = true;
+            isInputLocked = false;
+            sound.playWinFanfare();
+            spawnVictoryConfettiRain();
+
+            const overlay = document.getElementById('result-overlay');
+            const scorePill = document.getElementById('result-score-pill');
+            const titleEl = document.getElementById('result-title');
+            const subEl = document.getElementById('result-subtitle');
+            const guideText = document.getElementById('guide-text');
+
+            const p1Info = getThemePlayerInfo(1);
+            const p2Info = getThemePlayerInfo(2);
+
+            if (playMode === 'solo') {
+                scorePill.textContent = `${totalCards / 2}ペア完成！（めくった回数：${soloMovesCount}かい）`;
+                titleEl.textContent = 'ぜんぶそろったよ！🎉';
+                titleEl.className = 'text-xl sm:text-2xl font-black text-orange-600 drop-shadow-sm mb-1';
+                subEl.textContent = 'すごい記憶力！ 最後までよくがんばったね！✨';
+                guideText.textContent = '🎊 やったね！ ぜんぶのペアが見つかったよ！ 🎊';
+            } else {
+                const s1 = pairScores[1];
+                const s2 = pairScores[2];
+                scorePill.textContent = `${p1Info.name} ${s1}ペア  -  ${p2Info.name} ${s2}ペア`;
+
+                if (s1 > s2) {
+                    titleEl.textContent = `${p1Info.name}のかち！`;
+                    titleEl.className = 'text-xl sm:text-2xl font-black text-red-600 drop-shadow-sm mb-1';
+                    subEl.textContent = `やったね！ ${s1}ペア集めて大勝利！🎉`;
+                    guideText.textContent = `🎉 ${p1Info.name}のかち！ おめでとう！ 🎉`;
+                } else if (s2 > s1) {
+                    titleEl.textContent = `${p2Info.name}のかち！`;
+                    titleEl.className = 'text-xl sm:text-2xl font-black text-purple-700 drop-shadow-sm mb-1';
+                    subEl.textContent = `すごい！ ${s2}ペア集めて大勝利！🎉`;
+                    guideText.textContent = `🎉 ${p2Info.name}のかち！ おめでとう！ 🎉`;
+                } else {
+                    titleEl.textContent = 'なかよし ひきわけ〜！';
+                    titleEl.className = 'text-xl sm:text-2xl font-black text-amber-600 drop-shadow-sm mb-1';
+                    subEl.textContent = `どっちも ${s1}ペアずつでぴったり同じ！🤝`;
+                    guideText.textContent = '🤝 なかよし ひきわけ！ どっちもすごい！ 🤝';
+                }
+            }
+
+            overlay.classList.remove('hidden');
+        }
+
+        function spawnVictoryConfettiRain() {
+            const colors = [0xef4444, 0xfacc15, 0x38bdf8, 0x4ade80, 0xf472b6, 0xffffff];
+            const geo = new THREE.PlaneGeometry(0.32, 0.2);
+
+            for (let i = 0; i < 80; i++) {
+                const mat = new THREE.MeshBasicMaterial({
+                    color: colors[i % colors.length],
+                    side: THREE.DoubleSide
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(
+                    (Math.random() - 0.5) * 11,
+                    5.2 + Math.random() * 4,
+                    1.6 + (Math.random() - 0.5) * 2.5
+                );
+                mesh.rotation.set(
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI
+                );
+                mesh.userData = {
+                    isRain: true,
+                    vy: -0.045 - Math.random() * 0.05,
+                    vx: (Math.random() - 0.5) * 0.03,
+                    vrx: (Math.random() - 0.5) * 0.14,
+                    vry: (Math.random() - 0.5) * 0.14
+                };
+                scene.add(mesh);
+                confettiParticles.push(mesh);
+            }
+        }
+
+        /* ==========================================
+         * 9. ヘッダーUI・設定モーダル更新処理
+         * ========================================== */
+        // 選択中のテーマに合わせてプレイヤー1・2の代表マスコットを返す
+        function getThemePlayerInfo(playerNum) {
+            const map = {
+                bakery:   { 1: { id: 'anpanman', name: 'アンパンマン' }, 2: { id: 'dokinchan', name: 'ドキンちゃん' } },
+                animals:  { 1: { id: 'dolphin',  name: 'いるかさん'   }, 2: { id: 'panda',     name: 'パンダさん'   } },
+                vehicles: { 1: { id: 'shinkansen', name: 'しんかんせん' }, 2: { id: 'patrolcar', name: 'パトカー'   } },
+                mix:      { 1: { id: 'anpanman', name: 'アンパンマン' }, 2: { id: 'dolphin',   name: 'いるかさん'   } }
+            }[currentTheme];
+
+            const base = map[playerNum];
+            if (playMode === 'cpu' && playerNum === 2) {
+                return { id: base.id, name: `${base.name}(CPU)` };
+            }
+            return base;
+        }
+
+        function updateHeaderAndTurnUI() {
+            document.body.className = `bg-${currentTheme}`;
+
+            const twoPlayerCards = document.getElementById('two-player-cards');
+            const soloCard = document.getElementById('solo-player-card');
+            const peekBtn = document.getElementById('peek-btn');
+            peekBtn.disabled = isInputLocked || isGameOver;
+
+            const p1Info = getThemePlayerInfo(1);
+            const p2Info = getThemePlayerInfo(2);
+
+            if (playMode === 'solo') {
+                twoPlayerCards.classList.add('hidden');
+                soloCard.classList.remove('hidden');
+
+                const ctxSolo = document.getElementById('icon-solo').getContext('2d');
+                ctxSolo.clearRect(0, 0, 128, 128);
+                ctxSolo.drawImage(getCardIconCanvas(p1Info.id), 0, 0);
+
+                const foundPairs = deckCards.filter(c => c.matched).length / 2;
+                document.getElementById('solo-pairs-text').textContent = `${foundPairs} / ${totalCards / 2} ペア`;
+                document.getElementById('solo-moves-text').textContent = `${soloMovesCount} かい`;
+            } else {
+                twoPlayerCards.classList.remove('hidden');
+                soloCard.classList.add('hidden');
+
+                const ctx1 = document.getElementById('icon-p1').getContext('2d');
+                ctx1.clearRect(0, 0, 128, 128);
+                ctx1.drawImage(getCardIconCanvas(p1Info.id), 0, 0);
+
+                const ctx2 = document.getElementById('icon-p2').getContext('2d');
+                ctx2.clearRect(0, 0, 128, 128);
+                ctx2.drawImage(getCardIconCanvas(p2Info.id), 0, 0);
+
+                document.getElementById('name-p1').textContent = p1Info.name;
+                document.getElementById('name-p2').textContent = p2Info.name;
+                document.getElementById('tag-p2').textContent = playMode === 'cpu' ? 'こうこう (CPU)' : 'こうこう';
+
+                document.getElementById('score-p1').textContent = pairScores[1];
+                document.getElementById('score-p2').textContent = pairScores[2];
+
+                const badgeP1 = document.getElementById('badge-p1');
+                const badgeP2 = document.getElementById('badge-p2');
+                badgeP1.className = `cursor-pointer turn-badge ${currentPlayer === 1 ? 'turn-active' : 'turn-inactive'} bg-gradient-to-b from-red-500 to-orange-500 text-white p-1.5 sm:p-2 rounded-2xl sm:rounded-3xl border-[3px] border-white flex items-center justify-between shadow-md`;
+                badgeP2.className = `cursor-pointer turn-badge ${currentPlayer === 2 ? 'turn-active' : 'turn-inactive'} bg-gradient-to-b from-purple-600 to-indigo-700 text-white p-1.5 sm:p-2 rounded-2xl sm:rounded-3xl border-[3px] border-white flex items-center justify-between shadow-md`;
+            }
+
+            // ガイドバナーのテキスト更新
+            if (!isInputLocked && !isGameOver) {
+                const guideText = document.getElementById('guide-text');
+                const activeName = playMode === 'solo' ? '' : `${(currentPlayer === 1 ? p1Info : p2Info).name}のばん！ `;
+
+                if (firstPickedIdx === null) {
+                    guideText.textContent = `${activeName}1まいめの パネルを タッチしてね！`;
+                    guideText.className = `text-xs sm:text-sm font-black ${currentPlayer === 1 ? 'text-red-600' : 'text-purple-700'}`;
+                } else {
+                    const pickedCardName = CARD_CATALOG[deckCards[firstPickedIdx].cardId].name;
+                    guideText.textContent = `「${pickedCardName}」とおなじ絵は どこかな？`;
+                    guideText.className = 'text-xs sm:text-sm font-black text-amber-700';
+                }
+            }
+        }
+
+        // 設定モーダル内のボタン表示同期
+        function renderSettingsModalUI() {
+            // 1. 枚数ボタン
+            [6, 8, 12, 16].forEach(cnt => {
+                const btn = document.getElementById(`count-btn-${cnt}`);
+                if (totalCards === cnt) {
+                    btn.className = 'py-2 px-2 rounded-xl font-black text-xs cursor-pointer bg-amber-500 text-white shadow border-2 border-amber-700 flex flex-col items-center scale-105';
+                } else {
+                    btn.className = 'py-2 px-2 rounded-xl font-black text-xs cursor-pointer bg-amber-50 text-amber-950 border-2 border-amber-200 hover:bg-amber-100 flex flex-col items-center';
+                }
+            });
+
+            // 2. テーマボタン
+            ['bakery', 'animals', 'vehicles', 'mix'].forEach(th => {
+                const btn = document.getElementById(`theme-btn-${th}`);
+                if (currentTheme === th) {
+                    btn.className = 'p-2.5 rounded-xl font-black text-xs cursor-pointer bg-orange-100 text-orange-950 border-3 border-orange-500 shadow-inner flex items-center gap-2 text-left';
+                } else {
+                    btn.className = 'p-2.5 rounded-xl font-black text-xs cursor-pointer bg-slate-50 text-slate-700 border-2 border-slate-200 hover:bg-orange-50 flex items-center gap-2 text-left';
+                }
+            });
+
+            // 3. 裏面デザインボタン
+            ['star', 'bakery'].forEach(st => {
+                const btn = document.getElementById(`back-btn-${st}`);
+                if (cardBackStyle === st) {
+                    btn.className = 'border-3 border-sky-500 bg-sky-100 text-sky-950 rounded-xl p-2.5 flex items-center gap-2 font-black text-xs sm:text-sm cursor-pointer shadow-inner';
+                } else {
+                    btn.className = 'border-2 border-slate-200 bg-slate-50 text-slate-600 rounded-xl p-2.5 flex items-center gap-2 font-black text-xs sm:text-sm cursor-pointer hover:bg-sky-50';
+                }
+            });
+
+            // 4. プレイモードボタン
+            ['2p', 'cpu', 'solo'].forEach(md => {
+                const btn = document.getElementById(`mode-btn-${md}`);
+                if (playMode === md) {
+                    btn.className = 'py-2 px-1.5 rounded-xl font-black text-xs cursor-pointer bg-emerald-500 text-white shadow border-2 border-emerald-700 text-center';
+                } else {
+                    btn.className = 'py-2 px-1.5 rounded-xl font-black text-xs cursor-pointer bg-slate-50 text-slate-700 border-2 border-slate-200 hover:bg-emerald-50 text-center';
+                }
+            });
+
+            // 5. トグルボタン群
+            const peekToggle = document.getElementById('setting-startpeek-btn');
+            peekToggle.textContent = startPeekEnabled ? 'ON' : 'OFF';
+            peekToggle.className = startPeekEnabled
+                ? 'bg-sky-500 hover:bg-sky-400 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2'
+                : 'bg-slate-400 hover:bg-slate-500 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2';
+
+            const hintToggle = document.getElementById('setting-wigglehint-btn');
+            hintToggle.textContent = wiggleHintEnabled ? 'ON' : 'OFF';
+            hintToggle.className = wiggleHintEnabled
+                ? 'bg-pink-500 hover:bg-pink-400 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2'
+                : 'bg-slate-400 hover:bg-slate-500 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2';
+
+            const soundToggle = document.getElementById('setting-sound-btn');
+            soundToggle.textContent = sound.enabled ? '🔊 ON' : '🔇 OFF';
+            soundToggle.className = sound.enabled
+                ? 'bg-amber-500 hover:bg-amber-400 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2'
+                : 'bg-slate-400 hover:bg-slate-500 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2';
+        }
+
+        // 設定変更ハンドラ群
+        window.changeCardCount = function(newCount) {
+            if (totalCards === newCount) return;
+            totalCards = newCount;
+            sound.playWaveChime();
+            renderSettingsModalUI();
+            setupNewGameBoard();
+        };
+
+        window.changeTheme = function(newTheme) {
+            if (currentTheme === newTheme) return;
+            currentTheme = newTheme;
+            sound.playWaveChime();
+            renderSettingsModalUI();
+            setupNewGameBoard();
+        };
+
+        window.changeCardBackStyle = function(newStyle) {
+            if (cardBackStyle === newStyle) return;
+            cardBackStyle = newStyle;
+            sound.playFlip(false);
+            // 進行をリセットせず、表面テクスチャだけ即時差し替え
+            tileMeshes.forEach((mesh, idx) => {
+                const backTex = new THREE.CanvasTexture(createCardBackCanvas(idx, cardBackStyle, 512));
+                backTex.anisotropy = 4;
+                mesh.material[4].map = backTex;
+                mesh.material[4].needsUpdate = true;
+            });
+            renderSettingsModalUI();
+        };
+
+        window.changePlayMode = function(newMode) {
+            playMode = newMode;
+            sound.playFlip(false);
+            updateHeaderAndTurnUI();
+            renderSettingsModalUI();
+        };
+
+        window.selectTurnManually = function(playerNum) {
+            if (isInputLocked || isGameOver || playMode === 'solo') return;
+            currentPlayer = playerNum;
+            sound.playFlip(false);
+            updateHeaderAndTurnUI();
+            checkAndTriggerCpuTurn();
+        };
+
+        window.resetGame = function() {
+            sound.playWaveChime();
+            targetBoardRotation.x = -0.16;
+            targetBoardRotation.y = 0;
+            setupNewGameBoard();
+        };
+
+        /* ==========================================
+         * 10. メイン60fpsアニメーションループ
+         * ========================================== */
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const elapsedTime = clock.getElapsedTime();
+
+            // 1. ボード角度の滑らかな追従
+            if (boardGroup) {
+                boardGroup.rotation.x += (targetBoardRotation.x - boardGroup.rotation.x) * 0.12;
+                boardGroup.rotation.y += (targetBoardRotation.y - boardGroup.rotation.y) * 0.12;
+            }
+
+            // 2さいヒントがONのとき、1枚目とペアになるカードを探す
+            let hintPartnerIdx = -1;
+            if (wiggleHintEnabled && firstPickedIdx !== null && secondPickedIdx === null && !isInputLocked) {
+                const targetId = deckCards[firstPickedIdx].cardId;
+                const partner = deckCards.find((c, i) => i !== firstPickedIdx && c.cardId === targetId && !c.matched);
+                if (partner) hintPartnerIdx = partner.index;
+            }
+
+            // 2. 各カードタイルのパタパタ回転・ジャンプ・おたすけ揺れアニメーション
+            tileMeshes.forEach((mesh, idx) => {
+                const ud = mesh.userData;
+
+                // Y軸回転のイージング
+                const rotDiff = ud.targetRotY - ud.currentRotY;
+                if (Math.abs(rotDiff) > 0.001) {
+                    ud.currentRotY += rotDiff * 0.2;
+                    mesh.rotation.y = ud.currentRotY;
+                } else {
+                    ud.currentRotY = ud.targetRotY;
+                    mesh.rotation.y = ud.targetRotY;
+                }
+
+                // めくれるときのジャンプ動作
+                if (ud.isFlipping) {
+                    ud.flipProgress += 0.08;
+                    if (ud.flipProgress >= 1) {
+                        ud.flipProgress = 0;
+                        ud.isFlipping = false;
+                        mesh.position.z = ud.baseZ;
+                    } else {
+                        mesh.position.z = ud.baseZ + Math.sin(ud.flipProgress * Math.PI) * 1.15;
+                    }
+                }
+
+                // ペア成立時の祝福バウンス
+                if (ud.celebrateTimer > 0.01) {
+                    const s = 1 + Math.sin(ud.celebrateTimer * Math.PI * 2) * 0.14;
+                    mesh.scale.set(s, s, s);
+                    ud.celebrateTimer *= 0.92;
+                } else {
+                    mesh.scale.set(1, 1, 1);
+                    ud.celebrateTimer = 0;
+                }
+
+                // 💡 2さいヒント：ペアになる相方のカードがちょこっと揺れて教えてくれる
+                if (idx === hintPartnerIdx && !ud.isFlipping) {
+                    mesh.rotation.z = Math.sin(elapsedTime * 11) * 0.09;
+                    mesh.position.z = 0.12 + Math.abs(Math.sin(elapsedTime * 5.5)) * 0.16;
+                } else {
+                    mesh.rotation.z = 0;
+                }
+            });
+
+            // 3. キラキラ粒子＆紙吹雪のアニメーション
+            for (let i = confettiParticles.length - 1; i >= 0; i--) {
+                const p = confettiParticles[i];
+                if (p.userData.isRain) {
+                    p.position.y += p.userData.vy;
+                    p.position.x += p.userData.vx + Math.sin(elapsedTime * 3 + i) * 0.01;
+                    p.rotation.x += p.userData.vrx;
+                    p.rotation.y += p.userData.vry;
+                    if (p.position.y < -6) p.position.y = 6;
+                } else {
+                    p.position.x += p.userData.vx;
+                    p.position.y += p.userData.vy;
+                    p.position.z += p.userData.vz;
+                    p.userData.vz -= 0.003;
+                    p.rotation.x += p.userData.vrx;
+                    p.rotation.y += p.userData.vry;
+                    p.userData.life--;
+                    if (p.userData.life <= 0) {
+                        boardGroup.remove(p);
+                        confettiParticles.splice(i, 1);
+                    }
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // 初期化＆イベント設定
+        window.onload = function() {
+            init3D();
+            renderSettingsModalUI();
+
+            // 👀 チラ見ボタン
+            document.getElementById('peek-btn').addEventListener('click', () => {
+                triggerPeekAllCards(1500);
+            });
+
+            // ✨ もういっかい！ボタン
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                resetGame();
+            });
+
+            // ⚙️ せっていモーダル開閉
+            const settingsModal = document.getElementById('settings-modal');
+            const openSettings = () => {
+                sound.playFlip(false);
+                renderSettingsModalUI();
+                settingsModal.classList.remove('hidden');
+            };
+            const closeSettings = () => {
+                sound.playFlip(true);
+                settingsModal.classList.add('hidden');
+                checkAndTriggerCpuTurn();
+            };
+
+            document.getElementById('settings-btn').addEventListener('click', openSettings);
+            document.getElementById('close-settings-btn').addEventListener('click', closeSettings);
+            document.getElementById('ok-settings-btn').addEventListener('click', closeSettings);
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === settingsModal) closeSettings();
+            });
+
+            // スタート時チラ見トグル
+            document.getElementById('setting-startpeek-btn').addEventListener('click', () => {
+                startPeekEnabled = !startPeekEnabled;
+                sound.playFlip(false);
+                renderSettingsModalUI();
+            });
+
+            // 2さいヒントトグル
+            document.getElementById('setting-wigglehint-btn').addEventListener('click', () => {
+                wiggleHintEnabled = !wiggleHintEnabled;
+                sound.playFlip(false);
+                renderSettingsModalUI();
+            });
+
+            // サウンドトグル
+            document.getElementById('setting-sound-btn').addEventListener('click', () => {
+                sound.enabled = !sound.enabled;
+                if (sound.enabled) sound.playFlip(false);
+                renderSettingsModalUI();
+            });
+
+            animate();
+        };
+    </script>
+</body>
+</html>

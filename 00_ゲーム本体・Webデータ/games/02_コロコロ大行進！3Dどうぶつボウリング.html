@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>コロコロ大行進！3Dどうぶつボウリング</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            background: linear-gradient(180deg, #38bdf8 0%, #0284c7 55%, #0369a1 100%);
+            transition: background 0.6s ease;
+        }
+        #canvas-container {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            touch-action: none;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .ui-layer {
+            position: relative;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .interactive {
+            pointer-events: auto;
+        }
+        .bubble-btn {
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease;
+            box-shadow: 0 6px 0 rgba(0,0,0,0.18), 0 10px 20px rgba(0,0,0,0.15), inset 0 3px 6px rgba(255,255,255,0.65);
+        }
+        .bubble-btn:active {
+            transform: translateY(4px) scale(0.96);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.18), 0 4px 10px rgba(0,0,0,0.1), inset 0 2px 4px rgba(255,255,255,0.5);
+        }
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
+        }
+        .animate-float {
+            animation: floatSlow 3s ease-in-out infinite;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="flex flex-col justify-between h-full w-full overflow-hidden">
+
+    <!-- 3D WebGL Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <header class="ui-layer w-full p-2 sm:p-4 flex flex-col gap-2 items-center">
+        <div class="w-full max-w-5xl flex items-center justify-between gap-2">
+            
+            <!-- Knocked Down Pins Score Card -->
+            <div class="interactive flex items-center gap-2 sm:gap-3 bg-gradient-to-b from-amber-400 to-orange-500 text-white px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-3xl border-4 border-white shadow-xl">
+                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white/25 flex items-center justify-center text-2xl sm:text-3xl shadow-inner shrink-0">
+                    🎳
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-[10px] sm:text-xs font-extrabold tracking-wider bg-amber-900/35 px-2 py-0.5 rounded-full">たおしたピン</span>
+                    <div class="flex items-baseline gap-1 mt-0.5">
+                        <span id="score-knocked" class="text-2xl sm:text-3xl font-black leading-none drop-shadow">0</span>
+                        <span class="text-xs sm:text-sm font-bold opacity-90">/</span>
+                        <span id="total-pins" class="text-lg sm:text-2xl font-black leading-none opacity-95">6</span>
+                        <span class="text-xs sm:text-sm font-bold opacity-90">ほん</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Status Banner & 2-Year-Old Mode Switch -->
+            <div class="flex flex-col items-center gap-1">
+                <div id="status-banner" class="interactive glass-panel px-3.5 sm:px-6 py-1.5 sm:py-2 rounded-full border-2 border-white shadow-lg flex items-center gap-2">
+                    <span id="status-emoji" class="text-lg sm:text-2xl animate-bounce">🐬</span>
+                    <span id="status-text" class="text-xs sm:text-lg font-black text-slate-800 whitespace-nowrap">タッチして ボールをころがそう！</span>
+                </div>
+                <button id="btn-quick-kidmode" onclick="toggleKidMode()" class="interactive bubble-btn text-[11px] sm:text-xs font-extrabold px-3 py-1 rounded-full bg-pink-500 text-white border-2 border-white flex items-center gap-1">
+                    <span>👶</span>
+                    <span id="label-kidmode">2さいモード: どこでもストライク ON</span>
+                </button>
+            </div>
+
+            <!-- Total Strikes Counter Card -->
+            <div class="interactive hidden sm:flex items-center gap-2 bg-white/90 backdrop-blur-md px-4 py-2 rounded-3xl border-4 border-white shadow-xl min-w-[135px] justify-center">
+                <div class="flex flex-col items-center">
+                    <span class="text-[10px] font-extrabold text-slate-500">ストライク賞</span>
+                    <div class="flex items-center gap-1.5 mt-0.5">
+                        <span class="text-2xl animate-bounce">🏆</span>
+                        <span id="strike-count" class="text-xl font-black text-amber-500">0</span>
+                        <span class="text-xs font-bold text-slate-600">かい</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-full max-w-4xl flex flex-wrap items-center justify-center gap-1.5 sm:gap-2.5">
+            <button onclick="openCustomizeModal()" class="interactive bubble-btn bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-extrabold text-xs sm:text-sm px-3.5 py-2 rounded-2xl border-2 border-white flex items-center gap-1.5">
+                <span class="text-base sm:text-lg">🎨</span>
+                <span>きせかえ（ボール・ピン・コース）</span>
+            </button>
+
+            <button onclick="cyclePinCount()" class="interactive bubble-btn bg-gradient-to-r from-emerald-400 to-teal-600 text-white font-extrabold text-xs sm:text-sm px-3.5 py-2 rounded-2xl border-2 border-white flex items-center gap-1.5">
+                <span class="text-base sm:text-lg">🎳</span>
+                <span id="label-pin-count">ピン: 6ほん (かんたん)</span>
+            </button>
+
+            <button onclick="cycleCameraView()" class="interactive bubble-btn bg-white/90 text-slate-700 font-extrabold text-xs sm:text-sm px-3 py-2 rounded-2xl border-2 border-white flex items-center gap-1">
+                <span>🎥</span>
+                <span id="label-camera">追いかけ3D</span>
+            </button>
+
+            <button onclick="toggleSound()" id="btn-sound" class="interactive bubble-btn bg-white/90 text-slate-700 font-extrabold text-xs sm:text-sm px-3 py-2 rounded-2xl border-2 border-white flex items-center gap-1">
+                <span id="icon-sound">🔊</span>
+                <span class="hidden sm:inline" id="label-sound">おと・こえ ON</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Center Celebration Toast -->
+    <div id="cheer-toast" class="ui-layer fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all duration-300 opacity-0 scale-75 z-30">
+        <div class="bg-white/95 border-4 border-yellow-400 rounded-3xl px-6 py-4 shadow-2xl flex flex-col items-center text-center">
+            <div id="cheer-emoji" class="text-5xl sm:text-6xl mb-1">🌈🎳✨</div>
+            <div id="cheer-text" class="text-xl sm:text-3xl font-black text-sky-600 drop-shadow-sm">すごい！ストライク！</div>
+        </div>
+    </div>
+
+    <footer class="ui-layer w-full p-3 sm:p-5 flex flex-col items-center gap-2">
+        <div class="w-full max-w-xl flex items-center justify-center gap-2.5 sm:gap-4">
+            
+            <!-- Big Toddler Rainbow Giant Ball Button -->
+            <button id="btn-big-ball" onclick="triggerBigRainbowBall()" class="interactive bubble-btn flex-1 bg-gradient-to-b from-yellow-300 via-amber-400 to-orange-500 text-slate-900 font-black text-base sm:text-xl py-3 sm:py-4 px-4 rounded-3xl border-4 border-white flex items-center justify-center gap-2 shadow-2xl">
+                <span class="text-2xl sm:text-3xl animate-bounce">🌈</span>
+                <div class="flex flex-col items-start leading-tight">
+                    <span class="text-[10px] sm:text-xs font-extrabold text-amber-950/80">2さいでも一撃でぜんぶドカーン！</span>
+                    <span>おたすけビッグボール！</span>
+                </div>
+            </button>
+
+            <!-- Normal Roll Button -->
+            <button onclick="triggerNormalRoll()" class="interactive bubble-btn bg-gradient-to-b from-pink-400 to-rose-500 text-white font-extrabold text-xs sm:text-base py-3 sm:py-4 px-4 rounded-3xl border-4 border-white flex flex-col items-center justify-center leading-tight shrink-0">
+                <span class="text-lg sm:text-2xl">🐬</span>
+                <span>コロコロ発射</span>
+            </button>
+
+            <!-- Reset Pins Button -->
+            <button onclick="resetGame()" class="interactive bubble-btn bg-gradient-to-b from-sky-400 to-blue-600 text-white font-extrabold text-xs sm:text-base py-3 sm:py-4 px-4 rounded-3xl border-4 border-white flex flex-col items-center justify-center leading-tight shrink-0">
+                <span class="text-lg sm:text-2xl">🔄</span>
+                <span>もういっかい</span>
+            </button>
+        </div>
+        <p class="text-[11px] sm:text-xs font-bold text-white/95 bg-slate-900/40 px-3.5 py-1 rounded-full backdrop-blur-sm text-center">
+            💡 レーンをタッチするとそこへ転がるよ！「おたすけビッグボール！」なら巨大な虹色ボールが飛び出すよ！
+        </p>
+    </footer>
+
+    <div id="modal-customize" class="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-6">
+        <div class="interactive bg-white rounded-3xl border-4 border-sky-300 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-purple-500 to-indigo-600 px-5 py-4 flex items-center justify-between text-white">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">🎨</span>
+                    <h2 class="text-lg sm:text-2xl font-black">きせかえ＆あそびかた設定</h2>
+                </div>
+                <button onclick="closeCustomizeModal()" class="bubble-btn bg-white text-slate-800 w-10 h-10 rounded-full font-black text-lg flex items-center justify-center">✕</button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-4 sm:p-6 overflow-y-auto space-y-6">
+                
+                <!-- 1. Ball Design Selector -->
+                <div>
+                    <h3 class="text-sm sm:text-base font-black text-slate-700 mb-3 flex items-center gap-2">
+                        <span class="bg-sky-100 text-sky-700 px-2.5 py-1 rounded-lg">1</span>
+                        <span>ころがすボールをえらぶ（4種類）</span>
+                    </h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <button onclick="selectBallTheme('dolphin')" data-ball="dolphin" class="ball-opt bubble-btn p-3 rounded-2xl border-4 border-sky-500 bg-sky-50 flex flex-col items-center text-center gap-1">
+                            <span class="text-3xl">🐬🔮</span>
+                            <span class="font-black text-xs sm:text-sm text-slate-800">イルカクリア玉</span>
+                            <span class="text-[10px] text-slate-500 font-bold">透明ボールにイルカ</span>
+                        </button>
+                        <button onclick="selectBallTheme('penguin')" data-ball="penguin" class="ball-opt bubble-btn p-3 rounded-2xl border-4 border-slate-200 bg-white flex flex-col items-center text-center gap-1">
+                            <span class="text-3xl">🐧❄️</span>
+                            <span class="font-black text-xs sm:text-sm text-slate-800">すべるペンギン</span>
+                            <span class="text-[10px] text-slate-500 font-bold">お腹ですいすい滑る</span>
+                        </button>
+                        <button onclick="selectBallTheme('dinoegg')" data-ball="dinoegg" class="ball-opt bubble-btn p-3 rounded-2xl border-4 border-slate-200 bg-white flex flex-col items-center text-center gap-1">
+                            <span class="text-3xl">🥚🦖</span>
+                            <span class="font-black text-xs sm:text-sm text-slate-800">恐竜タマゴ玉</span>
+                            <span class="text-[10px] text-slate-500 font-bold">カラフル水玉タマゴ</span>
+                        </button>
+                        <button onclick="selectBallTheme('beachball')" data-ball="beachball" class="ball-opt bubble-btn p-3 rounded-2xl border-4 border-slate-200 bg-white flex flex-col items-center text-center gap-1">
+                            <span class="text-3xl">⚽🌈</span>
+                            <span class="font-black text-xs sm:text-sm text-slate-800">にじいろボール</span>
+                            <span class="text-[10px] text-slate-500 font-bold">スマイルビーチボール</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. Pin Design Selector -->
+                <div>
+                    <h3 class="text-sm sm:text-base font-black text-slate-700 mb-3 flex items-center gap-2">
+                        <span class="bg-amber-100 text-amber-700 px-2.5 py-1 rounded-lg">2</span>
+                        <span>たおすピンをえらぶ（4種類）</span>
+                    </h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <button onclick="selectPinTheme('marine')" data-pin="marine" class="pin-opt bubble-btn p-3 rounded-2xl border-4 border-amber-500 bg-amber-50 flex flex-col items-center text-center gap-1">
+                            <span class="text-3xl">🦭🐟</span>
+                            <span class="font-black text-xs sm:text-sm text-slate-800">アシカ＆お魚ピン</span>
+                            <span class="text-[10px] text-slate-500 font-bold">海の仲間がならぶよ</span>
+                        </button>
+                        <button onclick="selectPinTheme('snowman')" data-pin="snowman" class="pin-opt bubble-btn p-3 rounded-2xl border-4 border-slate-200 bg-white flex flex-col items-center text-center gap-1">
+                            <span class="text-3xl">⛄🧣</span>
+                            <span class="font-black text-xs sm:text-sm text-slate-800">ゆきだるまピン</span>
+                            <span class="text-[10px] text-slate-500 font-bold">帽子をかぶった雪だるま</span>
+                        </button>
+                        <button onclick="selectPinTheme('toypin')" data-pin="toypin" class="pin-opt bubble-btn p-3 rounded-2xl border-4 border-slate-200 bg-white flex flex-col items-center text-center gap-1">
+                            <span class="text-3xl">🎳🐰</span>
+                            <span class="font-black text-xs sm:text-sm text-slate-800">どうぶつおもちゃピン</span>
+                            <span class="text-[10px] text-slate-500 font-bold">お耳つきカラフルピン</span>
+                        </button>
+                        <button onclick="selectPinTheme('fruits')" data-pin="fruits" class="pin-opt bubble-btn p-3 rounded-2xl border-4 border-slate-200 bg-white flex flex-col items-center text-center gap-1">
+                            <span class="text-3xl">🍍🍓</span>
+                            <span class="font-black text-xs sm:text-sm text-slate-800">トロピカルフルーツ</span>
+                            <span class="text-[10px] text-slate-500 font-bold">パインやイチゴの的</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. Lane Stage Theme Selector -->
+                <div>
+                    <h3 class="text-sm sm:text-base font-black text-slate-700 mb-3 flex items-center gap-2">
+                        <span class="bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg">3</span>
+                        <span>コース（盤面）をえらぶ（4種類）</span>
+                    </h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <button onclick="selectLaneTheme('waterslide')" data-lane="waterslide" class="lane-opt bubble-btn p-3 rounded-2xl border-4 border-emerald-500 bg-emerald-50 flex flex-col items-center text-center gap-1">
+                            <span class="text-3xl">🌊🐠</span>
+                            <span class="font-black text-xs sm:text-sm text-slate-800">ウォータースライダー</span>
+                            <span class="text-[10px] text-slate-500 font-bold">水しぶきマリンレーン</span>
+                        </button>
+                        <button onclick="selectLaneTheme('icelink')" data-lane="icelink" class="lane-opt bubble-btn p-3 rounded-2xl border-4 border-slate-200 bg-white flex flex-col items-center text-center gap-1">
+                            <span class="text-3xl">🧊❄️</span>
+                            <span class="font-black text-xs sm:text-sm text-slate-800">氷のリンク</span>
+                            <span class="text-[10px] text-slate-500 font-bold">ツルツル氷クリスタル</span>
+                        </button>
+                        <button onclick="selectLaneTheme('jungle')" data-lane="jungle" class="lane-opt bubble-btn p-3 rounded-2xl border-4 border-slate-200 bg-white flex flex-col items-center text-center gap-1">
+                            <span class="text-3xl">🌴🌺</span>
+                            <span class="font-black text-xs sm:text-sm text-slate-800">ジャングルロード</span>
+                            <span class="text-[10px] text-slate-500 font-bold">木の橋と南国のお花</span>
+                        </button>
+                        <button onclick="selectLaneTheme('candy')" data-lane="candy" class="lane-opt bubble-btn p-3 rounded-2xl border-4 border-slate-200 bg-white flex flex-col items-center text-center gap-1">
+                            <span class="text-3xl">🍭🍩</span>
+                            <span class="font-black text-xs sm:text-sm text-slate-800">キャンディレーン</span>
+                            <span class="text-[10px] text-slate-500 font-bold">お菓子のスイート道</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 4. Toddler Mode & Pin Count Settings -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="p-3.5 rounded-2xl bg-slate-50 border-2 border-slate-200 flex flex-col gap-2">
+                        <div class="font-black text-xs sm:text-sm text-slate-700">👶 2さいモード（どこでもストライク）</div>
+                        <div class="flex gap-2">
+                            <button onclick="setKidMode(true)" id="modal-kid-on" class="flex-1 py-2 px-3 rounded-xl font-extrabold text-xs bg-pink-500 text-white shadow">
+                                ストライク誘導 ON
+                            </button>
+                            <button onclick="setKidMode(false)" id="modal-kid-off" class="flex-1 py-2 px-3 rounded-xl font-extrabold text-xs bg-white text-slate-600 border">
+                                通常モード（狙って投げる）
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-slate-500 leading-relaxed">
+                            ※ONにすると、どこをタッチしてもボールがピンの真ん中へ自動でカーブして豪快に全部倒れます！
+                        </p>
+                    </div>
+
+                    <div class="p-3.5 rounded-2xl bg-slate-50 border-2 border-slate-200 flex flex-col gap-2">
+                        <div class="font-black text-xs sm:text-sm text-slate-700">🎳 ならぶピンの数</div>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <button onclick="setPinCount(6)" id="modal-pins-6" class="py-2 rounded-xl font-extrabold text-xs bg-emerald-500 text-white shadow">6ほん</button>
+                            <button onclick="setPinCount(10)" id="modal-pins-10" class="py-2 rounded-xl font-extrabold text-xs bg-white text-slate-600 border">10ほん</button>
+                            <button onclick="setPinCount(15)" id="modal-pins-15" class="py-2 rounded-xl font-extrabold text-xs bg-white text-slate-600 border">15ほん</button>
+                        </div>
+                        <p class="text-[11px] text-slate-500 leading-relaxed">
+                            ※15ほんを選ぶと、ピンがぎっしり並んでドレミ音階で一気に吹き飛ぶ大迫力が楽しめます！
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="bg-slate-100 px-6 py-3.5 flex justify-end">
+                <button onclick="closeCustomizeModal()" class="bubble-btn bg-gradient-to-r from-sky-500 to-blue-600 text-white font-black px-8 py-2.5 rounded-2xl text-sm sm:text-base">
+                    決定してあそぶ！
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-gameover" class="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="interactive bg-white rounded-3xl border-4 border-yellow-300 shadow-2xl w-full max-w-md p-6 text-center flex flex-col items-center gap-4 animate-float">
+            <div id="clear-emoji" class="text-6xl sm:text-7xl">🎳🌈🎉</div>
+            <h2 id="clear-title" class="text-2xl sm:text-3xl font-black text-slate-800">パーフェクト ストライク！</h2>
+            <p id="clear-subtitle" class="text-sm sm:text-base font-bold text-slate-600">ぜんぶのピンが パタパタたおれたよ！すごい！👏</p>
+            
+            <div id="clear-parade" class="w-full bg-amber-50 border-2 border-amber-200 rounded-2xl p-3 flex flex-wrap items-center justify-center gap-2 text-3xl">
+            </div>
+
+            <div class="flex gap-2.5 w-full mt-1">
+                <button onclick="closeClearAndReset()" class="bubble-btn flex-1 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-black py-3.5 px-6 rounded-2xl text-base sm:text-lg border-2 border-white">
+                    🎳 もういっかい ころがす！
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            ballTheme: 'dolphin',     // 'dolphin' | 'penguin' | 'dinoegg' | 'beachball'
+            pinTheme: 'marine',       // 'marine' | 'snowman' | 'toypin' | 'fruits'
+            laneTheme: 'waterslide',  // 'waterslide' | 'icelink' | 'jungle' | 'candy'
+            kidMode: true,            // true = curves toward pins & wide strike shockwave
+            pinCount: 6,              // 6, 10, 15
+            cameraPreset: 0,          // 0: Follow 3D, 1: Wide Overview, 2: Pin Close-Up
+            soundEnabled: true,
+            pins: [],                 // Array of 3D pin objects & physics state
+            knockedCount: 0,
+            totalStrikes: 0,
+            rollNumber: 1,
+            isRolling: false,
+            isBigBall: false,
+            ballPos: { x: 0, y: 0.72, z: 7.2 },
+            ballVel: { x: 0, z: 0 },
+            aimTargetX: 0,
+            aimSwayTime: 0,
+            roundCleared: false
+        };
+
+        let audioCtx = null;
+
+        function ensureAudio() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    audioCtx = new AudioContextClass();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type, stepIndex = 0) {
+            if (!state.soundEnabled) return;
+            try {
+                ensureAudio();
+                if (!audioCtx) return;
+                const now = audioCtx.currentTime;
+
+                if (type === 'roll') {
+                    // Whoosh / water slide launch sound
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(240, now);
+                    osc.frequency.exponentialRampToValueAtTime(560, now + 0.22);
+                    gain.gain.setValueAtTime(0.24, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.26);
+                } else if (type === 'pinHit') {
+                    // Crisp woody/marimba pin knock + rising Do-Re-Mi scale!
+                    const scale = [
+                        523.25, 587.33, 659.25, 698.46, 783.99, 880.00, 987.77,
+                        1046.50, 1174.66, 1318.51, 1396.91, 1567.98, 1760.00, 1975.53, 2093.00
+                    ];
+                    const freq = scale[stepIndex % scale.length];
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now);
+                    osc.frequency.exponentialRampToValueAtTime(freq * 1.18, now + 0.14);
+                    gain.gain.setValueAtTime(0.28, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.23);
+                } else if (type === 'bumper') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(320, now);
+                    osc.frequency.exponentialRampToValueAtTime(480, now + 0.1);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.12);
+                } else if (type === 'fanfare') {
+                    const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5];
+                    notes.forEach((n, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(n, now + idx * 0.1);
+                        gain.gain.setValueAtTime(0.26, now + idx * 0.1);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.42);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + idx * 0.1);
+                        osc.stop(now + idx * 0.1 + 0.44);
+                    });
+                } else if (type === 'pop') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(520, now);
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                }
+            } catch (e) {
+                // Ignore audio errors
+            }
+        }
+
+        function speakText(text) {
+            if (!state.soundEnabled || !('speechSynthesis' in window)) return;
+            try {
+                window.speechSynthesis.cancel();
+                const utter = new SpeechSynthesisUtterance(text);
+                utter.lang = 'ja-JP';
+                utter.pitch = 1.35;
+                utter.rate = 1.1;
+                utter.volume = 0.9;
+                window.speechSynthesis.speak(utter);
+            } catch (e) {
+                // Ignore speech errors
+            }
+        }
+
+        let scene, camera, renderer;
+        let laneGroup, pinsGroup, ballGroup, guideGroup, effectsGroup, bgCrittersGroup;
+        let activeBallMesh = null;
+        let guideDots = [];
+        let particles = [];
+        let bgCritters = [];
+        let laneFloorMesh = null;
+
+        const camControl = {
+            x: 0,
+            y: 6.2,
+            z: 13.8,
+            lookX: 0,
+            lookY: 0.6,
+            lookZ: -1.5
+        };
+
+        const raycaster = new THREE.Raycaster();
+        const pointerNDC = new THREE.Vector2();
+
+        function initThreeScene() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.1, 220);
+            updateCameraTransform(true);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.82);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xfffbeb, 0.95);
+            dirLight.position.set(9, 24, 14);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            const d = 14;
+            dirLight.shadow.camera.left = -d;
+            dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d;
+            dirLight.shadow.camera.bottom = -d;
+            scene.add(dirLight);
+
+            const fillLight = new THREE.DirectionalLight(0x38bdf8, 0.4);
+            fillLight.position.set(-10, 10, -10);
+            scene.add(fillLight);
+
+            laneGroup = new THREE.Group();
+            bgCrittersGroup = new THREE.Group();
+            guideGroup = new THREE.Group();
+            pinsGroup = new THREE.Group();
+            ballGroup = new THREE.Group();
+            effectsGroup = new THREE.Group();
+
+            scene.add(laneGroup);
+            scene.add(bgCrittersGroup);
+            scene.add(guideGroup);
+            scene.add(pinsGroup);
+            scene.add(ballGroup);
+            scene.add(effectsGroup);
+
+            buildAimGuideDots();
+            setupInteractionListeners(renderer.domElement);
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function build3DLane() {
+            while (laneGroup.children.length > 0) laneGroup.remove(laneGroup.children[0]);
+            while (bgCrittersGroup.children.length > 0) bgCrittersGroup.remove(bgCrittersGroup.children[0]);
+            bgCritters = [];
+
+            const theme = state.laneTheme;
+            const configs = {
+                waterslide: {
+                    bg: 'linear-gradient(180deg, #38bdf8 0%, #0284c7 55%, #0369a1 100%)',
+                    laneColorA: 0x38bdf8,
+                    laneColorB: 0x0ea5e9,
+                    bumperColor: 0xfef08a,
+                    bumperStripe: 0xf97316,
+                    archColor: 0xf43f5e,
+                    seaColor: 0x075985
+                },
+                icelink: {
+                    bg: 'linear-gradient(180deg, #e0f2fe 0%, #60a5fa 55%, #1d4ed8 100%)',
+                    laneColorA: 0xe0f2fe,
+                    laneColorB: 0xbae6fd,
+                    bumperColor: 0xffffff,
+                    bumperStripe: 0x38bdf8,
+                    archColor: 0x60a5fa,
+                    seaColor: 0x1e3a8a
+                },
+                jungle: {
+                    bg: 'linear-gradient(180deg, #bbf7d0 0%, #4ade80 55%, #15803d 100%)',
+                    laneColorA: 0xfde68a,
+                    laneColorB: 0xfcd34d,
+                    bumperColor: 0x92400e,
+                    bumperStripe: 0x22c55e,
+                    archColor: 0xf59e0b,
+                    seaColor: 0x166534
+                },
+                candy: {
+                    bg: 'linear-gradient(180deg, #fce7f3 0%, #f472b6 55%, #db2777 100%)',
+                    laneColorA: 0xfef9c3,
+                    laneColorB: 0xfbcfe8,
+                    bumperColor: 0xf43f5e,
+                    bumperStripe: 0xffffff,
+                    archColor: 0xa855f7,
+                    seaColor: 0xbe185d
+                }
+            };
+
+            const cfg = configs[theme] || configs.waterslide;
+            document.body.style.background = cfg.bg;
+
+            // Surrounding water / floor
+            const seaMesh = new THREE.Mesh(
+                new THREE.CylinderGeometry(24, 24, 0.6, 48),
+                new THREE.MeshStandardMaterial({ color: cfg.seaColor, roughness: 0.35 })
+            );
+            seaMesh.position.set(0, -0.8, -1);
+            laneGroup.add(seaMesh);
+
+            // Main Bowling Lane Floor (from z = +8.5 to z = -8.5, width = 5.4)
+            const laneWidth = 5.4;
+            const laneLength = 17.5;
+            const laneBase = new THREE.Mesh(
+                new THREE.BoxGeometry(laneWidth, 0.4, laneLength),
+                new THREE.MeshStandardMaterial({ color: cfg.laneColorA, roughness: 0.18, metalness: 0.08 })
+            );
+            laneBase.position.set(0, -0.2, 0);
+            laneBase.receiveShadow = true;
+            laneGroup.add(laneBase);
+            laneFloorMesh = laneBase;
+
+            // Decorative Stripes along the lane
+            for (let i = -2; i <= 2; i++) {
+                if (i === 0) continue;
+                const stripe = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.45, 0.41, laneLength - 0.6),
+                    new THREE.MeshStandardMaterial({ color: cfg.laneColorB, roughness: 0.15 })
+                );
+                stripe.position.set(i * 0.95, -0.195, 0);
+                stripe.receiveShadow = true;
+                laneGroup.add(stripe);
+            }
+
+            // Friendly Side Bumpers (so the ball NEVER falls off the lane!)
+            [-2.85, 2.85].forEach(bx => {
+                const bumper = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.28, 0.28, laneLength, 16).rotateX(Math.PI / 2),
+                    new THREE.MeshStandardMaterial({ color: cfg.bumperColor, roughness: 0.25 })
+                );
+                bumper.position.set(bx, 0.22, 0);
+                bumper.castShadow = true;
+                laneGroup.add(bumper);
+
+                for (let z = -7; z <= 7; z += 2.8) {
+                    const ring = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.30, 0.30, 0.6, 16).rotateX(Math.PI / 2),
+                        new THREE.MeshStandardMaterial({ color: cfg.bumperStripe, roughness: 0.25 })
+                    );
+                    ring.position.set(bx, 0.22, z);
+                    laneGroup.add(ring);
+                }
+            });
+
+            // Celebratory Arch behind the pins (at z = -7.8)
+            const arch = new THREE.Mesh(
+                new THREE.TorusGeometry(3.1, 0.26, 16, 40, Math.PI),
+                new THREE.MeshStandardMaterial({ color: cfg.archColor, roughness: 0.25 })
+            );
+            arch.position.set(0, 0.1, -7.8);
+            laneGroup.add(arch);
+
+            // Cute side cheering critters swimming/bouncing outside the lane
+            const palette = [0xfb7185, 0xfacc15, 0x38bdf8, 0x4ade80, 0xc084fc];
+            for (let i = 0; i < 8; i++) {
+                const critter = new THREE.Group();
+                const mat = new THREE.MeshStandardMaterial({ color: palette[i % palette.length], roughness: 0.2 });
+                const body = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 14), mat);
+                body.position.y = 0.2;
+                critter.add(body);
+
+                const side = i % 2 === 0 ? -1 : 1;
+                const zPos = -5.5 + Math.floor(i / 2) * 3.6;
+                critter.position.set(side * 4.2, -0.1, zPos);
+                critter.userData = { baseX: side * 4.2, baseZ: zPos, phase: i * 1.1 };
+                bgCrittersGroup.add(critter);
+                bgCritters.push(critter);
+            }
+        }
+
+        function buildAimGuideDots() {
+            while (guideGroup.children.length > 0) guideGroup.remove(guideGroup.children[0]);
+            guideDots = [];
+            const dotColors = [0xef4444, 0xf97316, 0xfacc15, 0x4ade80, 0x38bdf8, 0xa855f7];
+            for (let i = 0; i < 8; i++) {
+                const dot = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.16 - i * 0.008, 12, 12),
+                    new THREE.MeshStandardMaterial({
+                        color: dotColors[i % dotColors.length],
+                        emissive: dotColors[i % dotColors.length],
+                        emissiveIntensity: 0.45
+                    })
+                );
+                guideGroup.add(dot);
+                guideDots.push(dot);
+            }
+        }
+
+        function updateAimGuideDots(elapsed) {
+            if (state.isRolling || state.roundCleared) {
+                guideGroup.visible = false;
+                return;
+            }
+            guideGroup.visible = true;
+            const startX = state.ballPos.x;
+            const startZ = state.ballPos.z - 0.6;
+            const endX = state.kidMode ? 0 : state.aimTargetX;
+            const endZ = -3.8;
+
+            guideDots.forEach((dot, idx) => {
+                const t = ((idx / guideDots.length) + elapsed * 0.65) % 1;
+                dot.position.x = startX + (endX - startX) * t;
+                dot.position.z = startZ + (endZ - startZ) * t;
+                dot.position.y = 0.14 + Math.sin(t * Math.PI) * 0.12;
+                const s = 1 - t * 0.35;
+                dot.scale.setScalar(s);
+            });
+        }
+
+        function create3DBallMesh(theme, isGiantRainbow = false) {
+            const root = new THREE.Group();
+            const spinGroup = new THREE.Group();
+            root.add(spinGroup);
+
+            const darkMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.15 });
+            const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
+            const pinkMat = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.3 });
+
+            if (isGiantRainbow) {
+                // Giant Sparkling Rainbow Assist Ball!
+                const rainbowGeo = new THREE.SphereGeometry(0.72, 28, 24);
+                const rainbowMat = new THREE.MeshStandardMaterial({
+                    color: 0xfacc15,
+                    emissive: 0xf43f5e,
+                    emissiveIntensity: 0.35,
+                    roughness: 0.12,
+                    metalness: 0.25
+                });
+                const core = new THREE.Mesh(rainbowGeo, rainbowMat);
+                core.castShadow = true;
+                spinGroup.add(core);
+
+                // Colorful Saturn Rings around the giant ball
+                const ring1 = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.84, 0.09, 12, 32),
+                    new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x38bdf8, emissiveIntensity: 0.3 })
+                );
+                const ring2 = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.84, 0.09, 12, 32).rotateY(Math.PI / 2),
+                    new THREE.MeshStandardMaterial({ color: 0x4ade80, emissive: 0x4ade80, emissiveIntensity: 0.3 })
+                );
+                spinGroup.add(ring1, ring2);
+                root.scale.setScalar(1.65);
+                root.userData = { spinGroup };
+                return root;
+            }
+
+            if (theme === 'penguin') {
+                // Chubby Sliding Penguin Ball
+                const body = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.68, 24, 20),
+                    new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.22 })
+                );
+                body.castShadow = true;
+                const belly = new THREE.Mesh(new THREE.SphereGeometry(0.56, 20, 18), whiteMat);
+                belly.position.set(0, -0.06, 0.22);
+                const beak = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.16, 0.32, 12).rotateX(-Math.PI / 2),
+                    new THREE.MeshStandardMaterial({ color: 0xfacc15 })
+                );
+                beak.position.set(0, 0.1, -0.68);
+                spinGroup.add(body, belly, beak);
+
+                [-0.22, 0.22].forEach(ox => {
+                    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 10), whiteMat);
+                    eye.position.set(ox, 0.26, -0.58);
+                    spinGroup.add(eye);
+                });
+
+            } else if (theme === 'dinoegg') {
+                // Spotted Dinosaur Egg Ball
+                const egg = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.68, 24, 20),
+                    new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.22 })
+                );
+                egg.castShadow = true;
+                spinGroup.add(egg);
+
+                const spotColors = [0x4ade80, 0xf43f5e, 0x38bdf8, 0xa855f7];
+                for (let i = 0; i < 8; i++) {
+                    const phi = (i / 8) * Math.PI * 2;
+                    const spot = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.18, 12, 12),
+                        new THREE.MeshStandardMaterial({ color: spotColors[i % spotColors.length] })
+                    );
+                    spot.position.set(Math.cos(phi) * 0.55, Math.sin(phi * 2) * 0.35, Math.sin(phi) * 0.55);
+                    spinGroup.add(spot);
+                }
+
+            } else if (theme === 'beachball') {
+                // Colorful Glossy Beach Ball
+                const base = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.68, 24, 20),
+                    new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.15 })
+                );
+                base.castShadow = true;
+                const band1 = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.58, 0.14, 14, 28),
+                    new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.15 })
+                );
+                const band2 = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.58, 0.14, 14, 28).rotateY(Math.PI / 2),
+                    new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.15 })
+                );
+                spinGroup.add(base, band1, band2);
+
+            } else {
+                // Default: Dolphin inside Crystal Aqua Ball ('dolphin')
+                const outerGlass = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.7, 26, 22),
+                    new THREE.MeshStandardMaterial({
+                        color: 0x7dd3fc,
+                        transparent: true,
+                        opacity: 0.48,
+                        roughness: 0.08,
+                        metalness: 0.15
+                    })
+                );
+                outerGlass.castShadow = true;
+                spinGroup.add(outerGlass);
+
+                // Cute Mini 3D Dolphin inside the sphere!
+                const dolphinMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.2 });
+                const dBody = new THREE.Mesh(new THREE.SphereGeometry(0.38, 18, 16), dolphinMat);
+                dBody.scale.set(0.95, 0.85, 1.25);
+                const dFin = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.32, 10), dolphinMat);
+                dFin.position.set(0, 0.36, 0);
+                const dSnout = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 10), dolphinMat);
+                dSnout.position.set(0, -0.02, -0.42);
+                spinGroup.add(dBody, dFin, dSnout);
+
+                [-0.16, 0.16].forEach(ox => {
+                    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 10), whiteMat);
+                    eye.position.set(ox, 0.12, -0.35);
+                    const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), pinkMat);
+                    cheek.position.set(ox * 1.35, 0.02, -0.34);
+                    spinGroup.add(eye, cheek);
+                });
+            }
+
+            root.userData = { spinGroup };
+            return root;
+        }
+
+        function create3DPinMesh(pinTheme, index) {
+            const g = new THREE.Group();
+            const darkMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.15 });
+            const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.22 });
+            const pinkMat = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.3 });
+
+            const palette = [
+                { color: 0x38bdf8, emoji: '🐬', name: 'いるかピン' },
+                { color: 0xf59e0b, emoji: '🦭', name: 'あしかピン' },
+                { color: 0xf43f5e, emoji: '🐙', name: 'タコピン' },
+                { color: 0x10b981, emoji: '🐢', name: 'カメピン' },
+                { color: 0xa855f7, emoji: '🐠', name: 'おさかなピン' }
+            ];
+            const pInfo = palette[index % palette.length];
+            const colorMat = new THREE.MeshStandardMaterial({ color: pInfo.color, roughness: 0.22 });
+
+            if (pinTheme === 'snowman') {
+                // Cute 3D Snowman Pin with Bucket Hat
+                const bot = new THREE.Mesh(new THREE.SphereGeometry(0.42, 18, 16), whiteMat);
+                bot.position.y = 0.4;
+                bot.castShadow = true;
+                const top = new THREE.Mesh(new THREE.SphereGeometry(0.31, 18, 16), whiteMat);
+                top.position.y = 0.96;
+                top.castShadow = true;
+                const scarf = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.08, 10, 20).rotateX(Math.PI / 2), colorMat);
+                scarf.position.y = 0.72;
+                const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.25, 0.3, 16), colorMat);
+                hat.position.y = 1.32;
+                const nose = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.07, 0.24, 10).rotateX(Math.PI / 2),
+                    new THREE.MeshStandardMaterial({ color: 0xf97316 })
+                );
+                nose.position.set(0, 0.96, 0.34);
+                g.add(bot, top, scarf, hat, nose);
+
+                [-0.11, 0.11].forEach(ox => {
+                    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.048, 8, 8), darkMat);
+                    eye.position.set(ox, 1.04, 0.28);
+                    g.add(eye);
+                });
+                g.userData.emoji = '⛄';
+
+            } else if (pinTheme === 'fruits') {
+                // Tropical Fruit Pin (Pineapple / Strawberry / Melon)
+                const fruitColors = [0xfacc15, 0xf43f5e, 0x4ade80, 0xf97316];
+                const fColor = fruitColors[index % fruitColors.length];
+                const body = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.34, 0.38, 0.95, 20),
+                    new THREE.MeshStandardMaterial({ color: fColor, roughness: 0.25 })
+                );
+                body.position.y = 0.48;
+                body.castShadow = true;
+                const crown = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.28, 0.42, 8),
+                    new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.3 })
+                );
+                crown.position.y = 1.12;
+                g.add(body, crown);
+
+                [-0.13, 0.13].forEach(ox => {
+                    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), darkMat);
+                    eye.position.set(ox, 0.65, 0.36);
+                    g.add(eye);
+                });
+                g.userData.emoji = index % 2 === 0 ? '🍍' : '🍓';
+
+            } else if (pinTheme === 'toypin') {
+                // Classic Bowling Pin with Cute Animal Ears & Neck Stripes
+                const base = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.38, 0.85, 20), whiteMat);
+                base.position.y = 0.42;
+                base.castShadow = true;
+                const head = new THREE.Mesh(new THREE.SphereGeometry(0.30, 18, 16), whiteMat);
+                head.position.y = 1.02;
+                head.castShadow = true;
+                const neckBand = new THREE.Mesh(new THREE.TorusGeometry(0.23, 0.06, 10, 20).rotateX(Math.PI / 2), colorMat);
+                neckBand.position.y = 0.78;
+                g.add(base, head, neckBand);
+
+                // Cute animal ears on top of the pin
+                [-0.16, 0.16].forEach(ox => {
+                    const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.36, 12), colorMat);
+                    ear.position.set(ox, 1.35, 0);
+                    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), darkMat);
+                    eye.position.set(ox * 0.75, 1.05, 0.27);
+                    g.add(ear, eye);
+                });
+                g.userData.emoji = '🎳';
+
+            } else {
+                // Default: Marine Animal Pin ('marine' - Sea Lion & Fish Upright Totems)
+                const body = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.40, 0.88, 20), colorMat);
+                body.position.y = 0.44;
+                body.castShadow = true;
+                const head = new THREE.Mesh(new THREE.SphereGeometry(0.33, 18, 16), colorMat);
+                head.position.y = 0.98;
+                head.castShadow = true;
+                const belly = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.30, 0.7, 16), whiteMat);
+                belly.position.set(0, 0.42, 0.12);
+                g.add(body, head, belly);
+
+                // Little red ball balanced on top of head!
+                const noseBall = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.13, 12, 12),
+                    new THREE.MeshStandardMaterial({ color: 0xfacc15 })
+                );
+                noseBall.position.set(0, 1.38, 0.08);
+                g.add(noseBall);
+
+                [-0.13, 0.13].forEach(ox => {
+                    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 10), darkMat);
+                    eye.position.set(ox, 1.04, 0.30);
+                    const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), pinkMat);
+                    cheek.position.set(ox * 1.4, 0.95, 0.29);
+                    g.add(eye, cheek);
+                });
+                g.userData.emoji = pInfo.emoji;
+            }
+
+            return g;
+        }
+
+        function setupPinsAndBall() {
+            while (pinsGroup.children.length > 0) pinsGroup.remove(pinsGroup.children[0]);
+            state.pins = [];
+            state.knockedCount = 0;
+            state.rollNumber = 1;
+            state.roundCleared = false;
+            state.isRolling = false;
+            state.isBigBall = false;
+
+            // Build triangle pin formation based on state.pinCount (6 = 3 rows, 10 = 4 rows, 15 = 5 rows)
+            const rows = state.pinCount === 6 ? 3 : (state.pinCount === 10 ? 4 : 5);
+            const startZ = -3.4;
+            const rowSpacingZ = 0.95;
+            const colSpacingX = 0.98;
+
+            let pinIndex = 0;
+            for (let r = 0; r < rows; r++) {
+                const countInRow = r + 1;
+                const z = startZ - r * rowSpacingZ;
+                for (let c = 0; c < countInRow; c++) {
+                    const x = (c - (countInRow - 1) / 2) * colSpacingX;
+                    const mesh = create3DPinMesh(state.pinTheme, pinIndex);
+                    mesh.position.set(x, 0, z);
+                    pinsGroup.add(mesh);
+
+                    state.pins.push({
+                        index: pinIndex,
+                        mesh,
+                        homeX: x,
+                        homeZ: z,
+                        x,
+                        y: 0,
+                        z,
+                        vx: 0,
+                        vy: 0,
+                        vz: 0,
+                        rotX: 0,
+                        rotZ: 0,
+                        vRotX: 0,
+                        vRotZ: 0,
+                        isKnocked: false,
+                        emoji: mesh.userData.emoji || '🎳'
+                    });
+                    pinIndex++;
+                }
+            }
+
+            respawnReadyBall(false);
+            updateHUD();
+        }
+
+        function respawnReadyBall(isGiantRainbow = false) {
+            while (ballGroup.children.length > 0) ballGroup.remove(ballGroup.children[0]);
+            state.isRolling = false;
+            state.isBigBall = isGiantRainbow;
+            state.ballPos = { x: 0, y: isGiantRainbow ? 1.15 : 0.70, z: 7.2 };
+            state.ballVel = { x: 0, z: 0 };
+
+            activeBallMesh = create3DBallMesh(state.ballTheme, isGiantRainbow);
+            activeBallMesh.position.set(state.ballPos.x, state.ballPos.y, state.ballPos.z);
+            ballGroup.add(activeBallMesh);
+        }
+
+        function launchBall(targetX = null, forceBigRainbow = false) {
+            if (state.isRolling || state.roundCleared) return;
+            ensureAudio();
+
+            if (forceBigRainbow) {
+                respawnReadyBall(true);
+            }
+
+            state.isRolling = true;
+            playSound('roll');
+
+            // Determine target X at the pin triangle
+            let destX = targetX !== null ? targetX : state.aimTargetX;
+            if (state.kidMode || state.isBigBall) {
+                // Find the average X of all currently standing pins so it ALWAYS hits the heart of the pins!
+                const standing = state.pins.filter(p => !p.isKnocked);
+                if (standing.length > 0) {
+                    const avgX = standing.reduce((sum, p) => sum + p.x, 0) / standing.length;
+                    destX = avgX;
+                } else {
+                    destX = 0;
+                }
+            }
+
+            const dz = -4.2 - state.ballPos.z; // Distance to pin center
+            const travelTime = 0.72;           // Fast, snappy roll speed
+            state.ballVel.z = dz / travelTime;
+            state.ballVel.x = (destX - state.ballPos.x) / travelTime;
+
+            if (state.isBigBall) {
+                setStatusBanner('🌈', '巨大レインボーボール 発射〜！！');
+                speakText('おたすけ ビッグボール、いくよー！');
+            } else {
+                setStatusBanner('🐬', 'コロコロ〜！たくさん たおれろ〜！');
+            }
+        }
+
+        function triggerBigRainbowBall() {
+            launchBall(0, true);
+        }
+
+        function triggerNormalRoll() {
+            launchBall(null, false);
+        }
+
+        function checkPinCollisions() {
+            // In 2-Year-Old Mode or Big Rainbow Ball Mode, hit radius is extra generous so pins fly easily!
+            const hitRadius = state.isBigBall ? 2.85 : (state.kidMode ? 1.95 : 1.12);
+
+            for (const pin of state.pins) {
+                if (pin.isKnocked) continue;
+                const dx = pin.x - state.ballPos.x;
+                const dz = pin.z - state.ballPos.z;
+                const dist = Math.hypot(dx, dz);
+
+                if (dist < hitRadius) {
+                    knockDownPin(pin, dx, dz);
+                }
+            }
+
+            // Also check pin-to-pin domino chain collisions!
+            const knockedPins = state.pins.filter(p => p.isKnocked && p.y < 1.8);
+            for (const kp of knockedPins) {
+                for (const standing of state.pins) {
+                    if (standing.isKnocked) continue;
+                    const dx = standing.x - kp.x;
+                    const dz = standing.z - kp.z;
+                    if (Math.hypot(dx, dz) < 0.92) {
+                        knockDownPin(standing, dx, dz);
+                    }
+                }
+            }
+        }
+
+        function knockDownPin(pin, dx, dz) {
+            if (pin.isKnocked) return;
+            pin.isKnocked = true;
+
+            const stepIdx = state.knockedCount;
+            state.knockedCount++;
+
+            playSound('pinHit', stepIdx);
+            spawnHitBurst(pin.x, 0.7, pin.z);
+
+            const angle = Math.atan2(dx, dz) + (Math.random() - 0.5) * 0.6;
+            const speed = 4.5 + Math.random() * 3.5;
+            pin.vx = Math.sin(angle) * speed;
+            pin.vy = 5.2 + Math.random() * 2.8;
+            pin.vz = -Math.abs(Math.cos(angle) * speed) - 2.0;
+            pin.vRotX = (Math.random() - 0.5) * 14;
+            pin.vRotZ = (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 6);
+
+            updateHUD();
+        }
+
+        function handleRollFinished() {
+            state.isRolling = false;
+            const remaining = state.pins.filter(p => !p.isKnocked).length;
+
+            if (remaining === 0) {
+                // All pins knocked down! Strike or Spare Celebration!
+                state.roundCleared = true;
+                state.totalStrikes++;
+                updateHUD();
+
+                const isFirstBallStrike = state.rollNumber === 1;
+                playSound('fanfare');
+                showCheerToast('🎳🌈✨', isFirstBallStrike ? 'やったー！ストライク！！' : 'ぜんぶ たおしたね！スペア！');
+                speakText(isFirstBallStrike
+                    ? `やったー！ストライク！${state.pinCount}ほん ぜんぶたおれたよ！パチパチパチ！`
+                    : 'やったー！ぜんぶ たおしたね！すごいすごい！');
+
+                setTimeout(() => {
+                    const parade = document.getElementById('clear-parade');
+                    parade.innerHTML = state.pins.map(p => `<span class="animate-bounce inline-block">${p.emoji}</span>`).join('');
+                    document.getElementById('clear-title').textContent = isFirstBallStrike
+                        ? '🌈 パーフェクト ストライク！'
+                        : '🎉 ぜんぶ たおしたよ！';
+
+                    const modal = document.getElementById('modal-gameover');
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                }, 950);
+
+            } else {
+                // Some pins still standing -> Let child roll again to knock the rest down!
+                state.rollNumber++;
+                showCheerToast('👏✨', `あと ${remaining}ほん！もう1回なげよう！`);
+                speakText(`いいぞー！あと ${remaining}ほん！もういっかい ころがそう！`);
+                setStatusBanner('🎳', `あと ${remaining}ほん！タッチしてね！`);
+                respawnReadyBall(false);
+            }
+        }
+
+        function spawnHitBurst(x, y, z) {
+            const colors = [0xfacc15, 0xf43f5e, 0x38bdf8, 0x4ade80, 0xffffff];
+            for (let i = 0; i < 8; i++) {
+                const pMesh = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.11, 8, 8),
+                    new THREE.MeshStandardMaterial({
+                        color: colors[i % colors.length],
+                        emissive: colors[i % colors.length],
+                        emissiveIntensity: 0.35
+                    })
+                );
+                pMesh.position.set(x, y, z);
+                const ang = (i / 8) * Math.PI * 2;
+                const spd = 2.2 + Math.random() * 2.0;
+                effectsGroup.add(pMesh);
+                particles.push({
+                    mesh: pMesh,
+                    vx: Math.cos(ang) * spd,
+                    vy: 3.0 + Math.random() * 2.2,
+                    vz: Math.sin(ang) * spd,
+                    age: 0,
+                    maxAge: 0.65
+                });
+            }
+        }
+
+        function updateHUD() {
+            document.getElementById('score-knocked').textContent = state.knockedCount;
+            document.getElementById('total-pins').textContent = state.pinCount;
+            document.getElementById('strike-count').textContent = state.totalStrikes;
+        }
+
+        function setStatusBanner(emoji, text) {
+            document.getElementById('status-emoji').textContent = emoji;
+            document.getElementById('status-text').textContent = text;
+        }
+
+        let toastTimer = null;
+        function showCheerToast(emoji, text) {
+            const toast = document.getElementById('cheer-toast');
+            document.getElementById('cheer-emoji').textContent = emoji;
+            document.getElementById('cheer-text').textContent = text;
+            toast.classList.remove('opacity-0', 'scale-75');
+            toast.classList.add('opacity-100', 'scale-100');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.remove('opacity-100', 'scale-100');
+                toast.classList.add('opacity-0', 'scale-75');
+            }, 1350);
+        }
+
+        function closeClearAndReset() {
+            const modal = document.getElementById('modal-gameover');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            resetGame();
+        }
+
+        function resetGame() {
+            playSound('pop');
+            setupPinsAndBall();
+            setStatusBanner('🐬', 'タッチして ボールをころがそう！');
+        }
+
+        function setupInteractionListeners(domElement) {
+            domElement.addEventListener('pointerdown', e => {
+                ensureAudio();
+                if (state.isRolling || state.roundCleared) return;
+
+                const rect = domElement.getBoundingClientRect();
+                pointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                pointerNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+                raycaster.setFromCamera(pointerNDC, camera);
+                if (laneFloorMesh) {
+                    const hits = raycaster.intersectObject(laneFloorMesh);
+                    if (hits.length > 0) {
+                        const hitX = Math.max(-2.1, Math.min(2.1, hits[0].point.x));
+                        state.aimTargetX = hitX;
+                        launchBall(hitX, false);
+                        return;
+                    }
+                }
+                // Even if toddler taps the sky or anywhere on canvas, roll the ball!
+                const fallbackX = pointerNDC.x * 2.0;
+                launchBall(fallbackX, false);
+            });
+        }
+
+        function updateCameraTransform(instant = false) {
+            const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+            const portraitBoost = aspect < 0.8 ? (0.8 - aspect) * 6.5 : 0;
+
+            let targetY = 6.2 + portraitBoost * 0.45;
+            let targetZ = 13.5 + portraitBoost;
+            let targetLookZ = -1.8;
+
+            if (state.cameraPreset === 1) {
+                // High overview of entire lane
+                targetY = 9.5 + portraitBoost * 0.5;
+                targetZ = 14.5 + portraitBoost;
+                targetLookZ = -1.0;
+            } else if (state.cameraPreset === 2) {
+                // Closer view near the pins
+                targetY = 4.8;
+                targetZ = 7.5 + portraitBoost * 0.6;
+                targetLookZ = -4.2;
+            } else if (state.isRolling) {
+                // Follow ball smoothly down the lane for exciting impact!
+                const progress = Math.max(0, Math.min(1, (7.2 - state.ballPos.z) / 11.5));
+                targetZ = (13.5 + portraitBoost) - progress * 3.8;
+                targetY = (6.2 + portraitBoost * 0.45) - progress * 1.1;
+                targetLookZ = -1.8 - progress * 2.2;
+            }
+
+            if (instant) {
+                camControl.y = targetY;
+                camControl.z = targetZ;
+                camControl.lookZ = targetLookZ;
+            } else {
+                camControl.y += (targetY - camControl.y) * 0.1;
+                camControl.z += (targetZ - camControl.z) * 0.1;
+                camControl.lookZ += (targetLookZ - camControl.lookZ) * 0.1;
+            }
+
+            camera.position.set(0, camControl.y, camControl.z);
+            camera.lookAt(0, 0.5, camControl.lookZ);
+        }
+
+        function onWindowResize() {
+            if (!camera || !renderer) return;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function openCustomizeModal() {
+            playSound('pop');
+            const m = document.getElementById('modal-customize');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+
+        function closeCustomizeModal() {
+            playSound('pop');
+            const m = document.getElementById('modal-customize');
+            m.classList.add('hidden');
+            m.classList.remove('flex');
+        }
+
+        function selectBallTheme(theme) {
+            playSound('pop');
+            state.ballTheme = theme;
+            document.querySelectorAll('.ball-opt').forEach(btn => {
+                const active = btn.dataset.ball === theme;
+                btn.classList.toggle('border-sky-500', active);
+                btn.classList.toggle('bg-sky-50', active);
+                btn.classList.toggle('border-slate-200', !active);
+                btn.classList.toggle('bg-white', !active);
+            });
+            respawnReadyBall(false);
+        }
+
+        function selectPinTheme(theme) {
+            playSound('pop');
+            state.pinTheme = theme;
+            document.querySelectorAll('.pin-opt').forEach(btn => {
+                const active = btn.dataset.pin === theme;
+                btn.classList.toggle('border-amber-500', active);
+                btn.classList.toggle('bg-amber-50', active);
+                btn.classList.toggle('border-slate-200', !active);
+                btn.classList.toggle('bg-white', !active);
+            });
+            setupPinsAndBall();
+        }
+
+        function selectLaneTheme(theme) {
+            playSound('pop');
+            state.laneTheme = theme;
+            document.querySelectorAll('.lane-opt').forEach(btn => {
+                const active = btn.dataset.lane === theme;
+                btn.classList.toggle('border-emerald-500', active);
+                btn.classList.toggle('bg-emerald-50', active);
+                btn.classList.toggle('border-slate-200', !active);
+                btn.classList.toggle('bg-white', !active);
+            });
+            build3DLane();
+        }
+
+        function toggleKidMode() {
+            setKidMode(!state.kidMode);
+        }
+
+        function setKidMode(enabled) {
+            playSound('pop');
+            state.kidMode = enabled;
+            const label = document.getElementById('label-kidmode');
+            const quickBtn = document.getElementById('btn-quick-kidmode');
+            if (enabled) {
+                label.textContent = '2さいモード: どこでもストライク ON';
+                quickBtn.className = 'interactive bubble-btn text-[11px] sm:text-xs font-extrabold px-3 py-1 rounded-full bg-pink-500 text-white border-2 border-white flex items-center gap-1';
+            } else {
+                label.textContent = '通常モード (ねらって投げる)';
+                quickBtn.className = 'interactive bubble-btn text-[11px] sm:text-xs font-extrabold px-3 py-1 rounded-full bg-slate-700 text-white border-2 border-white flex items-center gap-1';
+            }
+
+            document.getElementById('modal-kid-on').className = enabled
+                ? 'flex-1 py-2 px-3 rounded-xl font-extrabold text-xs bg-pink-500 text-white shadow'
+                : 'flex-1 py-2 px-3 rounded-xl font-extrabold text-xs bg-white text-slate-600 border';
+            document.getElementById('modal-kid-off').className = !enabled
+                ? 'flex-1 py-2 px-3 rounded-xl font-extrabold text-xs bg-sky-600 text-white shadow'
+                : 'flex-1 py-2 px-3 rounded-xl font-extrabold text-xs bg-white text-slate-600 border';
+        }
+
+        function cyclePinCount() {
+            const order = [6, 10, 15];
+            const next = order[(order.indexOf(state.pinCount) + 1) % order.length] || 6;
+            setPinCount(next);
+        }
+
+        function setPinCount(count) {
+            playSound('pop');
+            state.pinCount = count;
+            const desc = count === 6 ? '6ほん (かんたん)' : (count === 10 ? '10ほん (ふつう)' : '15ほん (大パーティー)');
+            document.getElementById('label-pin-count').textContent = `ピン: ${desc}`;
+
+            [6, 10, 15].forEach(c => {
+                const btn = document.getElementById(`modal-pins-${c}`);
+                if (btn) {
+                    btn.className = (c === count)
+                        ? 'py-2 rounded-xl font-extrabold text-xs bg-emerald-500 text-white shadow'
+                        : 'py-2 rounded-xl font-extrabold text-xs bg-white text-slate-600 border';
+                }
+            });
+            setupPinsAndBall();
+        }
+
+        function cycleCameraView() {
+            playSound('pop');
+            state.cameraPreset = (state.cameraPreset + 1) % 3;
+            const label = document.getElementById('label-camera');
+            if (state.cameraPreset === 0) label.textContent = '追いかけ3D';
+            else if (state.cameraPreset === 1) label.textContent = 'レーン全体';
+            else label.textContent = 'ピンを近くで見る';
+        }
+
+        function toggleSound() {
+            state.soundEnabled = !state.soundEnabled;
+            document.getElementById('icon-sound').textContent = state.soundEnabled ? '🔊' : '🔇';
+            document.getElementById('label-sound').textContent = state.soundEnabled ? 'おと・こえ ON' : 'おと OFF';
+            if (state.soundEnabled) playSound('pop');
+        }
+
+        let lastTime = performance.now();
+
+        function animateLoop() {
+            requestAnimationFrame(animateLoop);
+
+            const now = performance.now();
+            const dt = Math.min(0.05, (now - lastTime) / 1000);
+            lastTime = now;
+            const elapsed = now * 0.001;
+
+            updateCameraTransform(false);
+
+            // 1. Ready ball gentle sway or active rolling physics
+            if (!state.isRolling && !state.roundCleared && activeBallMesh) {
+                state.aimSwayTime += dt * 2.2;
+                state.ballPos.x = Math.sin(state.aimSwayTime) * 1.15;
+                state.aimTargetX = Math.sin(state.aimSwayTime) * 1.35;
+                activeBallMesh.position.x = state.ballPos.x;
+                activeBallMesh.position.y = state.ballPos.y + Math. abs(Math.sin(elapsed * 4)) * 0.08;
+            } else if (state.isRolling && activeBallMesh) {
+                // Move rolling ball
+                state.ballPos.x += state.ballVel.x * dt;
+                state.ballPos.z += state.ballVel.z * dt;
+
+                // Bounce gently off side bumpers at x = +-2.25
+                const limitX = 2.25;
+                if (state.ballPos.x < -limitX) {
+                    state.ballPos.x = -limitX;
+                    state.ballVel.x = Math.abs(state.ballVel.x) * 0.85;
+                    playSound('bumper');
+                } else if (state.ballPos.x > limitX) {
+                    state.ballPos.x = limitX;
+                    state.ballVel.x = -Math.abs(state.ballVel.x) * 0.85;
+                    playSound('bumper');
+                }
+
+                // In 2-Year-Old Mode, gently curve toward remaining standing pins!
+                if (state.kidMode && state.ballPos.z > -6.5) {
+                    const standing = state.pins.filter(p => !p.isKnocked);
+                    if (standing.length > 0) {
+                        const targetPin = standing[0];
+                        state.ballVel.x += (targetPin.x - state.ballPos.x) * 6.5 * dt;
+                    }
+                }
+
+                activeBallMesh.position.set(state.ballPos.x, state.ballPos.y, state.ballPos.z);
+                if (activeBallMesh.userData.spinGroup) {
+                    activeBallMesh.userData.spinGroup.rotation.x -= dt * 14.0;
+                }
+
+                checkPinCollisions();
+
+                if (state.ballPos.z < -8.8) {
+                    handleRollFinished();
+                }
+            }
+
+            updateAimGuideDots(elapsed);
+
+            // 2. Animate standing pins (gentle happy idle bob) & knocked pins flying in 3D!
+            for (const pin of state.pins) {
+                if (!pin.isKnocked) {
+                    pin.mesh.position.y = Math.abs(Math.sin(elapsed * 3.5 + pin.index * 0.5)) * 0.05;
+                } else {
+                    pin.x += pin.vx * dt;
+                    pin.y += pin.vy * dt;
+                    pin.z += pin.vz * dt;
+                    pin.vy -= 14.5 * dt; // Gravity
+
+                    if (pin.y < 0.22) {
+                        pin.y = 0.22;
+                        pin.vy = Math.abs(pin.vy) * 0.35;
+                        pin.vx *= 0.82;
+                        pin.vz *= 0.82;
+                        pin.vRotX *= 0.85;
+                        pin.vRotZ *= 0.85;
+                    }
+
+                    pin.rotX += pin.vRotX * dt;
+                    pin.rotZ += pin.vRotZ * dt;
+                    pin.mesh.position.set(pin.x, pin.y, pin.z);
+                    pin.mesh.rotation.set(pin.rotX, 0, pin.rotZ);
+                }
+            }
+
+            // 3. Update particle bursts
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.age += dt;
+                const prog = p.age / p.maxAge;
+                if (prog >= 1) {
+                    effectsGroup.remove(p.mesh);
+                    particles.splice(i, 1);
+                    continue;
+                }
+                p.mesh.position.x += p.vx * dt;
+                p.mesh.position.y += p.vy * dt;
+                p.mesh.position.z += p.vz * dt;
+                p.vy -= 9.5 * dt;
+                p.mesh.scale.setScalar(1 - prog * 0.75);
+            }
+
+            // 4. Animate cheering critters along the sides of the lane
+            for (const c of bgCritters) {
+                const u = c.userData;
+                c.position.y = -0.05 + Math.abs(Math.sin(elapsed * 4 + u.phase)) * 0.35;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.onload = function () {
+            initThreeScene();
+            build3DLane();
+            setupPinsAndBall();
+            animateLoop();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,2127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta name="game-icon" content="🔨">
+    <meta name="game-tag" content="アクション">
+    <meta name="game-category" content="action">
+    <meta name="game-age" content="2">
+    <meta name="description" content="穴からピョコピョコ飛び出すアンパンマンやどうぶつ・すいぞくかんの仲間たちをタッチ！2歳から遊べる楽しい3Dもぐらたたき風ゲーム！">
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>★ 3Dピョコピョコ！ タッチでパニック ★</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            height: 100dvh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            transition: background 0.5s ease;
+        }
+
+        /* テーマ別背景グラデーション */
+        body.bg-bakery {
+            background: radial-gradient(circle at 50% 50%, #fffbeb 0%, #fde68a 48%, #f59e0b 100%);
+        }
+        body.bg-forest {
+            background: radial-gradient(circle at 50% 50%, #f7fee7 0%, #bef264 48%, #16a34a 100%);
+        }
+        body.bg-aquarium {
+            background: radial-gradient(circle at 50% 50%, #f0f9ff 0%, #7dd3fc 48%, #0284c7 100%);
+        }
+
+        /* 立体的なおもちゃ風ボタン */
+        .btn-toy {
+            transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 0 #b45309, 0 6px 12px rgba(0,0,0,0.22);
+            transform: translateY(0);
+        }
+        .btn-toy:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #b45309, 0 2px 4px rgba(0,0,0,0.18);
+        }
+
+        .btn-toy-slate {
+            transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 0 #334155, 0 6px 12px rgba(0,0,0,0.22);
+            transform: translateY(0);
+        }
+        .btn-toy-slate:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #334155, 0 2px 4px rgba(0,0,0,0.18);
+        }
+
+        @keyframes pulseGentle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.025); }
+        }
+        .guide-pulse {
+            animation: pulseGentle 2.2s ease-in-out infinite;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.38); opacity: 0; }
+            70% { transform: scale(1.06); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .modal-pop {
+            animation: popIn 0.36s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        /* スコアポップアニメーション */
+        @keyframes scoreBump {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.25); }
+            100% { transform: scale(1); }
+        }
+        .score-bump {
+            animation: scoreBump 0.22s ease-out;
+        }
+
+        /* カスタムスクロールバー */
+        .custom-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #fef3c7;
+            border-radius: 9999px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #f59e0b;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="bg-bakery">
+
+    <!-- ==========================================
+         上部ヘッダー領域（3Dステージや穴と絶対に重ならない専用エリア）
+         ========================================== -->
+    <header id="top-ui-header" class="w-full flex-shrink-0 z-20 pt-2 pb-1 px-2 sm:px-4 bg-gradient-to-b from-white/95 via-white/85 to-transparent">
+        <div class="w-full max-w-xl mx-auto flex flex-col items-center gap-1.5">
+            
+            <!-- 最上部バー：タイトル ＆ 「もういっかい！」「せってい」ボタン -->
+            <div class="w-full flex justify-between items-center gap-1.5">
+                <!-- タイトルロゴ -->
+                <div class="bg-white/95 px-2.5 sm:px-3.5 py-1 rounded-full shadow-sm border-2 border-amber-400 flex items-center gap-1 flex-shrink-0">
+                    <span class="text-sm sm:text-base">🔨</span>
+                    <span class="text-amber-700 font-black text-xs sm:text-sm tracking-tight">3Dピョコピョコ！タッチ</span>
+                </div>
+
+                <!-- 上部コントロールボタン群（誤タップ防止のためすべて上部に集約） -->
+                <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                    <!-- もういっかい！ボタン -->
+                    <button id="reset-btn" class="btn-toy bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-amber-950 font-black py-1.5 px-3 sm:px-4 rounded-full border-2 border-white flex items-center gap-1 text-xs sm:text-sm cursor-pointer">
+                        <span>✨</span>
+                        <span>もういっかい！</span>
+                    </button>
+
+                    <!-- せっていボタン -->
+                    <button id="settings-btn" class="btn-toy-slate bg-gradient-to-b from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white font-black py-1.5 px-3 sm:px-4 rounded-full border-2 border-white flex items-center gap-1 text-xs sm:text-sm cursor-pointer">
+                        <span>⚙️</span>
+                        <span>せってい</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- スコア・コンボ・のこり時間カード -->
+            <div class="w-full grid grid-cols-3 gap-2 sm:gap-3 px-0.5">
+                
+                <!-- タッチした数（スコア） -->
+                <div class="bg-gradient-to-b from-red-500 to-orange-500 text-white p-1.5 sm:p-2 rounded-2xl border-[3px] border-white flex items-center justify-between shadow-md">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span class="text-lg sm:text-2xl flex-shrink-0">🌟</span>
+                        <div class="leading-tight min-w-0">
+                            <div class="text-[9px] sm:text-[10px] font-bold text-white/90">タッチした数</div>
+                            <div class="text-xs sm:text-sm font-black truncate">スコア</div>
+                        </div>
+                    </div>
+                    <div id="score-val" class="bg-white text-red-600 font-black text-base sm:text-xl px-2.5 py-0.5 rounded-xl shadow-inner flex-shrink-0">
+                        0
+                    </div>
+                </div>
+
+                <!-- れんぞくコンボ -->
+                <div class="bg-gradient-to-b from-amber-400 to-amber-500 text-amber-950 p-1.5 sm:p-2 rounded-2xl border-[3px] border-white flex items-center justify-between shadow-md">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span class="text-lg sm:text-2xl flex-shrink-0">🔥</span>
+                        <div class="leading-tight min-w-0">
+                            <div class="text-[9px] sm:text-[10px] font-bold text-amber-900/80">れんぞく</div>
+                            <div class="text-xs sm:text-sm font-black truncate">コンボ</div>
+                        </div>
+                    </div>
+                    <div id="combo-val" class="bg-white text-amber-600 font-black text-base sm:text-xl px-2.5 py-0.5 rounded-xl shadow-inner flex-shrink-0">
+                        0
+                    </div>
+                </div>
+
+                <!-- のこり時間 -->
+                <div class="bg-gradient-to-b from-sky-500 to-blue-600 text-white p-1.5 sm:p-2 rounded-2xl border-[3px] border-white flex items-center justify-between shadow-md">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span class="text-lg sm:text-2xl flex-shrink-0">⏱️</span>
+                        <div class="leading-tight min-w-0">
+                            <div class="text-[9px] sm:text-[10px] font-bold text-sky-100">タイム</div>
+                            <div class="text-xs sm:text-sm font-black truncate">のこり</div>
+                        </div>
+                    </div>
+                    <div id="timer-val" class="bg-white text-blue-600 font-black text-base sm:text-xl px-2.5 py-0.5 rounded-xl shadow-inner flex-shrink-0">
+                        30
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 現在のガイドメッセージ＆お手本アイコンバナー -->
+            <div id="guide-banner" class="guide-pulse bg-white/95 px-3.5 py-1 rounded-full shadow-sm border-2 border-amber-400 flex items-center justify-center gap-2 text-center max-w-full">
+                <div id="guide-icons-wrap" class="flex items-center gap-1 flex-shrink-0">
+                    <!-- モードに応じたお手本キャラミニアイコンをJSで描画 -->
+                </div>
+                <span id="guide-text" class="text-xs sm:text-sm font-black text-red-600 truncate">
+                    ピョコッとでてきた仲間を タッチしてね！
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==========================================
+         中央〜下部：3Dキャンバス領域（残りの高さを100%使用し、文字と重ならない）
+         ========================================== -->
+    <main id="canvas-container" class="flex-1 relative w-full min-h-0 overflow-hidden cursor-pointer">
+        
+        <!-- ヒット時のフローティングメッセージ表示レイヤー（タップ透過） -->
+        <div id="hit-feedback-layer" class="pointer-events-none absolute inset-0 overflow-hidden z-20"></div>
+
+        <!-- 下部のさりげない操作ヒント（タップ透過） -->
+        <div class="pointer-events-none absolute bottom-1.5 inset-x-0 flex justify-center z-10 px-2">
+            <div class="text-slate-900/75 text-[10px] sm:text-xs font-bold bg-white/70 px-3 py-0.5 rounded-full backdrop-blur-sm shadow-sm text-center">
+                💡 でてきたキャラにタッチしてね！ ゆびでボードの角度も動かせるよ
+            </div>
+        </div>
+    </main>
+
+    <!-- ==========================================
+         タイムアップ・結果発表ポップアップバナー
+         ========================================== -->
+    <div id="result-overlay" class="fixed inset-x-0 bottom-7 z-30 flex justify-center items-center pointer-events-none hidden px-4">
+        <div class="pointer-events-auto modal-pop bg-white/95 backdrop-blur-md border-4 border-amber-400 rounded-3xl p-4 sm:p-6 shadow-2xl max-w-sm w-full flex flex-col items-center text-center">
+            <div class="text-3xl sm:text-4xl mb-1">🔨🎉👑</div>
+            <div id="result-badge" class="bg-amber-100 text-amber-900 font-black text-xs sm:text-sm px-3.5 py-0.5 rounded-full mb-1 border border-amber-300">
+                おしまい！ よくがんばったね！
+            </div>
+            <div id="result-title" class="text-2xl sm:text-3xl font-black text-red-600 drop-shadow-sm mb-1">
+                24かい タッチ！
+            </div>
+            <div id="result-subtitle" class="text-xs sm:text-sm font-bold text-amber-800 mb-4">
+                すごい反射神経！ いっぱいタッチできたね！✨
+            </div>
+            <button onclick="resetGame()" class="btn-toy bg-gradient-to-r from-red-500 to-amber-500 text-white font-black text-base sm:text-lg py-2.5 px-8 rounded-full border-4 border-white shadow-xl flex items-center gap-2 cursor-pointer">
+                <span>🎮</span>
+                <span>もういっかいあそぶ！</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         ⚙️ せっていモーダル（モード・テーマ・スピード・穴の数・時間・おと）
+         ========================================== -->
+    <div id="settings-modal" class="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden">
+        <div class="modal-pop bg-amber-50 border-4 border-amber-400 rounded-3xl max-w-lg w-full max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden">
+            
+            <!-- モーダルヘッダー -->
+            <div class="bg-gradient-to-r from-amber-400 to-orange-400 px-4 py-3 flex items-center justify-between border-b-4 border-amber-500 flex-shrink-0">
+                <div class="flex items-center gap-2 text-amber-950 font-black text-base sm:text-lg">
+                    <span>⚙️</span>
+                    <span>ゲームのせってい・ステージ変更</span>
+                </div>
+                <button id="close-settings-btn" class="bg-white hover:bg-red-50 text-amber-900 font-black w-8 h-8 rounded-full border-2 border-amber-600 flex items-center justify-center shadow cursor-pointer text-base">
+                    ✕
+                </button>
+            </div>
+
+            <!-- モーダルコンテンツ（スクロール可能） -->
+            <div class="p-3.5 sm:p-5 overflow-y-auto custom-scroll space-y-4 text-slate-900">
+                
+                <!-- 1. あそびかたモード -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-red-200 shadow-sm">
+                    <div class="text-xs sm:text-sm font-black text-red-600 mb-2 flex items-center gap-1.5">
+                        <span>🔨</span>
+                        <span>あそびかたモード</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <button id="mode-btn-any" onclick="changeGameMode('any')" class="p-2.5 rounded-xl font-black text-xs cursor-pointer transition flex flex-col items-start text-left">
+                            <div class="text-sm mb-0.5">🌟 なんでもタッチ</div>
+                            <div class="text-[10px] font-bold opacity-80">でてきたキャラをタッチすれば全部大成功！(2さい〜)</div>
+                        </button>
+                        <button id="mode-btn-mischief" onclick="changeGameMode('mischief')" class="p-2.5 rounded-xl font-black text-xs cursor-pointer transition flex flex-col items-start text-left">
+                            <div class="text-sm mb-0.5">😈 いたずらっこタッチ</div>
+                            <div class="text-[10px] font-bold opacity-80">バイキンマン・ドキンちゃん・もぐら達をタッチ！</div>
+                        </button>
+                        <button id="mode-btn-target" onclick="changeGameMode('target')" class="p-2.5 rounded-xl font-black text-xs cursor-pointer transition flex flex-col items-start text-left">
+                            <div class="text-sm mb-0.5">🎯 おだいタッチ</div>
+                            <div class="text-[10px] font-bold opacity-80">上のバナーのお手本とおなじキャラをタッチ！</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. ステージ＆キャラクターデザイン -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-amber-200 shadow-sm">
+                    <div class="text-xs sm:text-sm font-black text-amber-800 mb-2 flex items-center gap-1.5">
+                        <span>🎨</span>
+                        <span>ステージ＆でてくるキャラクター</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <button id="theme-btn-bakery" onclick="changeTheme('bakery')" class="p-2.5 rounded-xl font-black text-xs cursor-pointer transition flex items-center gap-2 text-left">
+                            <span class="text-2xl">🍞</span>
+                            <div>
+                                <div>パンこうじょう</div>
+                                <div class="text-[10px] opacity-75">アンパン・バイキン・ドキン</div>
+                            </div>
+                        </button>
+                        <button id="theme-btn-forest" onclick="changeTheme('forest')" class="p-2.5 rounded-xl font-black text-xs cursor-pointer transition flex items-center gap-2 text-left">
+                            <span class="text-2xl">🌿</span>
+                            <div>
+                                <div>もりのどうぶつ</div>
+                                <div class="text-[10px] opacity-75">もぐら・ライオン・パンダ</div>
+                            </div>
+                        </button>
+                        <button id="theme-btn-aquarium" onclick="changeTheme('aquarium')" class="p-2.5 rounded-xl font-black text-xs cursor-pointer transition flex items-center gap-2 text-left">
+                            <span class="text-2xl">🫧</span>
+                            <div>
+                                <div>うみのすいぞくかん</div>
+                                <div class="text-[10px] opacity-75">いるか・ペンギン・タコ</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. スピード（顔を出している時間） -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-emerald-200 shadow-sm">
+                    <div class="text-xs sm:text-sm font-black text-emerald-800 mb-2 flex items-center gap-1.5">
+                        <span>🐢</span>
+                        <span>ピョコピョコのスピード</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button id="speed-btn-slow" onclick="changeSpeed('slow')" class="py-2 px-2 rounded-xl font-black text-xs cursor-pointer transition flex flex-col items-center">
+                            <span class="text-sm">🐢 ゆっくり</span>
+                            <span class="text-[10px] opacity-80">2さい〜向け</span>
+                        </button>
+                        <button id="speed-btn-normal" onclick="changeSpeed('normal')" class="py-2 px-2 rounded-xl font-black text-xs cursor-pointer transition flex flex-col items-center">
+                            <span class="text-sm">🐇 ふつう</span>
+                            <span class="text-[10px] opacity-80">おすすめ</span>
+                        </button>
+                        <button id="speed-btn-fast" onclick="changeSpeed('fast')" class="py-2 px-2 rounded-xl font-black text-xs cursor-pointer transition flex flex-col items-center">
+                            <span class="text-sm">🚀 はやい</span>
+                            <span class="text-[10px] opacity-80">わくわく</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 4. あなの数 ＆ ゲーム時間 -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- あなの数 -->
+                    <div class="bg-white rounded-2xl p-3 border-2 border-sky-200 shadow-sm">
+                        <div class="text-xs sm:text-sm font-black text-sky-800 mb-2 flex items-center gap-1">
+                            <span>🕳️</span>
+                            <span>あなの数</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="holes-btn-6" onclick="changeHoleCount(6)" class="py-2 px-2 rounded-xl font-black text-xs cursor-pointer transition">
+                                6こ (2×3)
+                            </button>
+                            <button id="holes-btn-9" onclick="changeHoleCount(9)" class="py-2 px-2 rounded-xl font-black text-xs cursor-pointer transition">
+                                9こ (3×3)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ゲーム時間 -->
+                    <div class="bg-white rounded-2xl p-3 border-2 border-purple-200 shadow-sm">
+                        <div class="text-xs sm:text-sm font-black text-purple-800 mb-2 flex items-center gap-1">
+                            <span>⏱️</span>
+                            <span>あそぶ時間</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <button id="time-btn-30" onclick="changeTimeLimit(30)" class="py-2 px-1 rounded-xl font-black text-xs cursor-pointer transition">
+                                30びょう
+                            </button>
+                            <button id="time-btn-45" onclick="changeTimeLimit(45)" class="py-2 px-1 rounded-xl font-black text-xs cursor-pointer transition">
+                                45びょう
+                            </button>
+                            <button id="time-btn-0" onclick="changeTimeLimit(0)" class="py-2 px-1 rounded-xl font-black text-xs cursor-pointer transition">
+                                ∞ むせいげん
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. おとの設定 -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-amber-200 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-xs sm:text-sm font-black text-amber-950">🔊 ゲームのおと（効果音）</div>
+                            <div class="text-[10px] sm:text-xs font-bold text-amber-700">ピョコッと出る音やピコピコハンマーの音</div>
+                        </div>
+                        <button id="setting-sound-btn" class="px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2">
+                            🔊 ON
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- モーダルフッター -->
+            <div class="bg-amber-100 px-4 py-3 border-t-2 border-amber-300 flex justify-center flex-shrink-0">
+                <button id="ok-settings-btn" class="btn-toy bg-gradient-to-r from-amber-400 to-orange-400 text-amber-950 font-black text-sm sm:text-base py-2 px-10 rounded-full border-2 border-white cursor-pointer">
+                    ✨ けってい（ゲームにもどる）
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================
+         * 1. サウンドエンジン (Web Audio API)
+         * ピョコッ出現音・ピコピコハンマー打撃音・コンボ音・終了ファンファーレ
+         * ========================================== */
+        class WhackSoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            // 穴から「ピョコッ♪」と顔を出す音
+            playPopUp() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(280, now);
+                osc.frequency.exponentialRampToValueAtTime(560, now + 0.09);
+
+                gain.gain.setValueAtTime(0.14, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.11);
+            }
+
+            // タッチ成功時の「ピコッ！ポヨン♪」音（コンボが続くほど音程が上がる）
+            playHitSuccess(combo = 1) {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+
+                // 1音目：ピコハンマーのキュートなアタック音
+                const osc1 = this.ctx.createOscillator();
+                const gain1 = this.ctx.createGain();
+                const baseFreq = 523.25 * Math.pow(1.06, Math.min(combo, 12));
+                osc1.type = 'triangle';
+                osc1.frequency.setValueAtTime(baseFreq, now);
+                osc1.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, now + 0.11);
+                gain1.gain.setValueAtTime(0.32, now);
+                gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.16);
+                osc1.connect(gain1);
+                gain1.connect(this.ctx.destination);
+                osc1.start(now);
+                osc1.stop(now + 0.17);
+
+                // 2音目：キラキラ余韻音
+                const osc2 = this.ctx.createOscillator();
+                const gain2 = this.ctx.createGain();
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(baseFreq * 1.5, now + 0.06);
+                osc2.frequency.exponentialRampToValueAtTime(baseFreq * 2.0, now + 0.18);
+                gain2.gain.setValueAtTime(0.22, now + 0.06);
+                gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+                osc2.connect(gain2);
+                gain2.connect(this.ctx.destination);
+                osc2.start(now + 0.06);
+                osc2.stop(now + 0.23);
+            }
+
+            // いたずらっこモード等で味方キャラをタッチしたときの優しい「ニコニコ♪」音
+            playFriendlyWave() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.setValueAtTime(554.37, now + 0.08);
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.21);
+            }
+
+            // リセット・設定変更時のシャラン音
+            playReset() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((f, i) => {
+                    const now = this.ctx.currentTime + i * 0.045;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(f, now);
+                    gain.gain.setValueAtTime(0.16, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                });
+            }
+
+            // タイムアップ時のファンファーレ
+            playFinishFanfare() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50];
+                const durations = [0.12, 0.12, 0.12, 0.22, 0.12, 0.48];
+                let offset = 0;
+                notes.forEach((freq, idx) => {
+                    const now = this.ctx.currentTime + offset;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + durations[idx]);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + durations[idx] + 0.02);
+                    offset += durations[idx] * 0.95;
+                });
+            }
+        }
+
+        const sound = new WhackSoundEngine();
+
+        /* ==========================================
+         * 2. 高解像度 2D Canvas キャラクターイラスト描画 (全21種類)
+         * ========================================== */
+        function drawRoundedRect(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+        }
+
+        function drawMedalBackdrop(ctx, isIcon, innerColor, midColor, outerColor, rimColor) {
+            const bgGrad = ctx.createRadialGradient(256, 256, 30, 256, 256, 256);
+            bgGrad.addColorStop(0, innerColor);
+            bgGrad.addColorStop(0.68, midColor);
+            bgGrad.addColorStop(1, outerColor);
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, 512, 512);
+
+            ctx.save();
+            ctx.translate(256, 256);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+            for (let i = 0; i < 12; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.arc(0, 0, 300, (i * Math.PI) / 6, (i * Math.PI) / 6 + Math.PI / 12);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+
+            ctx.lineWidth = 24;
+            ctx.strokeStyle = rimColor;
+            ctx.beginPath();
+            ctx.arc(256, 256, 236, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(256, 256, 220, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // --- 🍞 パンこうじょうテーマ (7種) ---
+        function drawAnpanman(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fffbeb', '#fde047', '#ef4444', '#dc2626');
+
+            const fg = ctx.createRadialGradient(225, 195, 25, 256, 260, 165);
+            fg.addColorStop(0, '#f6ad55'); fg.addColorStop(0.7, '#dd6b20'); fg.addColorStop(1, '#9c4221');
+            ctx.fillStyle = fg; ctx.strokeStyle = '#4a1d05'; ctx.lineWidth = 10;
+            ctx.beginPath(); ctx.arc(256, 262, 152, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.lineWidth = 10; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.arc(200, 196, 34, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+            ctx.beginPath(); ctx.arc(312, 196, 34, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+            ctx.fillStyle = '#1e1b18';
+            ctx.beginPath(); ctx.ellipse(204, 212, 17, 24, 0, 0, Math.PI * 2); ctx.ellipse(308, 212, 17, 24, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(198, 203, 6, 0, Math.PI * 2); ctx.arc(302, 203, 6, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = '#c53030';
+            ctx.beginPath(); ctx.arc(256, 292, 72, 0.08 * Math.PI, 0.92 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#f95738';
+            ctx.beginPath(); ctx.arc(152, 272, 42, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(360, 272, 42, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#e53e3e';
+            ctx.beginPath(); ctx.arc(256, 266, 46, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            drawRoundedRect(ctx, 236, 240, 20, 20, 5); ctx.fill();
+            drawRoundedRect(ctx, 136, 252, 15, 15, 4); ctx.fill();
+            drawRoundedRect(ctx, 344, 252, 15, 15, 4); ctx.fill();
+
+            ctx.restore();
+            return c;
+        }
+
+        function drawBaikinman(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#f3e8ff', '#a855f7', '#4c1d95', '#6b21a8');
+
+            ctx.fillStyle = '#312e81'; ctx.strokeStyle = '#0f0524'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(200, 145); ctx.lineTo(148, 84); ctx.lineTo(175, 76); ctx.lineTo(222, 142); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(152, 82, 17, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(312, 145); ctx.lineTo(364, 84); ctx.lineTo(337, 76); ctx.lineTo(290, 142); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(360, 82, 17, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#2e1065';
+            ctx.beginPath(); ctx.ellipse(256, 278, 156, 142, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#f5d0fe';
+            ctx.beginPath(); ctx.ellipse(194, 222, 48, 56, -0.1, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(318, 222, 48, 56, 0.1, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1e1b4b';
+            ctx.beginPath(); ctx.arc(212, 232, 16, 0, Math.PI * 2); ctx.arc(300, 232, 16, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.ellipse(256, 336, 116, 54, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(144, 336);
+            for (let i = 1; i <= 6; i++) ctx.lineTo(144 + i * 37, i % 2 === 1 ? 352 : 322);
+            ctx.stroke();
+
+            ctx.fillStyle = '#7e22ce';
+            ctx.beginPath(); ctx.arc(256, 264, 26, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.restore();
+            return c;
+        }
+
+        function drawDokinchan(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fff1f2', '#fda4af', '#e11d48', '#be123c');
+
+            ctx.fillStyle = '#f97316'; ctx.strokeStyle = '#5c1906'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(234, 140); ctx.lineTo(256, 72); ctx.lineTo(278, 140); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fde047';
+            ctx.beginPath(); ctx.arc(256, 70, 21, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#ea580c';
+            ctx.beginPath(); ctx.ellipse(256, 278, 152, 140, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.ellipse(198, 224, 44, 52, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(314, 224, 44, 52, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath(); ctx.ellipse(206, 232, 22, 28, 0, 0, Math.PI * 2); ctx.ellipse(306, 232, 22, 28, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(198, 222, 8, 0, Math.PI * 2); ctx.arc(298, 222, 8, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#f43f5e';
+            ctx.beginPath(); ctx.arc(256, 298, 60, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fb923c';
+            ctx.beginPath(); ctx.arc(256, 266, 20, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.restore();
+            return c;
+        }
+
+        function drawKokinchan(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#f0f9ff', '#7dd3fc', '#0284c7', '#0369a1');
+
+            ctx.fillStyle = '#38bdf8'; ctx.strokeStyle = '#082f49'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(234, 140); ctx.lineTo(256, 72); ctx.lineTo(278, 140); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fde047';
+            ctx.beginPath(); ctx.arc(256, 70, 21, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#0ea5e9';
+            ctx.beginPath(); ctx.ellipse(256, 278, 152, 140, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.ellipse(196, 226, 44, 52, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(316, 226, 44, 52, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1d4ed8';
+            ctx.beginPath(); ctx.ellipse(204, 234, 25, 30, 0, 0, Math.PI * 2); ctx.ellipse(308, 234, 25, 30, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(196, 222, 10, 0, Math.PI * 2); ctx.arc(300, 222, 10, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath(); ctx.arc(256, 302, 54, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath(); ctx.arc(256, 268, 19, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.restore();
+            return c;
+        }
+
+        function drawMelonpan(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#f7fee7', '#bef264', '#16a34a', '#15803d');
+
+            ctx.fillStyle = '#d9f99d'; ctx.strokeStyle = '#365314'; ctx.lineWidth = 10;
+            ctx.beginPath(); ctx.arc(256, 265, 152, 0, Math.PI * 2); ctx.fill();
+            ctx.save(); ctx.clip();
+            ctx.strokeStyle = 'rgba(101, 163, 13, 0.55)'; ctx.lineWidth = 8;
+            for (let i = -3; i <= 3; i++) {
+                ctx.beginPath(); ctx.moveTo(256 + i * 60 - 130, 80); ctx.lineTo(256 + i * 60 + 130, 440); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(256 + i * 60 + 130, 80); ctx.lineTo(256 + i * 60 - 130, 440); ctx.stroke();
+            }
+            ctx.restore();
+            ctx.beginPath(); ctx.arc(256, 265, 152, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = '#365314';
+            ctx.beginPath(); ctx.ellipse(200, 232, 20, 26, 0, 0, Math.PI * 2); ctx.ellipse(312, 232, 20, 26, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(194, 222, 8, 0, Math.PI * 2); ctx.arc(306, 222, 8, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#f43f5e';
+            ctx.beginPath(); ctx.arc(256, 292, 48, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore();
+            return c;
+        }
+
+        function drawShokupan(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#ffffff', '#fed7aa', '#ea580c', '#c2410c');
+
+            const breadPath = (s) => {
+                ctx.beginPath(); ctx.save(); ctx.translate(256, 270); ctx.scale(s, s);
+                ctx.moveTo(-132, -60);
+                ctx.bezierCurveTo(-155, -155, -20, -165, 0, -135);
+                ctx.bezierCurveTo(20, -165, 155, -155, 132, -60);
+                ctx.lineTo(124, 120); ctx.quadraticCurveTo(124, 148, 94, 148);
+                ctx.lineTo(-94, 148); ctx.quadraticCurveTo(-124, 148, -124, 120);
+                ctx.closePath(); ctx.restore();
+            };
+            ctx.fillStyle = '#d97706'; ctx.strokeStyle = '#78350f'; ctx.lineWidth = 10;
+            breadPath(1.0); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fffbeb'; breadPath(0.86); ctx.fill();
+            ctx.fillStyle = '#451a03';
+            ctx.beginPath(); ctx.ellipse(204, 228, 16, 23, 0, 0, Math.PI * 2); ctx.ellipse(308, 228, 16, 23, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath(); ctx.arc(256, 296, 50, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore();
+            return c;
+        }
+
+        function drawCurrypan(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fef9c3', '#facc15', '#ca8a04', '#854d0e');
+
+            ctx.fillStyle = '#d97706'; ctx.strokeStyle = '#451a03'; ctx.lineWidth = 10;
+            ctx.beginPath(); ctx.ellipse(256, 268, 166, 130, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.ellipse(200, 220, 27, 33, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(312, 220, 27, 33, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath(); ctx.arc(204, 224, 13, 0, Math.PI * 2); ctx.arc(308, 224, 13, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#f97316';
+            ctx.beginPath(); ctx.arc(136, 268, 28, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(376, 268, 28, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#991b1b';
+            ctx.beginPath(); ctx.ellipse(256, 314, 78, 36, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.restore();
+            return c;
+        }
+
+        // --- 🌿 もりのどうぶつ＆もぐらテーマ (7種) ---
+        function drawMole(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fef9c3', '#fde047', '#ca8a04', '#78350f');
+
+            // もぐらさんのドーム型ボディ
+            const mg = ctx.createRadialGradient(230, 200, 20, 256, 280, 165);
+            mg.addColorStop(0, '#a16207'); mg.addColorStop(0.65, '#78350f'); mg.addColorStop(1, '#451a03');
+            ctx.fillStyle = mg; ctx.strokeStyle = '#292524'; ctx.lineWidth = 10;
+            ctx.beginPath(); ctx.ellipse(256, 282, 148, 142, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // 黄色い安全ヘルメット（探検帽風でとってもキュート！）
+            ctx.fillStyle = '#facc15';
+            ctx.beginPath(); ctx.arc(256, 212, 138, Math.PI, 0, false); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#eab308';
+            drawRoundedRect(ctx, 102, 195, 308, 32, 16); ctx.fill(); ctx.stroke();
+            // ヘルメットの星マーク
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath(); ctx.arc(256, 152, 24, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // くりくりした瞳
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath(); ctx.ellipse(202, 260, 17, 23, 0, 0, Math.PI * 2); ctx.ellipse(310, 260, 17, 23, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(196, 252, 7, 0, Math.PI * 2); ctx.arc(304, 252, 7, 0, Math.PI * 2); ctx.fill();
+
+            // ぷっくりベージュの口周りと大きなピンクの鼻
+            ctx.fillStyle = '#fde68a';
+            ctx.beginPath(); ctx.ellipse(256, 315, 76, 46, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#f43f5e';
+            ctx.beginPath(); ctx.ellipse(256, 294, 34, 24, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(244, 286, 8, 0, Math.PI * 2); ctx.fill();
+
+            // ヒゲ
+            ctx.strokeStyle = '#292524'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(135, 298); ctx.lineTo(175, 305);
+            ctx.moveTo(135, 325); ctx.lineTo(175, 320);
+            ctx.moveTo(377, 298); ctx.lineTo(337, 305);
+            ctx.moveTo(377, 325); ctx.lineTo(337, 320);
+            ctx.stroke();
+
+            ctx.restore();
+            return c;
+        }
+
+        function drawKingMole(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fff1f2', '#fda4af', '#e11d48', '#9f1239');
+
+            // いたずらサングラスもぐら
+            ctx.fillStyle = '#78350f'; ctx.strokeStyle = '#292524'; ctx.lineWidth = 10;
+            ctx.beginPath(); ctx.ellipse(256, 285, 148, 138, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // 王冠
+            ctx.fillStyle = '#facc15';
+            ctx.beginPath();
+            ctx.moveTo(165, 165); ctx.lineTo(155, 88); ctx.lineTo(215, 128); ctx.lineTo(256, 78); ctx.lineTo(297, 128); ctx.lineTo(357, 88); ctx.lineTo(347, 165);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            // クールな星型サングラス
+            ctx.fillStyle = '#1e1b4b'; ctx.strokeStyle = '#facc15'; ctx.lineWidth = 8;
+            ctx.beginPath(); ctx.arc(198, 242, 42, 0, Math.PI * 2); ctx.arc(314, 242, 42, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(238, 242); ctx.lineTo(274, 242); ctx.stroke();
+
+            // 口元＆ピンク鼻
+            ctx.fillStyle = '#fde68a'; ctx.strokeStyle = '#292524'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.ellipse(256, 320, 78, 46, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ec4899';
+            ctx.beginPath(); ctx.ellipse(256, 296, 34, 24, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.restore();
+            return c;
+        }
+
+        function drawLion(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fffbeb', '#fde047', '#f97316', '#c2410c');
+
+            ctx.fillStyle = '#b45309'; ctx.strokeStyle = '#451a03'; ctx.lineWidth = 8;
+            for (let i = 0; i < 12; i++) {
+                const a = (i * Math.PI * 2) / 12;
+                ctx.beginPath(); ctx.arc(256 + Math.cos(a) * 142, 265 + Math.sin(a) * 142, 46, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            }
+            ctx.fillStyle = '#fbbf24';
+            ctx.beginPath(); ctx.arc(256, 268, 118, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#292524';
+            ctx.beginPath(); ctx.ellipse(206, 244, 16, 22, 0, 0, Math.PI * 2); ctx.ellipse(306, 244, 16, 22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fffbeb';
+            ctx.beginPath(); ctx.arc(236, 296, 23, 0, Math.PI * 2); ctx.arc(276, 296, 23, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath(); ctx.moveTo(236, 270); ctx.lineTo(276, 270); ctx.lineTo(256, 290); ctx.closePath(); ctx.fill();
+
+            ctx.restore();
+            return c;
+        }
+
+        function drawPanda(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#f0fdf4', '#86efac', '#16a34a', '#15803d');
+
+            ctx.fillStyle = '#1e293b'; ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.arc(142, 152, 50, 0, Math.PI * 2); ctx.arc(370, 152, 50, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.ellipse(256, 275, 154, 142, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath(); ctx.ellipse(194, 250, 40, 50, 0.35, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(318, 250, 40, 50, -0.35, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(200, 240, 14, 0, Math.PI * 2); ctx.arc(312, 240, 14, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath(); ctx.ellipse(256, 286, 21, 14, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath(); ctx.arc(256, 314, 24, 0, Math.PI); ctx.fill(); ctx.stroke();
+
+            ctx.restore();
+            return c;
+        }
+
+        function drawRabbit(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fff1f2', '#fbcfe8', '#ec4899', '#be185d');
+
+            const ear = (cx, cy, r) => {
+                ctx.save(); ctx.translate(cx, cy); ctx.rotate(r);
+                ctx.fillStyle = '#fff1f2'; ctx.strokeStyle = '#831843'; ctx.lineWidth = 9;
+                ctx.beginPath(); ctx.ellipse(0, 0, 36, 86, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#f472b6';
+                ctx.beginPath(); ctx.ellipse(0, 8, 19, 58, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            };
+            ear(194, 150, -0.15); ear(318, 150, 0.15);
+
+            ctx.fillStyle = '#fff1f2'; ctx.strokeStyle = '#831843'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.ellipse(256, 290, 144, 124, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#500724';
+            ctx.beginPath(); ctx.ellipse(200, 268, 17, 23, 0, 0, Math.PI * 2); ctx.ellipse(312, 268, 17, 23, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ec4899';
+            ctx.beginPath(); ctx.ellipse(256, 288, 16, 12, 0, 0, Math.PI * 2); ctx.fill();
+
+            ctx.restore();
+            return c;
+        }
+
+        function drawElephant(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#f0f9ff', '#93c5fd', '#2563eb', '#1d4ed8');
+
+            ctx.fillStyle = '#60a5fa'; ctx.strokeStyle = '#1e3a8a'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.ellipse(122, 262, 78, 98, 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(390, 262, 78, 98, -0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(256, 258, 124, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath(); ctx.ellipse(200, 232, 16, 21, 0, 0, Math.PI * 2); ctx.ellipse(312, 232, 16, 21, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#60a5fa';
+            ctx.beginPath();
+            ctx.moveTo(230, 255); ctx.quadraticCurveTo(228, 350, 284, 350); ctx.quadraticCurveTo(320, 350, 315, 310);
+            ctx.quadraticCurveTo(274, 312, 274, 255); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore();
+            return c;
+        }
+
+        function drawGiraffe(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fefce8', '#fde047', '#ca8a04', '#854d0e');
+
+            ctx.fillStyle = '#78350f'; ctx.strokeStyle = '#451a03'; ctx.lineWidth = 9;
+            ctx.fillRect(208, 92, 20, 58); ctx.strokeRect(208, 92, 20, 58);
+            ctx.fillRect(284, 92, 20, 58); ctx.strokeRect(284, 92, 20, 58);
+            ctx.beginPath(); ctx.arc(218, 88, 20, 0, Math.PI * 2); ctx.arc(294, 88, 20, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#fde047';
+            ctx.beginPath(); ctx.ellipse(256, 265, 124, 132, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#292524';
+            ctx.beginPath(); ctx.ellipse(200, 238, 16, 22, 0, 0, Math.PI * 2); ctx.ellipse(312, 238, 16, 22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fef3c7';
+            ctx.beginPath(); ctx.ellipse(256, 326, 94, 64, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath(); ctx.arc(256, 332, 38, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore();
+            return c;
+        }
+
+        // --- 🫧 うみのすいぞくかんテーマ (7種) ---
+        function drawOctopus(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fff1f2', '#fda4af', '#e11d48', '#881337');
+
+            ctx.fillStyle = '#ef4444'; ctx.strokeStyle = '#7f1d1d'; ctx.lineWidth = 9;
+            for (let i = -2; i <= 2; i++) {
+                ctx.beginPath();
+                ctx.ellipse(256 + i * 54, 348, 30, 44, i * -0.15, 0, Math.PI * 2);
+                ctx.fill(); ctx.stroke();
+            }
+            ctx.beginPath(); ctx.ellipse(256, 240, 140, 124, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // ハチマキ風リボン
+            ctx.fillStyle = '#ffffff';
+            drawRoundedRect(ctx, 130, 148, 252, 26, 13); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath(); ctx.ellipse(200, 226, 17, 23, 0, 0, Math.PI * 2); ctx.ellipse(312, 226, 17, 23, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fca5a5';
+            ctx.beginPath(); ctx.arc(256, 278, 30, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#991b1b';
+            ctx.beginPath(); ctx.arc(256, 278, 14, 0, Math.PI * 2); ctx.fill();
+
+            ctx.restore();
+            return c;
+        }
+
+        function drawJellyfish(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fdf4ff', '#f0abfc', '#9333ea', '#581c87');
+
+            ctx.strokeStyle = '#7e22ce'; ctx.lineWidth = 12; ctx.lineCap = 'round';
+            [-75, -25, 25, 75].forEach(dx => {
+                ctx.beginPath();
+                ctx.moveTo(256 + dx, 285);
+                ctx.quadraticCurveTo(256 + dx - 22, 338, 256 + dx + 10, 380);
+                ctx.stroke();
+            });
+
+            ctx.fillStyle = '#f5d0fe'; ctx.strokeStyle = '#6b21a8'; ctx.lineWidth = 9;
+            ctx.beginPath();
+            ctx.arc(256, 265, 144, Math.PI, 0, false);
+            ctx.quadraticCurveTo(340, 300, 256, 285);
+            ctx.quadraticCurveTo(172, 300, 112, 265);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#3b0764';
+            ctx.beginPath(); ctx.ellipse(204, 220, 16, 22, 0, 0, Math.PI * 2); ctx.ellipse(308, 220, 16, 22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(256, 242, 26, 0.1 * Math.PI, 0.9 * Math.PI); ctx.stroke();
+
+            ctx.restore();
+            return c;
+        }
+
+        function drawDolphin(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#f0f9ff', '#38bdf8', '#0284c7', '#0369a1');
+
+            ctx.fillStyle = '#0ea5e9'; ctx.strokeStyle = '#082f49'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(225, 130); ctx.quadraticCurveTo(256, 68, 290, 92); ctx.lineTo(280, 135); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(256, 275, 146, 138, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#f0f9ff';
+            ctx.beginPath(); ctx.ellipse(256, 330, 110, 72, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath(); ctx.ellipse(256, 292, 74, 32, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath(); ctx.arc(256, 310, 44, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#082f49';
+            ctx.beginPath(); ctx.ellipse(188, 240, 17, 23, 0, 0, Math.PI * 2); ctx.ellipse(324, 240, 17, 23, 0, 0, Math.PI * 2); ctx.fill();
+
+            ctx.restore();
+            return c;
+        }
+
+        function drawSealion(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fff7ed', '#fdba74', '#ea580c', '#9a3412');
+
+            ctx.fillStyle = '#fde047'; ctx.strokeStyle = '#431407'; ctx.lineWidth = 8;
+            ctx.beginPath(); ctx.arc(256, 106, 42, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(238, 106, 22, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = '#c2410c'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.ellipse(256, 285, 142, 128, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath(); ctx.ellipse(198, 244, 17, 23, 0, 0, Math.PI * 2); ctx.ellipse(314, 244, 17, 23, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffedd5';
+            ctx.beginPath(); ctx.ellipse(228, 302, 38, 28, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(284, 302, 38, 28, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath(); ctx.ellipse(256, 274, 21, 15, 0, 0, Math.PI * 2); ctx.fill();
+
+            ctx.restore();
+            return c;
+        }
+
+        function drawPenguin(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#f0f9ff', '#bae6fd', '#0284c7', '#1e3a8a');
+
+            ctx.fillStyle = '#1e293b'; ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 10;
+            ctx.beginPath(); ctx.ellipse(256, 270, 152, 146, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(202, 255, 64, 0, Math.PI * 2); ctx.arc(310, 255, 64, 0, Math.PI * 2); ctx.ellipse(256, 305, 118, 82, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath(); ctx.ellipse(200, 244, 17, 23, 0, 0, Math.PI * 2); ctx.ellipse(312, 244, 17, 23, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#facc15'; ctx.lineWidth = 8;
+            ctx.beginPath(); ctx.ellipse(256, 290, 44, 26, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.restore();
+            return c;
+        }
+
+        function drawWhaleshark(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#ecfeff', '#67e8f9', '#0891b2', '#155e75');
+
+            ctx.fillStyle = '#0284c7'; ctx.strokeStyle = '#083344'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.ellipse(256, 275, 172, 128, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            [[180, 198], [230, 186], [282, 186], [332, 198], [205, 226], [256, 218], [307, 226]].forEach(([x, y]) => {
+                ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.fill();
+            });
+            ctx.fillStyle = '#f0f9ff';
+            ctx.beginPath(); ctx.ellipse(256, 328, 142, 64, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#083344';
+            ctx.beginPath(); ctx.arc(146, 275, 16, 0, Math.PI * 2); ctx.arc(366, 275, 16, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath(); ctx.ellipse(256, 315, 90, 34, 0, 0, Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore();
+            return c;
+        }
+
+        function drawSeaturtle(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#f0fdf4', '#86efac', '#16a34a', '#14532d');
+
+            ctx.fillStyle = '#15803d'; ctx.strokeStyle = '#14532d'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.ellipse(256, 290, 142, 108, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#86efac';
+            ctx.beginPath(); ctx.arc(256, 250, 114, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#052e16';
+            ctx.beginPath(); ctx.ellipse(206, 232, 16, 22, 0, 0, Math.PI * 2); ctx.ellipse(306, 232, 16, 22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath(); ctx.arc(256, 278, 38, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore();
+            return c;
+        }
+
+        /* ==========================================
+         * 3. キャラクターカタログ＆テーマ定義
+         * ========================================== */
+        const CHARACTER_CATALOG = {
+            // 🍞 パンこうじょう (isMischief: いたずらっこモードでのターゲット)
+            baikinman:  { id: 'baikinman',  name: 'バイキンマン', theme: 'bakery',   isMischief: true,  bodyHex: 0x7e22ce, drawFn: drawBaikinman },
+            dokinchan:  { id: 'dokinchan',  name: 'ドキンちゃん', theme: 'bakery',   isMischief: true,  bodyHex: 0xe11d48, drawFn: drawDokinchan },
+            kokinchan:  { id: 'kokinchan',  name: 'コキンちゃん', theme: 'bakery',   isMischief: true,  bodyHex: 0x0284c7, drawFn: drawKokinchan },
+            anpanman:   { id: 'anpanman',   name: 'アンパンマン', theme: 'bakery',   isMischief: false, bodyHex: 0xef4444, drawFn: drawAnpanman },
+            melonpan:   { id: 'melonpan',   name: 'メロンパン',   theme: 'bakery',   isMischief: false, bodyHex: 0x84cc16, drawFn: drawMelonpan },
+            shokupan:   { id: 'shokupan',   name: 'しょくぱん',   theme: 'bakery',   isMischief: false, bodyHex: 0xf97316, drawFn: drawShokupan },
+            currypan:   { id: 'currypan',   name: 'カレーパン',   theme: 'bakery',   isMischief: false, bodyHex: 0xeab308, drawFn: drawCurrypan },
+
+            // 🌿 もりのどうぶつ＆もぐら
+            mole:       { id: 'mole',       name: 'もぐらさん',   theme: 'forest',   isMischief: true,  bodyHex: 0xa16207, drawFn: drawMole },
+            kingmole:   { id: 'kingmole',   name: 'キングもぐら', theme: 'forest',   isMischief: true,  bodyHex: 0xe11d48, drawFn: drawKingMole },
+            lion:       { id: 'lion',       name: 'ライオンさん', theme: 'forest',   isMischief: false, bodyHex: 0xf59e0b, drawFn: drawLion },
+            panda:      { id: 'panda',      name: 'パンダさん',   theme: 'forest',   isMischief: false, bodyHex: 0x16a34a, drawFn: drawPanda },
+            rabbit:     { id: 'rabbit',     name: 'うさぎさん',   theme: 'forest',   isMischief: false, bodyHex: 0xec4899, drawFn: drawRabbit },
+            elephant:   { id: 'elephant',   name: 'ゾウさん',     theme: 'forest',   isMischief: false, bodyHex: 0x3b82f6, drawFn: drawElephant },
+            giraffe:    { id: 'giraffe',    name: 'キリンさん',   theme: 'forest',   isMischief: false, bodyHex: 0xca8a04, drawFn: drawGiraffe },
+
+            // 🫧 うみのすいぞくかん
+            octopus:    { id: 'octopus',    name: 'タコさん',     theme: 'aquarium', isMischief: true,  bodyHex: 0xef4444, drawFn: drawOctopus },
+            jellyfish:  { id: 'jellyfish',  name: 'クラゲさん',   theme: 'aquarium', isMischief: true,  bodyHex: 0xa855f7, drawFn: drawJellyfish },
+            dolphin:    { id: 'dolphin',    name: 'いるかさん',   theme: 'aquarium', isMischief: false, bodyHex: 0x0ea5e9, drawFn: drawDolphin },
+            sealion:    { id: 'sealion',    name: 'あしかさん',   theme: 'aquarium', isMischief: false, bodyHex: 0xf97316, drawFn: drawSealion },
+            penguin:    { id: 'penguin',    name: 'ペンギンさん', theme: 'aquarium', isMischief: false, bodyHex: 0x3b82f6, drawFn: drawPenguin },
+            whaleshark: { id: 'whaleshark', name: 'ジンベエザメ', theme: 'aquarium', isMischief: false, bodyHex: 0x06b6d4, drawFn: drawWhaleshark },
+            seaturtle:  { id: 'seaturtle',  name: 'ウミガメさん', theme: 'aquarium', isMischief: false, bodyHex: 0x22c55e, drawFn: drawSeaturtle }
+        };
+
+        const charTexCache = {};
+        const charIconCache = {};
+
+        function getCharTexture(charId) {
+            if (!charTexCache[charId]) {
+                const tex = new THREE.CanvasTexture(CHARACTER_CATALOG[charId].drawFn(512, false));
+                tex.anisotropy = 4;
+                charTexCache[charId] = tex;
+            }
+            return charTexCache[charId];
+        }
+
+        function getCharIconCanvas(charId) {
+            if (!charIconCache[charId]) {
+                charIconCache[charId] = CHARACTER_CATALOG[charId].drawFn(128, true);
+            }
+            return charIconCache[charId];
+        }
+
+        /* ==========================================
+         * 4. ゲーム設定＆進行ステート管理
+         * ========================================== */
+        let gameMode = 'any';          // 'any' (なんでもタッチ) | 'mischief' (いたずらっこタッチ) | 'target' (おだいタッチ)
+        let currentTheme = 'bakery';   // 'bakery' | 'forest' | 'aquarium'
+        let speedMode = 'slow';        // 'slow' (ゆっくり) | 'normal' (ふつう) | 'fast' (はやい)
+        let holeCount = 6;             // 6 (2x3) | 9 (3x3)
+        let timeLimitSetting = 30;     // 30 | 45 | 0 (むせいげん)
+
+        let score = 0;
+        let combo = 0;
+        let timeLeft = 30;
+        let currentTargetCharId = 'anpanman';
+        let targetHitsCounter = 0;
+        let isGameOver = false;
+        let isSettingsOpen = false;
+        let spawnTimer = 0;
+        let countdownAccumulator = 0;
+
+        /* ==========================================
+         * 5. Three.js 3Dステージ・穴・ピョコピョコ人形・ピコピコハンマー構築
+         * ========================================== */
+        let scene, camera, renderer;
+        let boardGroup;
+        let holeSlots = [];            // 各穴の3Dオブジェクト＆状態配列
+        let hitTargetMeshes = [];      // Raycaster用の大きめ当たり判定メッシュ
+        let hammerGroup = null;        // 3Dピコピコハンマー
+        let starParticles = [];        // タッチ時の3D星エフェクト
+
+        let currentBoardSpanW = 8.8;
+        let currentBoardSpanH = 6.4;
+
+        // ドラッグでボード角度を少し変えられる機能
+        let isDragging = false;
+        let dragStartPos = { x: 0, y: 0 };
+        let previousPointerPos = { x: 0, y: 0 };
+        let targetBoardRotation = { x: -0.38, y: 0 };
+
+        // ハンマーアニメーション制御
+        let hammerAnim = {
+            active: false,
+            progress: 0
+        };
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+
+            const w = container.clientWidth || window.innerWidth;
+            const h = container.clientHeight || (window.innerHeight - 170);
+
+            camera = new THREE.PerspectiveCamera(40, w / h, 0.1, 100);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(w, h);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // 明るく立体感のあるライティング
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.84);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xfffbeb, 0.85);
+            dirLight.position.set(6, 12, 11);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            const d = 9.5;
+            dirLight.shadow.camera.left = -d;
+            dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d;
+            dirLight.shadow.camera.bottom = -d;
+            scene.add(dirLight);
+
+            const rimLight = new THREE.DirectionalLight(0xfde047, 0.32);
+            rimLight.position.set(-8, -6, 6);
+            scene.add(rimLight);
+
+            boardGroup = new THREE.Group();
+            boardGroup.rotation.x = targetBoardRotation.x;
+            boardGroup.rotation.y = targetBoardRotation.y;
+            scene.add(boardGroup);
+
+            buildWhackStageAndStart();
+            updateCameraAndRendererSize();
+
+            window.addEventListener('resize', updateCameraAndRendererSize);
+            if (window.ResizeObserver) {
+                const ro = new ResizeObserver(() => updateCameraAndRendererSize());
+                ro.observe(container);
+            }
+
+            setupPointerInteractions(renderer.domElement);
+        }
+
+        // #canvas-container の実寸に合わせて、3Dステージ全体が文字や枠外と重ならないようカメラ距離を自動調整
+        function updateCameraAndRendererSize() {
+            if (!camera || !renderer) return;
+            const container = document.getElementById('canvas-container');
+            const w = Math.max(100, container.clientWidth);
+            const h = Math.max(100, container.clientHeight);
+
+            renderer.setSize(w, h);
+            const aspect = w / h;
+            camera.aspect = aspect;
+
+            const fovRad = THREE.MathUtils.degToRad(camera.fov);
+            const padW = currentBoardSpanW + 1.6;
+            const padH = currentBoardSpanH + 2.1; // 上段の穴から飛び出すキャラとハンマーの頭上余白を確保
+
+            const distV = (padH / 2) / Math.tan(fovRad / 2);
+            const distH = (padW / 2) / (Math.tan(fovRad / 2) * aspect);
+
+            const finalDist = Math.max(distV, distH, 10.2);
+            camera.position.set(0, -0.15, finalDist);
+            camera.lookAt(0, 0.1, 0);
+            camera.updateProjectionMatrix();
+        }
+
+        // ステージ盤面・穴・ピョコピョコドール・3Dピコピコハンマーを構築してゲーム開始
+        function buildWhackStageAndStart() {
+            while (boardGroup.children.length > 0) {
+                boardGroup.remove(boardGroup.children[0]);
+            }
+            holeSlots = [];
+            hitTargetMeshes = [];
+            starParticles = [];
+
+            score = 0;
+            combo = 0;
+            timeLeft = timeLimitSetting;
+            isGameOver = false;
+            spawnTimer = 0.25;
+            countdownAccumulator = 0;
+
+            document.getElementById('result-overlay').classList.add('hidden');
+            document.getElementById('hit-feedback-layer').innerHTML = '';
+
+            // おだいタッチモードの初期ターゲット選出
+            pickNewTargetCharacter();
+
+            // グリッド構成（6穴 = 3列×2行、9穴 = 3列×3行）
+            const cols = 3;
+            const rows = holeCount === 6 ? 2 : 3;
+            const spacingX = 2.45;
+            const spacingY = 2.25;
+
+            const boardInnerW = cols * spacingX + 0.6;
+            const boardInnerH = rows * spacingY + 0.6;
+            const boardOuterW = boardInnerW + 0.7;
+            const boardOuterH = boardInnerH + 0.7;
+
+            currentBoardSpanW = boardOuterW;
+            currentBoardSpanH = boardOuterH;
+
+            // テーマ別カラー設定
+            const palette = {
+                bakery:   { outer: 0xb45309, inner: 0xfde68a, rim: 0xdc2626, rimTop: 0xfef3c7, pin: 0xfacc15 },
+                forest:   { outer: 0x78350f, inner: 0x4ade80, rim: 0x92400e, rimTop: 0xd97706, pin: 0xf43f5e },
+                aquarium: { outer: 0x0369a1, inner: 0x38bdf8, rim: 0x0284c7, rimTop: 0xf472b6, pin: 0xfef08a }
+            }[currentTheme];
+
+            // 1. 外枠立体ボード（厚みのあるボックスで下から飛び出すキャラの胴体を自然に隠す）
+            const outerMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(boardOuterW, boardOuterH, 1.35),
+                new THREE.MeshStandardMaterial({ color: palette.outer, roughness: 0.4 })
+            );
+            outerMesh.position.z = -0.72;
+            outerMesh.receiveShadow = true;
+            boardGroup.add(outerMesh);
+
+            // 2. 内側盤面プレート
+            const innerMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(boardInnerW, boardInnerH, 1.28),
+                new THREE.MeshStandardMaterial({ color: palette.inner, roughness: 0.45 })
+            );
+            innerMesh.position.z = -0.64;
+            innerMesh.receiveShadow = true;
+            boardGroup.add(innerMesh);
+
+            // 四隅の飾りモチーフ
+            const pinGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.3, 20);
+            pinGeo.rotateX(Math.PI / 2);
+            const pinMat = new THREE.MeshStandardMaterial({ color: palette.pin, roughness: 0.25 });
+            const px = boardOuterW / 2 - 0.38;
+            const py = boardOuterH / 2 - 0.38;
+            [[-px, -py], [px, -py], [-px, py], [px, py]].forEach(([cx, cy]) => {
+                const pin = new THREE.Mesh(pinGeo, pinMat);
+                pin.position.set(cx, cy, 0.05);
+                boardGroup.add(pin);
+            });
+
+            // 3. 各穴（煙突・切り株・サンゴ穴）とピョコピョコドールの作成
+            for (let i = 0; i < holeCount; i++) {
+                const r = Math.floor(i / cols);
+                const c = i % cols;
+                const x = (c - (cols - 1) / 2) * spacingX;
+                const y = ((rows - 1) / 2 - r) * spacingY;
+
+                createHoleAndPuppetSlot(i, x, y, palette);
+            }
+
+            // 4. 3Dピコピコハンマーを作成
+            create3DPikoHammer();
+
+            updateCameraAndRendererSize();
+            updateHeaderAndGuideUI();
+        }
+
+        function createHoleAndPuppetSlot(index, x, y, palette) {
+            const slotGroup = new THREE.Group();
+            slotGroup.position.set(x, y, 0);
+            boardGroup.add(slotGroup);
+
+            // ① 穴の外周リング（煙突・切り株・サンゴの筒）
+            const rimOuter = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.92, 0.98, 0.42, 32),
+                new THREE.MeshStandardMaterial({ color: palette.rim, roughness: 0.35 })
+            );
+            rimOuter.rotation.x = Math.PI / 2;
+            rimOuter.position.z = 0.16;
+            rimOuter.castShadow = true;
+            rimOuter.receiveShadow = true;
+            slotGroup.add(rimOuter);
+
+            // 穴のフチの明るいリング
+            const rimLip = new THREE.Mesh(
+                new THREE.TorusGeometry(0.86, 0.09, 14, 32),
+                new THREE.MeshStandardMaterial({ color: palette.rimTop, roughness: 0.3 })
+            );
+            rimLip.position.z = 0.37;
+            slotGroup.add(rimLip);
+
+            // ② 穴の奥の暗いサークル（奥行き感を表現）
+            const darkPit = new THREE.Mesh(
+                new THREE.CircleGeometry(0.82, 32),
+                new THREE.MeshBasicMaterial({ color: 0x0f172a })
+            );
+            darkPit.position.z = 0.36;
+            slotGroup.add(darkPit);
+
+            // ③ 穴からピョコッと飛び出す3Dキャラクタードールグループ
+            const puppetGroup = new THREE.Group();
+            // 待機時は穴の奥(-Z)に隠れている
+            puppetGroup.position.set(0, 0, -0.75);
+            slotGroup.add(puppetGroup);
+
+            // ドールのカラフルな胴体カプセル
+            const bodyMesh = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.52, 0.62, 0.75, 24),
+                new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3 })
+            );
+            bodyMesh.rotation.x = Math.PI / 2;
+            bodyMesh.position.set(0, -0.15, -0.2);
+            puppetGroup.add(bodyMesh);
+
+            // ドールの丸い3Dメダル顔（正面に高解像度イラスト）
+            const headGeo = new THREE.CylinderGeometry(0.74, 0.74, 0.28, 36);
+            headGeo.rotateX(Math.PI / 2);
+            headGeo.rotateZ(Math.PI / 2);
+
+            const headRimMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25 });
+            const headFaceMat = new THREE.MeshStandardMaterial({
+                map: getCharTexture('anpanman'),
+                roughness: 0.22
+            });
+
+            const headMesh = new THREE.Mesh(headGeo, [headRimMat, headFaceMat, headFaceMat]);
+            headMesh.position.set(0, 0.12, 0.12);
+            headMesh.rotation.x = 0.32; // カメラに向けて見やすく角度をつける
+            headMesh.castShadow = true;
+            puppetGroup.add(headMesh);
+
+            // ④ タップ判定用の透明な大きめヒットボックス（2歳のお子様が少しズレて触っても反応する優しい設計）
+            const hitBox = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.08, 1.08, 1.8, 16),
+                new THREE.MeshBasicMaterial({ visible: false })
+            );
+            hitBox.rotation.x = Math.PI / 2;
+            hitBox.position.set(x, y, 0.65);
+            hitBox.userData = { holeIndex: index };
+            boardGroup.add(hitBox);
+            hitTargetMeshes.push(hitBox);
+
+            holeSlots.push({
+                index,
+                x,
+                y,
+                state: 'hidden', // 'hidden' | 'popping' | 'active' | 'hit' | 'retreating'
+                charId: 'anpanman',
+                timer: 0,
+                stayDuration: 2.0,
+                hiddenZ: -0.75,
+                poppedZ: 0.88,
+                currentZ: -0.75,
+                puppetGroup,
+                bodyMesh,
+                headMesh,
+                rimLip
+            });
+        }
+
+        // タッチした穴の上で「ピコッ！」と振られるかわいい3Dピコピコハンマー
+        function create3DPikoHammer() {
+            hammerGroup = new THREE.Group();
+            hammerGroup.visible = false;
+            boardGroup.add(hammerGroup);
+
+            // 白と水色の持ち手
+            const handle = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.11, 0.13, 1.35, 16),
+                new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.25 })
+            );
+            handle.position.set(0, 0.65, 0);
+            hammerGroup.add(handle);
+
+            // 赤いハンマーヘッド
+            const head = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.38, 0.38, 1.05, 24),
+                new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.25 })
+            );
+            head.rotation.z = Math.PI / 2;
+            head.position.set(0, 1.25, 0);
+            hammerGroup.add(head);
+
+            // 両端の黄色い蛇腹クッション
+            [-0.54, 0.54].forEach(ox => {
+                const cap = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.42, 0.42, 0.16, 24),
+                    new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.2 })
+                );
+                cap.rotation.z = Math.PI / 2;
+                cap.position.set(ox, 1.25, 0);
+                hammerGroup.add(cap);
+            });
+        }
+
+        function triggerHammerSwingAt(x, y) {
+            if (!hammerGroup) return;
+            hammerGroup.visible = true;
+            hammerGroup.position.set(x + 0.65, y - 0.35, 1.45);
+            hammerGroup.rotation.set(0.2, 0, -0.5);
+            hammerAnim.active = true;
+            hammerAnim.progress = 0;
+        }
+
+        /* ==========================================
+         * 6. キャラクター出現ロジック＆タップ判定
+         * ========================================== */
+        function getThemeCharacterList() {
+            return Object.keys(CHARACTER_CATALOG).filter(k => CHARACTER_CATALOG[k].theme === currentTheme);
+        }
+
+        function pickNewTargetCharacter() {
+            const list = getThemeCharacterList();
+            const prev = currentTargetCharId;
+            const candidates = list.filter(k => k !== prev);
+            currentTargetCharId = candidates[Math.floor(Math.random() * candidates.length)] || list[0];
+        }
+
+        // スピード設定に応じたパラメータを取得
+        function getSpeedConfig() {
+            if (speedMode === 'slow') {
+                return { stayMin: 2.3, stayMax: 3.1, spawnInterval: 0.75, maxActive: Math.ceil(holeCount * 0.55) };
+            }
+            if (speedMode === 'normal') {
+                return { stayMin: 1.5, stayMax: 2.2, spawnInterval: 0.55, maxActive: Math.ceil(holeCount * 0.65) };
+            }
+            return { stayMin: 1.0, stayMax: 1.5, spawnInterval: 0.38, maxActive: Math.ceil(holeCount * 0.75) };
+        }
+
+        function trySpawnCharacter() {
+            if (isGameOver || isSettingsOpen) return;
+            const cfg = getSpeedConfig();
+
+            const activeSlots = holeSlots.filter(s => s.state !== 'hidden');
+            if (activeSlots.length >= cfg.maxActive) return;
+
+            const hiddenSlots = holeSlots.filter(s => s.state === 'hidden');
+            if (hiddenSlots.length === 0) return;
+
+            const slot = hiddenSlots[Math.floor(Math.random() * hiddenSlots.length)];
+
+            // モードに合わせて出現させるキャラクターを選出
+            const themeKeys = getThemeCharacterList();
+            let chosenId = themeKeys[0];
+
+            if (gameMode === 'any') {
+                chosenId = themeKeys[Math.floor(Math.random() * themeKeys.length)];
+            } else if (gameMode === 'mischief') {
+                // 75%の確率でいたずらっこキャラを出し、25%で味方キャラを出す（お子様がテンポよくタッチできるように）
+                const mischiefs = themeKeys.filter(k => CHARACTER_CATALOG[k].isMischief);
+                const friends = themeKeys.filter(k => !CHARACTER_CATALOG[k].isMischief);
+                if (Math.random() < 0.75 || friends.length === 0) {
+                    chosenId = mischiefs[Math.floor(Math.random() * mischiefs.length)];
+                } else {
+                    chosenId = friends[Math.floor(Math.random() * friends.length)];
+                }
+            } else if (gameMode === 'target') {
+                // 65%の確率でお手本キャラを出す
+                if (Math.random() < 0.65) {
+                    chosenId = currentTargetCharId;
+                } else {
+                    chosenId = themeKeys[Math.floor(Math.random() * themeKeys.length)];
+                }
+            }
+
+            const charInfo = CHARACTER_CATALOG[chosenId];
+            slot.charId = chosenId;
+            slot.state = 'popping';
+            slot.timer = 0;
+            slot.stayDuration = cfg.stayMin + Math.random() * (cfg.stayMax - cfg.stayMin);
+
+            // テクスチャと胴体カラーをセット
+            slot.bodyMesh.material.color.setHex(charInfo.bodyHex);
+            slot.headMesh.material[1].map = getCharTexture(chosenId);
+            slot.headMesh.material[1].needsUpdate = true;
+            slot.headMesh.material[2].map = getCharTexture(chosenId);
+            slot.headMesh.material[2].needsUpdate = true;
+
+            // ターゲットの穴のフチを光らせてわかりやすくする
+            const isTarget = isCharValidTarget(chosenId);
+            slot.rimLip.material.emissive.setHex(isTarget ? 0xfacc15 : 0x000000);
+            slot.rimLip.material.emissiveIntensity = isTarget ? 0.35 : 0;
+
+            slot.puppetGroup.scale.set(1, 1, 1);
+            slot.puppetGroup.rotation.set(0, 0, 0);
+            sound.playPopUp();
+        }
+
+        function isCharValidTarget(charId) {
+            if (gameMode === 'any') return true;
+            if (gameMode === 'mischief') return CHARACTER_CATALOG[charId].isMischief;
+            if (gameMode === 'target') return charId === currentTargetCharId;
+            return true;
+        }
+
+        // ポインター＆タップ処理
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+
+        function setupPointerInteractions(domElement) {
+            domElement.addEventListener('pointerdown', (e) => {
+                sound.init();
+                isDragging = true;
+                dragStartPos.x = e.clientX;
+                dragStartPos.y = e.clientY;
+                previousPointerPos.x = e.clientX;
+                previousPointerPos.y = e.clientY;
+
+                // アクションゲームなので pointerdown の瞬間に即座にタッチ判定を行う（レスポンス抜群！）
+                handleStageTap(e.clientX, e.clientY);
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - previousPointerPos.x;
+                const dy = e.clientY - previousPointerPos.y;
+                previousPointerPos.x = e.clientX;
+                previousPointerPos.y = e.clientY;
+
+                targetBoardRotation.y = Math.max(-0.38, Math.min(0.38, targetBoardRotation.y + dx * 0.005));
+                targetBoardRotation.x = Math.max(-0.62, Math.min(-0.12, targetBoardRotation.x + dy * 0.005));
+            });
+
+            window.addEventListener('pointerup', () => {
+                isDragging = false;
+            });
+        }
+
+        function handleStageTap(clientX, clientY) {
+            if (isGameOver || isSettingsOpen) return;
+
+            const rect = renderer.domElement.getBoundingClientRect();
+            pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+            pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(pointer, camera);
+            const intersects = raycaster.intersectObjects(hitTargetMeshes);
+
+            if (intersects.length > 0) {
+                // 顔を出している穴を優先してヒットさせる
+                for (const hit of intersects) {
+                    const idx = hit.object.userData.holeIndex;
+                    const slot = holeSlots[idx];
+                    if (slot.state === 'popping' || slot.state === 'active') {
+                        onPuppetTapped(slot, clientX, clientY);
+                        return;
+                    }
+                }
+            }
+        }
+
+        function onPuppetTapped(slot, screenX, screenY) {
+            const valid = isCharValidTarget(slot.charId);
+            const charInfo = CHARACTER_CATALOG[slot.charId];
+
+            if (valid) {
+                // 🌟 タッチ大成功！
+                slot.state = 'hit';
+                slot.timer = 0;
+                slot.rimLip.material.emissiveIntensity = 0;
+
+                score++;
+                combo++;
+                sound.playHitSuccess(combo);
+
+                // スコアバッジを弾ませる
+                const scoreEl = document.getElementById('score-val');
+                scoreEl.textContent = score;
+                scoreEl.classList.remove('score-bump');
+                void scoreEl.offsetWidth;
+                scoreEl.classList.add('score-bump');
+
+                document.getElementById('combo-val').textContent = combo;
+
+                // 3Dハンマー演出＆星パーティクル＆フローティング文字
+                triggerHammerSwingAt(slot.x, slot.y);
+                spawnHitStars(slot.x, slot.y);
+                const praises = ['やったね！', 'ナイス！', 'すごい！', 'ピコッ！✨'];
+                showFloatingText(screenX, screenY, `🌟 ${praises[score % praises.length]} +1`, 'text-red-600 border-amber-400');
+
+                // おだいタッチモードなら3回タッチ成功ごとにお手本をチェンジ
+                if (gameMode === 'target') {
+                    targetHitsCounter++;
+                    if (targetHitsCounter >= 3) {
+                        targetHitsCounter = 0;
+                        pickNewTargetCharacter();
+                        updateHeaderAndGuideUI();
+                    }
+                }
+            } else {
+                // 😊 いたずらっこモード等で味方キャラをタッチしたとき（減点せず優しくガイド）
+                slot.state = 'retreating';
+                slot.timer = 0;
+                combo = 0;
+                document.getElementById('combo-val').textContent = 0;
+                sound.playFriendlyWave();
+                showFloatingText(screenX, screenY, `😊 ${charInfo.name}は おともだち♪`, 'text-sky-700 border-sky-400');
+            }
+        }
+
+        function showFloatingText(clientX, clientY, text, colorClasses) {
+            const layer = document.getElementById('hit-feedback-layer');
+            const rect = layer.getBoundingClientRect();
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+
+            const badge = document.createElement('div');
+            badge.className = `modal-pop absolute bg-white/95 px-3 py-1 rounded-full border-2 shadow-lg font-black text-xs sm:text-sm whitespace-nowrap ${colorClasses}`;
+            badge.style.left = `${Math.max(20, Math.min(rect.width - 140, x - 55))}px`;
+            badge.style.top = `${Math.max(15, y - 35)}px`;
+            badge.textContent = text;
+            layer.appendChild(badge);
+
+            setTimeout(() => {
+                badge.style.transition = 'all 0.35s ease';
+                badge.style.opacity = '0';
+                badge.style.transform = 'translateY(-22px) scale(0.9)';
+                setTimeout(() => badge.remove(), 350);
+            }, 650);
+        }
+
+        function spawnHitStars(x, y) {
+            const colors = [0xfacc15, 0xef4444, 0x38bdf8, 0x4ade80, 0xf472b6, 0xffffff];
+            const geo = new THREE.OctahedronGeometry(0.18, 0);
+
+            for (let i = 0; i < 14; i++) {
+                const mat = new THREE.MeshBasicMaterial({ color: colors[i % colors.length] });
+                const star = new THREE.Mesh(geo, mat);
+                star.position.set(x, y, 0.9);
+                const angle = (Math.PI * 2 * i) / 14;
+                const speed = 0.05 + Math.random() * 0.06;
+                star.userData = {
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    vz: 0.05 + Math.random() * 0.05,
+                    life: 32
+                };
+                boardGroup.add(star);
+                starParticles.push(star);
+            }
+        }
+
+        /* ==========================================
+         * 7. タイムアップ＆結果発表演出
+         * ========================================== */
+        function triggerTimeUp() {
+            isGameOver = true;
+            sound.playFinishFanfare();
+
+            // すべてのキャラクターを引っ込める
+            holeSlots.forEach(s => {
+                if (s.state !== 'hidden') {
+                    s.state = 'retreating';
+                }
+                s.rimLip.material.emissiveIntensity = 0;
+            });
+
+            // 祝福の星シャワー
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    spawnHitStars((Math.random() - 0.5) * 5, (Math.random() - 0.5) * 3);
+                }, i * 150);
+            }
+
+            const overlay = document.getElementById('result-overlay');
+            document.getElementById('result-title').textContent = `${score}かい タッチ！`;
+            const subEl = document.getElementById('result-subtitle');
+            if (score >= 20) {
+                subEl.textContent = 'すごすぎる！！ タッチの名人だね！👑✨';
+            } else if (score >= 10) {
+                subEl.textContent = 'やったね！ いっぱいタッチできたよ！🎉';
+            } else {
+                subEl.textContent = 'たのしかったね！ もう1回あそんでみよう♪';
+            }
+
+            document.getElementById('guide-text').textContent = `🎊 おしまい！ ${score}かい タッチできたよ！ 🎊`;
+            overlay.classList.remove('hidden');
+        }
+
+        /* ==========================================
+         * 8. ヘッダーUI・お手本バナー・設定モーダル更新
+         * ========================================== */
+        function updateHeaderAndGuideUI() {
+            document.body.className = `bg-${currentTheme}`;
+
+            document.getElementById('score-val').textContent = score;
+            document.getElementById('combo-val').textContent = combo;
+            document.getElementById('timer-val').textContent = timeLimitSetting === 0 ? '∞' : timeLeft;
+
+            const iconsWrap = document.getElementById('guide-icons-wrap');
+            const guideText = document.getElementById('guide-text');
+            iconsWrap.innerHTML = '';
+
+            const themeKeys = getThemeCharacterList();
+
+            if (gameMode === 'any') {
+                // テーマの代表キャラ2つを表示
+                themeKeys.slice(0, 2).forEach(k => {
+                    iconsWrap.appendChild(createMiniGuideIcon(k));
+                });
+                guideText.textContent = 'ピョコッとでてきた仲間を タッチしてね！';
+                guideText.className = 'text-xs sm:text-sm font-black text-red-600 truncate';
+            } else if (gameMode === 'mischief') {
+                const mischiefs = themeKeys.filter(k => CHARACTER_CATALOG[k].isMischief);
+                mischiefs.forEach(k => {
+                    iconsWrap.appendChild(createMiniGuideIcon(k));
+                });
+                const names = mischiefs.slice(0, 2).map(k => CHARACTER_CATALOG[k].name).join('・');
+                guideText.textContent = `いたずらっこ（${names}）をタッチしてね！`;
+                guideText.className = 'text-xs sm:text-sm font-black text-purple-700 truncate';
+            } else if (gameMode === 'target') {
+                iconsWrap.appendChild(createMiniGuideIcon(currentTargetCharId));
+                const tName = CHARACTER_CATALOG[currentTargetCharId].name;
+                guideText.textContent = `おだい：「${tName}」をさがしてタッチ！`;
+                guideText.className = 'text-xs sm:text-sm font-black text-amber-800 truncate';
+            }
+        }
+
+        function createMiniGuideIcon(charId) {
+            const wrap = document.createElement('div');
+            wrap.className = 'w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 border-amber-400 overflow-hidden bg-white shadow-sm flex-shrink-0';
+            const c = document.createElement('canvas');
+            c.width = 64; c.height = 64;
+            c.className = 'w-full h-full';
+            c.getContext('2d').drawImage(getCharIconCanvas(charId), 0, 0, 64, 64);
+            wrap.appendChild(c);
+            return wrap;
+        }
+
+        function renderSettingsModalUI() {
+            // 1. モードボタン
+            ['any', 'mischief', 'target'].forEach(md => {
+                const btn = document.getElementById(`mode-btn-${md}`);
+                if (gameMode === md) {
+                    btn.className = 'p-2.5 rounded-xl font-black text-xs cursor-pointer bg-red-100 text-red-950 border-3 border-red-500 shadow-inner flex flex-col items-start text-left scale-[1.02]';
+                } else {
+                    btn.className = 'p-2.5 rounded-xl font-black text-xs cursor-pointer bg-slate-50 text-slate-700 border-2 border-slate-200 hover:bg-red-50 flex flex-col items-start text-left';
+                }
+            });
+
+            // 2. テーマボタン
+            ['bakery', 'forest', 'aquarium'].forEach(th => {
+                const btn = document.getElementById(`theme-btn-${th}`);
+                if (currentTheme === th) {
+                    btn.className = 'p-2.5 rounded-xl font-black text-xs cursor-pointer bg-amber-100 text-amber-950 border-3 border-amber-500 shadow-inner flex items-center gap-2 text-left scale-[1.02]';
+                } else {
+                    btn.className = 'p-2.5 rounded-xl font-black text-xs cursor-pointer bg-slate-50 text-slate-700 border-2 border-slate-200 hover:bg-amber-50 flex items-center gap-2 text-left';
+                }
+            });
+
+            // 3. スピードボタン
+            ['slow', 'normal', 'fast'].forEach(sp => {
+                const btn = document.getElementById(`speed-btn-${sp}`);
+                if (speedMode === sp) {
+                    btn.className = 'py-2 px-2 rounded-xl font-black text-xs cursor-pointer bg-emerald-500 text-white shadow border-2 border-emerald-700 flex flex-col items-center scale-105';
+                } else {
+                    btn.className = 'py-2 px-2 rounded-xl font-black text-xs cursor-pointer bg-emerald-50 text-emerald-950 border-2 border-emerald-200 hover:bg-emerald-100 flex flex-col items-center';
+                }
+            });
+
+            // 4. 穴の数ボタン
+            [6, 9].forEach(hc => {
+                const btn = document.getElementById(`holes-btn-${hc}`);
+                if (holeCount === hc) {
+                    btn.className = 'py-2 px-2 rounded-xl font-black text-xs cursor-pointer bg-sky-500 text-white shadow border-2 border-sky-700';
+                } else {
+                    btn.className = 'py-2 px-2 rounded-xl font-black text-xs cursor-pointer bg-sky-50 text-sky-950 border-2 border-sky-200 hover:bg-sky-100';
+                }
+            });
+
+            // 5. 時間ボタン
+            [30, 45, 0].forEach(tm => {
+                const btn = document.getElementById(`time-btn-${tm}`);
+                if (timeLimitSetting === tm) {
+                    btn.className = 'py-2 px-1 rounded-xl font-black text-xs cursor-pointer bg-purple-600 text-white shadow border-2 border-purple-800';
+                } else {
+                    btn.className = 'py-2 px-1 rounded-xl font-black text-xs cursor-pointer bg-purple-50 text-purple-950 border-2 border-purple-200 hover:bg-purple-100';
+                }
+            });
+
+            // 6. サウンドボタン
+            const soundBtn = document.getElementById('setting-sound-btn');
+            soundBtn.textContent = sound.enabled ? '🔊 ON' : '🔇 OFF';
+            soundBtn.className = sound.enabled
+                ? 'bg-amber-500 hover:bg-amber-400 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2'
+                : 'bg-slate-400 hover:bg-slate-500 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2';
+        }
+
+        // 設定変更ハンドラ群
+        window.changeGameMode = function(newMode) {
+            gameMode = newMode;
+            pickNewTargetCharacter();
+            sound.playReset();
+            updateHeaderAndGuideUI();
+            renderSettingsModalUI();
+        };
+
+        window.changeTheme = function(newTheme) {
+            if (currentTheme === newTheme) return;
+            currentTheme = newTheme;
+            sound.playReset();
+            renderSettingsModalUI();
+            buildWhackStageAndStart();
+        };
+
+        window.changeSpeed = function(newSpeed) {
+            speedMode = newSpeed;
+            sound.playPopUp();
+            renderSettingsModalUI();
+        };
+
+        window.changeHoleCount = function(newCount) {
+            if (holeCount === newCount) return;
+            holeCount = newCount;
+            sound.playReset();
+            renderSettingsModalUI();
+            buildWhackStageAndStart();
+        };
+
+        window.changeTimeLimit = function(newTime) {
+            timeLimitSetting = newTime;
+            sound.playReset();
+            renderSettingsModalUI();
+            buildWhackStageAndStart();
+        };
+
+        window.resetGame = function() {
+            sound.playReset();
+            targetBoardRotation.x = -0.38;
+            targetBoardRotation.y = 0;
+            buildWhackStageAndStart();
+        };
+
+        /* ==========================================
+         * 9. メイン60fpsアニメーションループ
+         * ========================================== */
+        const clock = new THREE.Clock();
+        let prevTime = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const elapsedTime = clock.getElapsedTime();
+            const dt = Math.min(0.1, elapsedTime - prevTime);
+            prevTime = elapsedTime;
+
+            // 1. ボード角度の滑らかな追従
+            if (boardGroup) {
+                boardGroup.rotation.x += (targetBoardRotation.x - boardGroup.rotation.x) * 0.12;
+                boardGroup.rotation.y += (targetBoardRotation.y - boardGroup.rotation.y) * 0.12;
+            }
+
+            // 2. ゲーム進行（スポーンタイマー＆カウントダウン）
+            if (!isGameOver && !isSettingsOpen) {
+                const cfg = getSpeedConfig();
+                spawnTimer -= dt;
+                if (spawnTimer <= 0) {
+                    trySpawnCharacter();
+                    spawnTimer = cfg.spawnInterval * (0.75 + Math.random() * 0.5);
+                }
+
+                if (timeLimitSetting > 0) {
+                    countdownAccumulator += dt;
+                    if (countdownAccumulator >= 1.0) {
+                        countdownAccumulator -= 1.0;
+                        timeLeft = Math.max(0, timeLeft - 1);
+                        document.getElementById('timer-val').textContent = timeLeft;
+                        if (timeLeft <= 0) {
+                            triggerTimeUp();
+                        }
+                    }
+                }
+            }
+
+            // 3. 各穴のキャラクターのピョコピョコ昇降・揺れ・ヒットリアクション
+            holeSlots.forEach((slot, idx) => {
+                const pg = slot.puppetGroup;
+
+                if (slot.state === 'popping') {
+                    slot.currentZ += (slot.poppedZ - slot.currentZ) * 0.25;
+                    pg.position.z = slot.currentZ;
+                    if (Math.abs(slot.poppedZ - slot.currentZ) < 0.03) {
+                        slot.currentZ = slot.poppedZ;
+                        slot.state = 'active';
+                        slot.timer = 0;
+                    }
+                } else if (slot.state === 'active') {
+                    slot.timer += dt;
+                    // 顔を出している間、左右にご機嫌に揺れる
+                    pg.rotation.z = Math.sin(elapsedTime * 7 + idx) * 0.12;
+                    pg.position.z = slot.poppedZ + Math.sin(elapsedTime * 5 + idx) * 0.05;
+
+                    if (!isSettingsOpen && slot.timer >= slot.stayDuration) {
+                        slot.state = 'retreating';
+                        slot.rimLip.material.emissiveIntensity = 0;
+                    }
+                } else if (slot.state === 'hit') {
+                    // タッチされた瞬間：ぷるんと弾んでくるっと回りながら穴へ戻る
+                    slot.timer += dt;
+                    pg.rotation.y += 0.45;
+                    const squash = 1 + Math.sin(slot.timer * 25) * 0.22;
+                    pg.scale.set(squash, 1 / squash, 1);
+
+                    if (slot.timer > 0.28) {
+                        slot.currentZ += (slot.hiddenZ - slot.currentZ) * 0.28;
+                        pg.position.z = slot.currentZ;
+                        if (slot.currentZ <= slot.hiddenZ + 0.05) {
+                            slot.state = 'hidden';
+                            slot.currentZ = slot.hiddenZ;
+                            pg.position.z = slot.hiddenZ;
+                            pg.scale.set(1, 1, 1);
+                            pg.rotation.set(0, 0, 0);
+                        }
+                    }
+                } else if (slot.state === 'retreating') {
+                    slot.currentZ += (slot.hiddenZ - slot.currentZ) * 0.22;
+                    pg.position.z = slot.currentZ;
+                    pg.rotation.z *= 0.8;
+                    if (slot.currentZ <= slot.hiddenZ + 0.04) {
+                        slot.state = 'hidden';
+                        slot.currentZ = slot.hiddenZ;
+                        pg.position.z = slot.hiddenZ;
+                        pg.rotation.set(0, 0, 0);
+                    }
+                }
+            });
+
+            // 4. 3Dピコピコハンマーのスイングアニメーション
+            if (hammerAnim.active && hammerGroup) {
+                hammerAnim.progress += dt * 4.5;
+                if (hammerAnim.progress < 0.45) {
+                    // 振り下ろす
+                    const t = hammerAnim.progress / 0.45;
+                    hammerGroup.rotation.z = -0.5 + t * 1.15;
+                } else if (hammerAnim.progress < 1.0) {
+                    // 跳ね返って戻る
+                    const t = (hammerAnim.progress - 0.45) / 0.55;
+                    hammerGroup.rotation.z = 0.65 - t * 0.8;
+                } else {
+                    hammerAnim.active = false;
+                    hammerGroup.visible = false;
+                }
+            }
+
+            // 5. 星パーティクルのアニメーション
+            for (let i = starParticles.length - 1; i >= 0; i--) {
+                const s = starParticles[i];
+                s.position.x += s.userData.vx;
+                s.position.y += s.userData.vy;
+                s.position.z += s.userData.vz;
+                s.userData.vz -= 0.003;
+                s.rotation.x += 0.15;
+                s.rotation.y += 0.15;
+                s.userData.life--;
+                if (s.userData.life <= 0) {
+                    boardGroup.remove(s);
+                    starParticles.splice(i, 1);
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // 起動時初期化
+        window.onload = function() {
+            init3D();
+            renderSettingsModalUI();
+
+            // ✨ もういっかい！ボタン
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                resetGame();
+            });
+
+            // ⚙️ せっていモーダル開閉
+            const settingsModal = document.getElementById('settings-modal');
+            const openSettings = () => {
+                isSettingsOpen = true;
+                sound.playPopUp();
+                renderSettingsModalUI();
+                settingsModal.classList.remove('hidden');
+            };
+            const closeSettings = () => {
+                isSettingsOpen = false;
+                sound.playPopUp();
+                settingsModal.classList.add('hidden');
+            };
+
+            document.getElementById('settings-btn').addEventListener('click', openSettings);
+            document.getElementById('close-settings-btn').addEventListener('click', closeSettings);
+            document.getElementById('ok-settings-btn').addEventListener('click', closeSettings);
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === settingsModal) closeSettings();
+            });
+
+            // おと ON/OFF トグル
+            document.getElementById('setting-sound-btn').addEventListener('click', () => {
+                sound.enabled = !sound.enabled;
+                if (sound.enabled) sound.playPopUp();
+                renderSettingsModalUI();
+            });
+
+            animate();
+        };
+    </script>
+</body>
+</html>

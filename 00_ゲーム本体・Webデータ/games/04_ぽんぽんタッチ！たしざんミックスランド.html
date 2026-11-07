@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ぽんぽんタッチ！たしざんミックスランド</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100dvh;
+            overflow: hidden;
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            touch-action: manipulation;
+        }
+        /* Cute Tactile 2D Buttons */
+        .toy-btn {
+            transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.12s ease;
+            box-shadow: 0 5px 0 rgba(0,0,0,0.16), 0 8px 16px rgba(0,0,0,0.1);
+        }
+        .toy-btn:active {
+            transform: translateY(4px) scale(0.97);
+            box-shadow: 0 1px 0 rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.08);
+        }
+        @keyframes bobble {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-6px) rotate(2deg); }
+        }
+        @keyframes pulseRing {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.75); }
+            50% { transform: scale(1.06); box-shadow: 0 0 0 10px rgba(250, 204, 21, 0); }
+        }
+        @keyframes jumpCount {
+            0% { transform: translateY(0) scale(1); }
+            35% { transform: translateY(-22px) scale(1.18, 0.92); }
+            70% { transform: translateY(2px) scale(0.95, 1.05); }
+            100% { transform: translateY(0) scale(1); }
+        }
+        @keyframes badgePop {
+            0% { transform: scale(0) translateY(8px); opacity: 0; }
+            70% { transform: scale(1.2) translateY(-2px); opacity: 1; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        @keyframes mixerShake {
+            0%, 100% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(-4deg) scale(1.03); }
+            75% { transform: rotate(4deg) scale(1.03); }
+        }
+        .animate-bobble {
+            animation: bobble 2.6s ease-in-out infinite;
+        }
+        .animate-pulse-ring {
+            animation: pulseRing 1.6s infinite;
+        }
+        .animate-jump-once {
+            animation: jumpCount 0.48s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        .animate-badge-pop {
+            animation: badgePop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        .animate-mixer {
+            animation: mixerShake 0.25s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body id="app-body" class="flex flex-col justify-between w-full h-[100dvh] bg-gradient-to-b from-amber-50 via-orange-50 to-rose-100 select-none overflow-hidden">
+
+    <!-- Floating Confetti & Particle Layer (Pointer-events none) -->
+    <canvas id="confetti-canvas" class="fixed inset-0 w-full h-full pointer-events-none z-30"></canvas>
+
+    <!-- ================= TOP BAR (Clean, Uncluttered, Single Gear Button) ================= -->
+    <header class="w-full px-3 pt-2.5 pb-1.5 flex items-center justify-between gap-2 shrink-0 z-20 max-w-2xl mx-auto">
+        
+        <!-- Left: Star Score Badge -->
+        <div class="flex items-center gap-1.5 bg-white/95 border-2 border-amber-300 rounded-2xl px-2.5 py-1.5 shadow-sm shrink-0">
+            <span class="text-lg sm:text-xl leading-none">⭐</span>
+            <div class="flex items-baseline gap-0.5">
+                <span id="score-text" class="text-base sm:text-xl font-black text-amber-600 leading-none">0</span>
+                <span class="text-[10px] sm:text-xs font-extrabold text-slate-500 whitespace-nowrap">もん</span>
+            </div>
+        </div>
+
+        <!-- Center: Visual Addition Formula Card (A + B = ?) -->
+        <div class="flex-1 max-w-xs bg-white/95 border-3 border-white shadow-md rounded-2xl px-2.5 py-1 flex items-center justify-center gap-1.5 sm:gap-2.5">
+            <!-- Number A -->
+            <div id="formula-box-a" class="flex items-center justify-center bg-sky-100 border-2 border-sky-400 rounded-xl min-w-[36px] sm:min-w-[44px] h-9 sm:h-11 px-2 transition-transform duration-300">
+                <span id="formula-num-a" class="text-xl sm:text-2xl font-black text-sky-600 leading-none">2</span>
+            </div>
+
+            <span class="text-base sm:text-xl font-black text-slate-400">＋</span>
+
+            <!-- Number B -->
+            <div id="formula-box-b" class="flex items-center justify-center bg-amber-100 border-2 border-amber-400 rounded-xl min-w-[36px] sm:min-w-[44px] h-9 sm:h-11 px-2 transition-transform duration-300">
+                <span id="formula-num-b" class="text-xl sm:text-2xl font-black text-amber-600 leading-none">1</span>
+            </div>
+
+            <span class="text-base sm:text-xl font-black text-slate-400">＝</span>
+
+            <!-- Sum Result -->
+            <div id="formula-box-sum" class="flex items-center justify-center bg-pink-100 border-2 border-pink-400 rounded-xl min-w-[40px] sm:min-w-[48px] h-9 sm:h-11 px-2 transition-all duration-300">
+                <span id="formula-num-sum" class="text-xl sm:text-2xl font-black text-pink-600 leading-none">？</span>
+            </div>
+        </div>
+
+        <!-- Right: Single Small Settings Gear Button -->
+        <button onclick="openSettingsModal()" aria-label="設定" class="toy-btn w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white/95 border-2 border-slate-200 flex items-center justify-center text-slate-600 hover:text-slate-900 shrink-0">
+            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+        </button>
+    </header>
+
+    <!-- ================= MAIN INTERACTIVE PLAY STAGE (No overlapping menus!) ================= -->
+    <main id="play-stage" onclick="handleStageBackgroundTap(event)" class="flex-1 w-full max-w-xl mx-auto px-3 py-1 flex flex-col justify-between gap-2 relative overflow-hidden cursor-pointer">
+        
+        <!-- Guide Speech Bubble -->
+        <div class="w-full flex justify-center shrink-0">
+            <div id="guide-banner" class="bg-white/95 border-2 border-amber-300 rounded-full px-4 py-1.5 shadow-sm flex items-center gap-2 max-w-full">
+                <span id="guide-icon" class="text-lg sm:text-xl shrink-0">🍓</span>
+                <span id="guide-text" class="text-xs sm:text-base font-black text-slate-800 truncate">お皿をタッチして まんなかに あつめよう！</span>
+            </div>
+        </div>
+
+        <!-- Upper Row: Group A (Left) & Group B (Right) Waiting Trays -->
+        <div class="w-full grid grid-cols-2 gap-2.5 sm:gap-4 shrink-0">
+            
+            <!-- Left Tray (Group A) -->
+            <div id="tray-a" onclick="handleTrayTap('A', event)" class="relative bg-sky-100/90 border-4 border-sky-300 rounded-3xl p-2 sm:p-3 min-h-[108px] sm:min-h-[130px] flex flex-col items-center justify-between shadow-md transition-all duration-300">
+                <div class="w-full flex items-center justify-between px-1">
+                    <span id="tray-a-label" class="text-[11px] sm:text-xs font-black text-sky-800 bg-white/80 px-2 py-0.5 rounded-full">ひだりのお皿</span>
+                    <span id="tray-a-count" class="text-xs sm:text-sm font-black text-sky-700 bg-sky-200/80 px-2 py-0.5 rounded-full">2こ</span>
+                </div>
+                <div id="tray-a-items" class="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 my-auto py-1">
+                    <!-- Dynamic SVG Items A -->
+                </div>
+            </div>
+
+            <!-- Right Tray (Group B) -->
+            <div id="tray-b" onclick="handleTrayTap('B', event)" class="relative bg-amber-100/90 border-4 border-amber-300 rounded-3xl p-2 sm:p-3 min-h-[108px] sm:min-h-[130px] flex flex-col items-center justify-between shadow-md transition-all duration-300">
+                <div class="w-full flex items-center justify-between px-1">
+                    <span id="tray-b-label" class="text-[11px] sm:text-xs font-black text-amber-900 bg-white/80 px-2 py-0.5 rounded-full">みぎのお皿</span>
+                    <span id="tray-b-count" class="text-xs sm:text-sm font-black text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">1こ</span>
+                </div>
+                <div id="tray-b-items" class="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 my-auto py-1">
+                    <!-- Dynamic SVG Items B -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Downward Arrow Indicator -->
+        <div class="flex items-center justify-center -my-1 shrink-0 pointer-events-none">
+            <div id="combine-arrow" class="bg-white/90 text-pink-500 font-black text-xs sm:text-sm px-3 py-0.5 rounded-full border-2 border-pink-200 shadow-sm flex items-center gap-1">
+                <span>⬇️</span>
+                <span id="combine-arrow-text">あわせて いくつ？</span>
+                <span>⬇️</span>
+            </div>
+        </div>
+
+        <!-- Center Main Combine Stage (Mixer Bowl / Pool / Train Track) -->
+        <div id="center-stage-box" class="flex-1 w-full bg-white/90 border-4 border-pink-300 rounded-3xl p-3 sm:p-4 shadow-xl flex flex-col items-center justify-between relative overflow-hidden min-h-[170px]">
+            
+            <!-- Stage Decorative Header -->
+            <div class="w-full flex items-center justify-between z-10">
+                <div class="flex items-center gap-1.5">
+                    <span id="stage-theme-icon" class="text-lg sm:text-2xl">🍹</span>
+                    <span id="stage-theme-title" class="text-xs sm:text-sm font-black text-slate-700">ミックスボウル</span>
+                </div>
+                <span id="stage-count-badge" class="text-xs sm:text-sm font-black bg-pink-100 text-pink-700 border border-pink-300 px-2.5 py-0.5 rounded-full">
+                    いま 0こ
+                </span>
+            </div>
+
+            <!-- Combined Items Lineup Area (Items jump & show number badges 1..N here!) -->
+            <div id="combined-items-grid" class="flex-1 w-full flex flex-wrap items-center justify-center content-center gap-2 sm:gap-3.5 py-2 z-10">
+                <!-- Dynamic Combined Items -->
+            </div>
+
+            <!-- Empty Placeholder Prompt when 0 items are inside -->
+            <div id="center-empty-hint" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-60">
+                <div class="text-4xl sm:text-5xl mb-1 animate-bounce" id="center-empty-icon">🥣</div>
+                <p class="text-xs sm:text-sm font-extrabold text-slate-500">ここへ ぽんぽん あつまるよ！</p>
+            </div>
+
+            <!-- Celebration Banner Overlay inside Center Stage when Solved -->
+            <div id="stage-clear-banner" class="hidden absolute inset-x-3 bottom-2 bg-gradient-to-r from-yellow-300 via-amber-300 to-orange-300 border-3 border-white rounded-2xl px-3 py-2 shadow-lg items-center justify-between z-20 animate-badge-pop">
+                <div class="flex items-center gap-2">
+                    <span id="clear-product-icon" class="text-2xl sm:text-3xl">🍹✨</span>
+                    <div class="flex flex-col leading-tight">
+                        <span id="clear-equation-text" class="text-base sm:text-xl font-black text-rose-700">2 ＋ 1 ＝ 3 ！</span>
+                        <span id="clear-sub-text" class="text-[11px] sm:text-xs font-extrabold text-amber-950">ミックスジュース できあがり！</span>
+                    </div>
+                </div>
+                <button onclick="nextProblem(event)" class="toy-btn bg-white text-rose-600 font-black text-xs sm:text-sm px-3 py-1.5 rounded-xl border-2 border-rose-200 whitespace-nowrap">
+                    つぎへ ⏭️
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ================= BOTTOM ACTION BAR (Clean, Finger-Friendly, No Text Wrapping) ================= -->
+    <footer class="w-full max-w-xl mx-auto px-3 pt-1 pb-3 sm:pb-4 shrink-0 z-20">
+        
+        <!-- Quiz Mode 3-Choice Buttons (Only visible during STEP_COUNT in Quiz Mode) -->
+        <div id="quiz-choices-bar" class="hidden w-full grid-cols-3 gap-2.5 mb-2">
+            <!-- Populated dynamically -->
+        </div>
+
+        <!-- Main Assist & Next Control Row -->
+        <div class="w-full flex items-center gap-2">
+            <!-- Big Primary Action Button for Toddlers -->
+            <button id="btn-main-action" onclick="handleMainButtonTap(event)" class="toy-btn flex-1 bg-gradient-to-b from-yellow-300 via-amber-400 to-orange-500 text-slate-900 font-black py-3 sm:py-3.5 px-4 rounded-2xl border-3 border-white flex items-center justify-center gap-2.5">
+                <span id="main-btn-icon" class="text-2xl sm:text-3xl leading-none shrink-0">🍓</span>
+                <span id="main-btn-label" class="text-base sm:text-xl font-black whitespace-nowrap">ぜんぶ あつめる！</span>
+            </button>
+
+            <!-- Skip / Next Problem Button -->
+            <button onclick="nextProblem(event)" aria-label="つぎのもんだい" class="toy-btn bg-white/95 hover:bg-white text-slate-700 font-extrabold py-3 sm:py-3.5 px-3.5 rounded-2xl border-3 border-slate-200 flex items-center justify-center gap-1 shrink-0 whitespace-nowrap">
+                <span class="text-lg sm:text-xl leading-none">⏭️</span>
+                <span class="text-xs sm:text-sm font-black">つぎへ</span>
+            </button>
+        </div>
+    </footer>
+
+    <!-- ================= SETTINGS MODAL (Opened ONLY via the Top-Right Gear Icon ⚙️) ================= -->
+    <div id="settings-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-3xl border-4 border-amber-300 shadow-2xl w-full max-w-md max-h-[88dvh] flex flex-col overflow-hidden">
+            
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-amber-400 to-orange-500 px-5 py-3.5 flex items-center justify-between text-white">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">⚙️</span>
+                    <h2 class="text-base sm:text-lg font-black">あそびかた・テーマ設定</h2>
+                </div>
+                <button onclick="closeSettingsModal()" class="toy-btn bg-white text-slate-800 w-9 h-9 rounded-full font-black text-base flex items-center justify-center">✕</button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-4 sm:p-5 overflow-y-auto space-y-4">
+                
+                <!-- 1. Play Scene Theme -->
+                <div>
+                    <label class="block text-xs font-black text-slate-600 mb-2">🎨 あそびのテーマ（3種類）</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="selectTheme('juice')" data-theme="juice" class="theme-btn toy-btn p-2.5 rounded-2xl border-3 border-amber-500 bg-amber-50 flex flex-col items-center gap-1">
+                            <span class="text-2xl">🍹🍓</span>
+                            <span class="text-xs font-black text-slate-800">ミックスジュース</span>
+                        </button>
+                        <button onclick="selectTheme('train')" data-theme="train" class="theme-btn toy-btn p-2.5 rounded-2xl border-3 border-slate-200 bg-white flex flex-col items-center gap-1">
+                            <span class="text-2xl">🚂🐼</span>
+                            <span class="text-xs font-black text-slate-800">どうぶつトレイン</span>
+                        </button>
+                        <button onclick="selectTheme('pool')" data-theme="pool" class="theme-btn toy-btn p-2.5 rounded-2xl border-3 border-slate-200 bg-white flex flex-col items-center gap-1">
+                            <span class="text-2xl">🐬🦭</span>
+                            <span class="text-xs font-black text-slate-800">なかよしプール</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. Play Mode (2-Year-Old Mode vs Quiz Mode) -->
+                <div>
+                    <label class="block text-xs font-black text-slate-600 mb-2">👶 モード切り替え</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="setPlayMode(true)" id="mode-btn-kid" class="toy-btn p-2.5 rounded-2xl border-3 border-pink-500 bg-pink-50 flex flex-col items-center text-center">
+                            <span class="text-lg">👶 2さいモード</span>
+                            <span class="text-[10px] font-bold text-slate-600 mt-0.5">タッチで1こずつ数える</span>
+                        </button>
+                        <button onclick="setPlayMode(false)" id="mode-btn-quiz" class="toy-btn p-2.5 rounded-2xl border-3 border-slate-200 bg-white flex flex-col items-center text-center">
+                            <span class="text-lg">🎓 クイズモード</span>
+                            <span class="text-[10px] font-bold text-slate-600 mt-0.5">3つの数字から答えを選ぶ</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. Number Difficulty Range -->
+                <div>
+                    <label class="block text-xs font-black text-slate-600 mb-2">🔢 かずの大きさ（難易度）</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="setDifficulty('easy')" data-diff="easy" class="diff-btn toy-btn py-2.5 px-2 rounded-2xl border-3 border-emerald-500 bg-emerald-50 flex flex-col items-center">
+                            <span class="text-xs font-black text-slate-800">かんたん</span>
+                            <span class="text-[10px] font-bold text-emerald-700">こたえ 2〜5</span>
+                        </button>
+                        <button onclick="setDifficulty('normal')" data-diff="normal" class="diff-btn toy-btn py-2.5 px-2 rounded-2xl border-3 border-slate-200 bg-white flex flex-col items-center">
+                            <span class="text-xs font-black text-slate-800">ふつう</span>
+                            <span class="text-[10px] font-bold text-slate-500">こたえ 6〜10</span>
+                        </button>
+                        <button onclick="setDifficulty('ordered')" data-diff="ordered" class="diff-btn toy-btn py-2.5 px-2 rounded-2xl border-3 border-slate-200 bg-white flex flex-col items-center">
+                            <span class="text-xs font-black text-slate-800">じゅんばん</span>
+                            <span class="text-[10px] font-bold text-slate-500">1+1, 2+1, 3+1…</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 4. Sound Toggle -->
+                <div class="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                    <div class="flex items-center gap-2">
+                        <span id="settings-sound-icon" class="text-xl">🔊</span>
+                        <span class="text-xs sm:text-sm font-black text-slate-700">効果音と音声読み上げ</span>
+                    </div>
+                    <button onclick="toggleSound()" id="settings-sound-btn" class="toy-btn bg-emerald-500 text-white font-black text-xs px-4 py-2 rounded-xl">
+                        ON
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="bg-slate-100 px-5 py-3 flex justify-end">
+                <button onclick="closeSettingsModal()" class="toy-btn bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black px-6 py-2 rounded-xl text-sm">
+                    とじてあそぶ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ================= CUSTOM 2D CUTE SVG ILLUSTRATIONS =================
+        const SVG_ART = {
+            apple: `<svg viewBox="0 0 64 64" class="w-full h-full drop-shadow-sm">
+                <path d="M32 14 C28 6, 36 4, 38 4" stroke="#78350f" stroke-width="4" stroke-linecap="round" fill="none"/>
+                <path d="M34 10 C42 4, 50 8, 44 15 C38 16, 34 12, 34 10 Z" fill="#22c55e"/>
+                <path d="M32 16 C18 14, 8 24, 10 40 C12 52, 22 58, 32 56 C42 58, 52 52, 54 40 C56 24, 46 14, 32 16 Z" fill="#ef4444" stroke="#ffffff" stroke-width="2.5"/>
+                <ellipse cx="20" cy="26" rx="4" ry="7" transform="rotate(-20 20 26)" fill="#ffffff" opacity="0.45"/>
+                <circle cx="24" cy="36" r="3" fill="#1e293b"/>
+                <circle cx="40" cy="36" r="3" fill="#1e293b"/>
+                <circle cx="19" cy="40" r="3.5" fill="#fda4af"/>
+                <circle cx="45" cy="40" r="3.5" fill="#fda4af"/>
+                <path d="M28 40 Q32 45 36 40" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            </svg>`,
+
+            orange: `<svg viewBox="0 0 64 64" class="w-full h-full drop-shadow-sm">
+                <path d="M32 10 L32 16" stroke="#15803d" stroke-width="4" stroke-linecap="round"/>
+                <ellipse cx="38" cy="12" rx="6" ry="3.5" transform="rotate(-15 38 12)" fill="#22c55e"/>
+                <circle cx="32" cy="36" r="21" fill="#f97316" stroke="#ffffff" stroke-width="2.5"/>
+                <ellipse cx="21" cy="25" rx="4" ry="6" transform="rotate(-25 21 25)" fill="#fde047" opacity="0.5"/>
+                <circle cx="24" cy="36" r="3" fill="#1e293b"/>
+                <circle cx="40" cy="36" r="3" fill="#1e293b"/>
+                <circle cx="19" cy="40" r="3.5" fill="#fca5a5"/>
+                <circle cx="45" cy="40" r="3.5" fill="#fca5a5"/>
+                <path d="M28 40 Q32 45 36 40" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            </svg>`,
+
+            strawberry: `<svg viewBox="0 0 64 64" class="w-full h-full drop-shadow-sm">
+                <path d="M12 22 C12 14, 52 14, 52 22 C52 38, 40 56, 32 58 C24 56, 12 38, 12 22 Z" fill="#f43f5e" stroke="#ffffff" stroke-width="2.5"/>
+                <path d="M20 15 Q32 22 44 15 Q38 8 32 13 Q26 8 20 15 Z" fill="#22c55e" stroke="#ffffff" stroke-width="1.5"/>
+                <circle cx="24" cy="34" r="3" fill="#1e293b"/>
+                <circle cx="40" cy="34" r="3" fill="#1e293b"/>
+                <path d="M29 38 Q32 42 35 38" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+                <circle cx="20" cy="26" r="1.5" fill="#fef08a"/>
+                <circle cx="44" cy="26" r="1.5" fill="#fef08a"/>
+                <circle cx="32" cy="48" r="1.5" fill="#fef08a"/>
+            </svg>`,
+
+            trainPanda: `<svg viewBox="0 0 64 64" class="w-full h-full drop-shadow-sm">
+                <rect x="8" y="28" width="48" height="24" rx="8" fill="#38bdf8" stroke="#ffffff" stroke-width="2.5"/>
+                <circle cx="20" cy="20" r="6" fill="#1e293b"/>
+                <circle cx="44" cy="20" r="6" fill="#1e293b"/>
+                <circle cx="32" cy="24" r="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+                <ellipse cx="26" cy="23" rx="3.5" ry="4.5" fill="#1e293b"/>
+                <ellipse cx="38" cy="23" rx="3.5" ry="4.5" fill="#1e293b"/>
+                <circle cx="26" cy="22" r="1.2" fill="#ffffff"/>
+                <circle cx="38" cy="22" r="1.2" fill="#ffffff"/>
+                <circle cx="32" cy="27" r="2" fill="#1e293b"/>
+                <circle cx="20" cy="52" r="6" fill="#334155" stroke="#ffffff" stroke-width="2"/>
+                <circle cx="44" cy="52" r="6" fill="#334155" stroke="#ffffff" stroke-width="2"/>
+            </svg>`,
+
+            trainLion: `<svg viewBox="0 0 64 64" class="w-full h-full drop-shadow-sm">
+                <rect x="8" y="28" width="48" height="24" rx="8" fill="#fb923c" stroke="#ffffff" stroke-width="2.5"/>
+                <circle cx="32" cy="23" r="16" fill="#d97706"/>
+                <circle cx="32" cy="24" r="12" fill="#fde047"/>
+                <circle cx="27" cy="23" r="2.2" fill="#1e293b"/>
+                <circle cx="37" cy="23" r="2.2" fill="#1e293b"/>
+                <path d="M29 28 Q32 31 35 28" stroke="#1e293b" stroke-width="2" stroke-linecap="round" fill="none"/>
+                <circle cx="20" cy="52" r="6" fill="#334155" stroke="#ffffff" stroke-width="2"/>
+                <circle cx="44" cy="52" r="6" fill="#334155" stroke="#ffffff" stroke-width="2"/>
+            </svg>`,
+
+            dolphin: `<svg viewBox="0 0 64 64" class="w-full h-full drop-shadow-sm">
+                <path d="M12 42 C14 22, 32 12, 48 18 C55 21, 58 26, 60 29 C62 31, 61 35, 55 35 C48 35, 42 38, 36 46 C31 52, 22 54, 12 42 Z" fill="#0ea5e9" stroke="#ffffff" stroke-width="2.5"/>
+                <path d="M28 16 C31 8, 38 7, 40 10 C38 14, 37 16, 37 18" fill="#0284c7" stroke="#ffffff" stroke-width="2"/>
+                <ellipse cx="38" cy="34" rx="12" ry="7" fill="#e0f2fe"/>
+                <circle cx="48" cy="25" r="3" fill="#0f172a"/>
+                <circle cx="49" cy="24" r="1" fill="#ffffff"/>
+                <circle cx="44" cy="29" r="3" fill="#f472b6" opacity="0.85"/>
+            </svg>`,
+
+            sealion: `<svg viewBox="0 0 64 64" class="w-full h-full drop-shadow-sm">
+                <circle cx="46" cy="12" r="7" fill="#ef4444" stroke="#ffffff" stroke-width="2"/>
+                <path d="M14 52 C16 36, 22 22, 32 20 C40 18, 46 22, 47 28 C51 29, 52 33, 48 36 C44 38, 42 44, 46 52 Z" fill="#d97706" stroke="#ffffff" stroke-width="2.5"/>
+                <circle cx="36" cy="27" r="3" fill="#0f172a"/>
+                <circle cx="37" cy="26" r="1" fill="#ffffff"/>
+                <circle cx="33" cy="32" r="3" fill="#fda4af"/>
+                <ellipse cx="45" cy="30" rx="4" ry="3" fill="#fef08a"/>
+            </svg>`
+        };
+
+        const THEME_CONFIG = {
+            juice: {
+                bgClass: 'flex flex-col justify-between w-full h-[100dvh] bg-gradient-to-b from-amber-50 via-orange-50 to-rose-100 select-none overflow-hidden',
+                trayALabel: 'ひだりのお皿',
+                trayBLabel: 'みぎのお皿',
+                stageIcon: '🍹',
+                stageTitle: 'ミックスボウル',
+                emptyIcon: '🥣',
+                itemAKey: 'apple',
+                itemBKey: 'orange',
+                itemAName: 'りんご',
+                itemBName: 'みかん',
+                unitSuffix: 'こ',
+                gatherPrompt: 'お皿のくだものを タッチして あつめよう！',
+                gatherBtnText: 'ボウルに あつめる！',
+                clearIcon: '🍹✨',
+                clearSubText: 'おいしい ミックスジュース できたよ！'
+            },
+            train: {
+                bgClass: 'flex flex-col justify-between w-full h-[100dvh] bg-gradient-to-b from-sky-50 via-emerald-50 to-teal-100 select-none overflow-hidden',
+                trayALabel: 'まえの列車',
+                trayBLabel: 'うしろの列車',
+                stageIcon: '🚂',
+                stageTitle: 'れんけつ駅ホーム',
+                emptyIcon: '🛤️',
+                itemAKey: 'trainPanda',
+                itemBKey: 'trainLion',
+                itemAName: 'パンダ号',
+                itemBName: 'ライオン号',
+                unitSuffix: 'りょう',
+                gatherPrompt: 'でんしゃを タッチして 連結しよう！',
+                gatherBtnText: 'ガチャンと 連結！',
+                clearIcon: '🚂🎉',
+                clearSubText: 'ながい トレイン しゅっぱつしんこう！'
+            },
+            pool: {
+                bgClass: 'flex flex-col justify-between w-full h-[100dvh] bg-gradient-to-b from-sky-100 via-cyan-100 to-blue-200 select-none overflow-hidden',
+                trayALabel: 'プール',
+                trayBLabel: 'すべり台',
+                stageIcon: '🌊',
+                stageTitle: 'なかよしメインプール',
+                emptyIcon: '🏖️',
+                itemAKey: 'dolphin',
+                itemBKey: 'sealion',
+                itemAName: 'いるか',
+                itemBName: 'あしか',
+                unitSuffix: 'ひき',
+                gatherPrompt: 'タッチして みんなを プールへあつめよう！',
+                gatherBtnText: 'プールへ あつまれ！',
+                clearIcon: '🐬🦭✨',
+                clearSubText: 'みんなで 楽しく ジャンプできたね！'
+            }
+        };
+
+        const NUMBER_WORDS = ['', 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう', 'じゅう'];
+
+        // Game Steps
+        const STEP_GATHER = 1; // Waiting to move A and B into the center stage
+        const STEP_COUNT  = 2; // All A+B items are in the center stage; tap to count 1..N (or pick quiz answer)
+        const STEP_SOLVED = 3; // All counted! Showing celebration banner
+
+        const state = {
+            theme: 'juice',        // 'juice' | 'train' | 'pool'
+            kidMode: true,         // true = 2さいモード (tap anywhere to count 1 by 1), false = 3-choice quiz
+            difficulty: 'easy',    // 'easy' (2..5) | 'normal' (6..10) | 'ordered' (1+1, 2+1...)
+            orderedIndex: 1,
+            soundEnabled: true,
+            step: STEP_GATHER,
+            numA: 2,
+            numB: 1,
+            sum: 3,
+            trayAGathered: false,
+            trayBGathered: false,
+            countedCount: 0,
+            score: 0
+        };
+
+        // ================= WEB AUDIO & SPEECH SYNTHESIS =================
+        let audioCtx = null;
+
+        function ensureAudio() {
+            if (!audioCtx) {
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (AC) audioCtx = new AC();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playTone(type, index = 0) {
+            if (!state.soundEnabled) return;
+            try {
+                ensureAudio();
+                if (!audioCtx) return;
+                const now = audioCtx.currentTime;
+
+                if (type === 'pop') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(380, now);
+                    osc.frequency.exponentialRampToValueAtTime(760, now + 0.11);
+                    gain.gain.setValueAtTime(0.24, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.14);
+                } else if (type === 'count') {
+                    const scale = [523.25, 587.33, 659.25, 698.46, 783.99, 880.0, 987.77, 1046.5, 1174.66, 1318.5];
+                    const freq = scale[index % scale.length];
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now);
+                    osc.frequency.exponentialRampToValueAtTime(freq * 1.05, now + 0.18);
+                    gain.gain.setValueAtTime(0.28, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.23);
+                } else if (type === 'fanfare') {
+                    const notes = [523.25, 659.25, 783.99, 1046.5];
+                    notes.forEach((n, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(n, now + idx * 0.09);
+                        gain.gain.setValueAtTime(0.25, now + idx * 0.09);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.35);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + idx * 0.09);
+                        osc.stop(now + idx * 0.09 + 0.36);
+                    });
+                }
+            } catch (e) {}
+        }
+
+        function speak(text) {
+            if (!state.soundEnabled || !('speechSynthesis' in window)) return;
+            try {
+                window.speechSynthesis.cancel();
+                const u = new SpeechSynthesisUtterance(text);
+                u.lang = 'ja-JP';
+                u.pitch = 1.3;
+                u.rate = 1.08;
+                window.speechSynthesis.speak(u);
+            } catch (e) {}
+        }
+
+        // ================= PROBLEM GENERATION & RENDERING =================
+        function generateProblem() {
+            const cfg = THEME_CONFIG[state.theme];
+            document.getElementById('app-body').className = cfg.bgClass;
+
+            state.step = STEP_GATHER;
+            state.trayAGathered = false;
+            state.trayBGathered = false;
+            state.countedCount = 0;
+
+            if (state.difficulty === 'easy') {
+                state.sum = 2 + Math.floor(Math.random() * 4); // 2..5
+                state.numA = 1 + Math.floor(Math.random() * (state.sum - 1));
+                state.numB = state.sum - state.numA;
+            } else if (state.difficulty === 'normal') {
+                state.sum = 6 + Math.floor(Math.random() * 5); // 6..10
+                state.numA = 2 + Math.floor(Math.random() * (state.sum - 3));
+                state.numB = state.sum - state.numA;
+            } else {
+                state.numA = state.orderedIndex;
+                state.numB = 1;
+                state.sum = state.numA + state.numB;
+                state.orderedIndex = (state.orderedIndex % 9) + 1;
+            }
+
+            // Update Formula Bar
+            document.getElementById('formula-num-a').textContent = state.numA;
+            document.getElementById('formula-num-b').textContent = state.numB;
+            document.getElementById('formula-num-sum').textContent = '？';
+            document.getElementById('formula-box-sum').classList.remove('scale-110', 'bg-yellow-200', 'border-yellow-500');
+
+            // Update Theme Labels
+            document.getElementById('tray-a-label').textContent = cfg.trayALabel;
+            document.getElementById('tray-b-label').textContent = cfg.trayBLabel;
+            document.getElementById('tray-a-count').textContent = `${state.numA}${cfg.unitSuffix}`;
+            document.getElementById('tray-b-count').textContent = `${state.numB}${cfg.unitSuffix}`;
+            document.getElementById('stage-theme-icon').textContent = cfg.stageIcon;
+            document.getElementById('stage-theme-title').textContent = cfg.stageTitle;
+            document.getElementById('center-empty-icon').textContent = cfg.emptyIcon;
+
+            // Hide Clear Banner & Quiz Bar
+            document.getElementById('stage-clear-banner').classList.add('hidden');
+            document.getElementById('stage-clear-banner').classList.remove('flex');
+            document.getElementById('quiz-choices-bar').classList.add('hidden');
+            document.getElementById('quiz-choices-bar').classList.remove('grid');
+
+            renderWaitingTrays();
+            renderCenterStageItems();
+            updateStatusAndButtons();
+
+            speak(`${cfg.itemAName}が ${state.numA}${cfg.unitSuffix}、${cfg.itemBName}が ${state.numB}${cfg.unitSuffix}。タッチして あつめよう！`);
+        }
+
+        function renderWaitingTrays() {
+            const cfg = THEME_CONFIG[state.theme];
+            const trayAEl = document.getElementById('tray-a-items');
+            const trayBEl = document.getElementById('tray-b-items');
+            const boxA = document.getElementById('tray-a');
+            const boxB = document.getElementById('tray-b');
+
+            trayAEl.innerHTML = '';
+            trayBEl.innerHTML = '';
+
+            const sizeClass = state.sum > 6 ? 'w-9 h-9 sm:w-11 sm:h-11' : 'w-11 h-11 sm:w-14 sm:h-14';
+
+            if (!state.trayAGathered) {
+                boxA.classList.remove('opacity-40', 'scale-95');
+                boxA.classList.add('animate-pulse-ring');
+                for (let i = 0; i < state.numA; i++) {
+                    const div = document.createElement('div');
+                    div.className = `${sizeClass} animate-bobble`;
+                    div.style.animationDelay = `${i * 0.15}s`;
+                    div.innerHTML = SVG_ART[cfg.itemAKey];
+                    trayAEl.appendChild(div);
+                }
+            } else {
+                boxA.classList.add('opacity-40', 'scale-95');
+                boxA.classList.remove('animate-pulse-ring');
+                trayAEl.innerHTML = `<span class="text-xs font-extrabold text-sky-600">入ったよ✨</span>`;
+            }
+
+            if (!state.trayBGathered) {
+                boxB.classList.remove('opacity-40', 'scale-95');
+                if (state.trayAGathered) boxB.classList.add('animate-pulse-ring');
+                else boxB.classList.remove('animate-pulse-ring');
+
+                for (let j = 0; j < state.numB; j++) {
+                    const div = document.createElement('div');
+                    div.className = `${sizeClass} animate-bobble`;
+                    div.style.animationDelay = `${j * 0.15}s`;
+                    div.innerHTML = SVG_ART[cfg.itemBKey];
+                    trayBEl.appendChild(div);
+                }
+            } else {
+                boxB.classList.add('opacity-40', 'scale-95');
+                boxB.classList.remove('animate-pulse-ring');
+                trayBEl.innerHTML = `<span class="text-xs font-extrabold text-amber-700">入ったよ✨</span>`;
+            }
+        }
+
+        function renderCenterStageItems() {
+            const cfg = THEME_CONFIG[state.theme];
+            const grid = document.getElementById('combined-items-grid');
+            const emptyHint = document.getElementById('center-empty-hint');
+            grid.innerHTML = '';
+
+            const itemsList = [];
+            if (state.trayAGathered) {
+                for (let i = 0; i < state.numA; i++) itemsList.push({ type: 'A', art: SVG_ART[cfg.itemAKey] });
+            }
+            if (state.trayBGathered) {
+                for (let j = 0; j < state.numB; j++) itemsList.push({ type: 'B', art: SVG_ART[cfg.itemBKey] });
+            }
+
+            document.getElementById('stage-count-badge').textContent = `いま ${itemsList.length}${cfg.unitSuffix}`;
+
+            if (itemsList.length === 0) {
+                emptyHint.classList.remove('hidden');
+                return;
+            }
+            emptyHint.classList.add('hidden');
+
+            // Auto-scale item size so even 10 items fit cleanly inside iPhone center stage without scrolling!
+            const itemSize = state.sum <= 5
+                ? 'w-14 h-14 sm:w-16 sm:h-16'
+                : (state.sum <= 8 ? 'w-12 h-12 sm:w-14 sm:h-14' : 'w-10 h-10 sm:w-12 sm:h-12');
+
+            itemsList.forEach((item, idx) => {
+                const isCounted = idx < state.countedCount;
+                const isNextToCount = (state.step === STEP_COUNT && idx === state.countedCount && state.kidMode);
+
+                const wrapper = document.createElement('div');
+                wrapper.id = `stage-item-${idx}`;
+                wrapper.onclick = (e) => {
+                    e.stopPropagation();
+                    handleCenterItemTap(idx);
+                };
+
+                const borderColor = item.type === 'A' ? 'border-sky-300 bg-sky-50/90' : 'border-amber-300 bg-amber-50/90';
+                const ringHighlight = isNextToCount ? 'ring-4 ring-yellow-400 scale-105' : '';
+
+                wrapper.className = `relative ${itemSize} p-1.5 rounded-2xl border-2 ${borderColor} ${ringHighlight} shadow-sm flex items-center justify-center transition-all duration-200 cursor-pointer`;
+                wrapper.innerHTML = `
+                    ${item.art}
+                    <div id="badge-${idx}" class="${isCounted ? 'flex' : 'hidden'} absolute -top-2.5 -right-2.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-b from-yellow-300 to-amber-500 border-2 border-white text-slate-900 font-black text-sm sm:text-base items-center justify-center shadow-md animate-badge-pop">
+                        ${idx + 1}
+                    </div>
+                `;
+                grid.appendChild(wrapper);
+            });
+        }
+
+        // ================= USER INTERACTIONS =================
+        function handleTrayTap(which, event) {
+            if (event) event.stopPropagation();
+            ensureAudio();
+            if (state.step !== STEP_GATHER) return;
+
+            if (which === 'A' && !state.trayAGathered) {
+                state.trayAGathered = true;
+                playTone('pop');
+            } else if (which === 'B' && !state.trayBGathered) {
+                state.trayBGathered = true;
+                playTone('pop');
+            } else {
+                // If user tapped an already gathered tray, gather the remaining one!
+                state.trayAGathered = true;
+                state.trayBGathered = true;
+                playTone('pop');
+            }
+
+            renderWaitingTrays();
+            renderCenterStageItems();
+
+            if (state.trayAGathered && state.trayBGathered) {
+                enterCountingStep();
+            } else {
+                updateStatusAndButtons();
+            }
+        }
+
+        function gatherAllToCenter() {
+            ensureAudio();
+            if (state.step !== STEP_GATHER) return;
+            state.trayAGathered = true;
+            state.trayBGathered = true;
+            playTone('pop');
+            renderWaitingTrays();
+            renderCenterStageItems();
+            enterCountingStep();
+        }
+
+        function enterCountingStep() {
+            state.step = STEP_COUNT;
+            state.countedCount = 0;
+            renderCenterStageItems();
+            updateStatusAndButtons();
+
+            if (state.kidMode) {
+                speak('まんなかに あつまったよ！ タッチして 1こずつ かぞえよう！');
+            } else {
+                speak(`あわせて いくつに なったかな？ 下の すうじを えらんでね！`);
+                renderQuizChoices();
+            }
+        }
+
+        function handleCenterItemTap() {
+            ensureAudio();
+            if (state.step === STEP_GATHER) {
+                gatherAllToCenter();
+            } else if (state.step === STEP_COUNT) {
+                countNextItem();
+            } else if (state.step === STEP_SOLVED) {
+                nextProblem();
+            }
+        }
+
+        function handleStageBackgroundTap() {
+            ensureAudio();
+            if (state.step === STEP_GATHER) {
+                if (!state.trayAGathered) handleTrayTap('A');
+                else handleTrayTap('B');
+            } else if (state.step === STEP_COUNT && state.kidMode) {
+                countNextItem();
+            }
+        }
+
+        function handleMainButtonTap(event) {
+            if (event) event.stopPropagation();
+            ensureAudio();
+            if (state.step === STEP_GATHER) {
+                gatherAllToCenter();
+            } else if (state.step === STEP_COUNT) {
+                countNextItem();
+            } else if (state.step === STEP_SOLVED) {
+                nextProblem();
+            }
+        }
+
+        function countNextItem() {
+            if (state.step !== STEP_COUNT) return;
+            if (state.countedCount >= state.sum) return;
+
+            const idx = state.countedCount;
+            state.countedCount++;
+
+            playTone('count', idx);
+            speak(NUMBER_WORDS[state.countedCount] || `${state.countedCount}`);
+
+            // Update Formula Answer Box dynamically as child counts
+            document.getElementById('formula-num-sum').textContent = state.countedCount;
+
+            renderCenterStageItems();
+            const itemEl = document.getElementById(`stage-item-${idx}`);
+            if (itemEl) {
+                itemEl.classList.add('animate-jump-once');
+            }
+
+            if (state.countedCount >= state.sum) {
+                setTimeout(triggerProblemSolved, 480);
+            } else {
+                updateStatusAndButtons();
+            }
+        }
+
+        function renderQuizChoices() {
+            const bar = document.getElementById('quiz-choices-bar');
+            bar.innerHTML = '';
+            bar.classList.remove('hidden');
+            bar.classList.add('grid');
+
+            const set = new Set([state.sum]);
+            while (set.size < 3) {
+                const delta = (Math.random() < 0.5 ? -1 : 1) * (1 + Math.floor(Math.random() * 2));
+                const cand = Math.max(2, Math.min(12, state.sum + delta));
+                set.add(cand);
+            }
+            const sorted = Array.from(set).sort((a, b) => a - b);
+
+            sorted.forEach(num => {
+                const btn = document.createElement('button');
+                btn.className = 'toy-btn bg-white hover:bg-amber-50 text-pink-600 font-black text-2xl sm:text-3xl py-2.5 rounded-2xl border-3 border-pink-300';
+                btn.textContent = num;
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    handleQuizChoice(num, btn);
+                };
+                bar.appendChild(btn);
+            });
+        }
+
+        function handleQuizChoice(num, btnEl) {
+            ensureAudio();
+            if (state.step !== STEP_COUNT) return;
+
+            if (num === state.sum) {
+                btnEl.className = 'toy-btn bg-emerald-500 text-white font-black text-2xl sm:text-3xl py-2.5 rounded-2xl border-3 border-white';
+                const remaining = state.sum - state.countedCount;
+                for (let i = 0; i < remaining; i++) {
+                    setTimeout(() => countNextItem(), i * 210);
+                }
+            } else {
+                playTone('pop');
+                btnEl.classList.add('opacity-40');
+                countNextItem();
+            }
+        }
+
+        function triggerProblemSolved() {
+            const cfg = THEME_CONFIG[state.theme];
+            state.step = STEP_SOLVED;
+            state.score++;
+            document.getElementById('score-text').textContent = state.score;
+
+            document.getElementById('formula-num-sum').textContent = state.sum;
+            document.getElementById('formula-box-sum').classList.add('scale-110', 'bg-yellow-200', 'border-yellow-500');
+
+            // Hide quiz choices if visible
+            document.getElementById('quiz-choices-bar').classList.add('hidden');
+            document.getElementById('quiz-choices-bar').classList.remove('grid');
+
+            // Show Clear Banner inside stage
+            document.getElementById('clear-product-icon').textContent = cfg.clearIcon;
+            document.getElementById('clear-equation-text').textContent = `${state.numA} ＋ ${state.numB} ＝ ${state.sum} ！`;
+            document.getElementById('clear-sub-text').textContent = cfg.clearSubText;
+            const banner = document.getElementById('stage-clear-banner');
+            banner.classList.remove('hidden');
+            banner.classList.add('flex');
+
+            playTone('fanfare');
+            spawnConfetti();
+            speak(`やったー！ ${state.numA} たす ${state.numB} は、${state.sum}！ ぜんぶで ${state.sum}${cfg.unitSuffix} だね！`);
+
+            updateStatusAndButtons();
+        }
+
+        function nextProblem(event) {
+            if (event) event.stopPropagation();
+            playTone('pop');
+            generateProblem();
+        }
+
+        function updateStatusAndButtons() {
+            const cfg = THEME_CONFIG[state.theme];
+            const guideIcon = document.getElementById('guide-icon');
+            const guideText = document.getElementById('guide-text');
+            const mainBtnIcon = document.getElementById('main-btn-icon');
+            const mainBtnLabel = document.getElementById('main-btn-label');
+            const arrowText = document.getElementById('combine-arrow-text');
+
+            if (state.step === STEP_GATHER) {
+                guideIcon.textContent = cfg.stageIcon;
+                guideText.textContent = cfg.gatherPrompt;
+                mainBtnIcon.textContent = '🪄';
+                mainBtnLabel.textContent = cfg.gatherBtnText;
+                arrowText.textContent = 'タッチで まんなかへ！';
+            } else if (state.step === STEP_COUNT) {
+                guideIcon.textContent = '👆';
+                guideText.textContent = state.kidMode
+                    ? `タッチして 1${cfg.unitSuffix}ずつ かぞえよう！（あと ${state.sum - state.countedCount}）`
+                    : `${state.numA} ＋ ${state.numB} は いくつ？ 数字をえらんでね！`;
+                mainBtnIcon.textContent = '👆';
+                mainBtnLabel.textContent = `1${cfg.unitSuffix}ずつ かぞえる！（${state.countedCount}/${state.sum}）`;
+                arrowText.textContent = 'いっしょに かぞえよう！';
+            } else {
+                guideIcon.textContent = '🎉';
+                guideText.textContent = `せいかい！ あわせて ${state.sum}${cfg.unitSuffix} になったよ！`;
+                mainBtnIcon.textContent = '⏭️';
+                mainBtnLabel.textContent = 'つぎのもんだいへ すすむ！';
+                arrowText.textContent = `${state.numA} ＋ ${state.numB} ＝ ${state.sum} ！`;
+            }
+        }
+
+        // ================= SETTINGS MODAL FUNCTIONS (Gear Button ⚙️) =================
+        function openSettingsModal() {
+            playTone('pop');
+            const m = document.getElementById('settings-modal');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+
+        function closeSettingsModal() {
+            playTone('pop');
+            const m = document.getElementById('settings-modal');
+            m.classList.add('hidden');
+            m.classList.remove('flex');
+        }
+
+        function selectTheme(themeKey) {
+            playTone('pop');
+            state.theme = themeKey;
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                const active = btn.dataset.theme === themeKey;
+                btn.classList.toggle('border-amber-500', active);
+                btn.classList.toggle('bg-amber-50', active);
+                btn.classList.toggle('border-slate-200', !active);
+                btn.classList.toggle('bg-white', !active);
+            });
+            generateProblem();
+        }
+
+        function setPlayMode(isKid) {
+            playTone('pop');
+            state.kidMode = isKid;
+            const kidBtn = document.getElementById('mode-btn-kid');
+            const quizBtn = document.getElementById('mode-btn-quiz');
+
+            kidBtn.classList.toggle('border-pink-500', isKid);
+            kidBtn.classList.toggle('bg-pink-50', isKid);
+            kidBtn.classList.toggle('border-slate-200', !isKid);
+            kidBtn.classList.toggle('bg-white', !isKid);
+
+            quizBtn.classList.toggle('border-indigo-500', !isKid);
+            quizBtn.classList.toggle('bg-indigo-50', !isKid);
+            quizBtn.classList.toggle('border-slate-200', isKid);
+            quizBtn.classList.toggle('bg-white', isKid);
+
+            if (state.step === STEP_COUNT) {
+                if (isKid) {
+                    document.getElementById('quiz-choices-bar').classList.add('hidden');
+                    document.getElementById('quiz-choices-bar').classList.remove('grid');
+                } else {
+                    renderQuizChoices();
+                }
+                updateStatusAndButtons();
+            }
+        }
+
+        function setDifficulty(diff) {
+            playTone('pop');
+            state.difficulty = diff;
+            document.querySelectorAll('.diff-btn').forEach(btn => {
+                const active = btn.dataset.diff === diff;
+                btn.classList.toggle('border-emerald-500', active);
+                btn.classList.toggle('bg-emerald-50', active);
+                btn.classList.toggle('border-slate-200', !active);
+                btn.classList.toggle('bg-white', !active);
+            });
+            generateProblem();
+        }
+
+        function toggleSound() {
+            state.soundEnabled = !state.soundEnabled;
+            const icon = document.getElementById('settings-sound-icon');
+            const btn = document.getElementById('settings-sound-btn');
+            icon.textContent = state.soundEnabled ? '🔊' : '🔇';
+            btn.textContent = state.soundEnabled ? 'ON' : 'OFF';
+            btn.className = state.soundEnabled
+                ? 'toy-btn bg-emerald-500 text-white font-black text-xs px-4 py-2 rounded-xl'
+                : 'toy-btn bg-slate-400 text-white font-black text-xs px-4 py-2 rounded-xl';
+            if (state.soundEnabled) playTone('pop');
+        }
+
+        // ================= LIGHTWEIGHT 2D CONFETTI EFFECT =================
+        const confettiCanvas = document.getElementById('confetti-canvas');
+        const ctx = confettiCanvas.getContext('2d');
+        let confettiPieces = [];
+
+        function resizeConfetti() {
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeConfetti);
+        resizeConfetti();
+
+        function spawnConfetti() {
+            const colors = ['#f43f5e', '#facc15', '#38bdf8', '#4ade80', '#a855f7', '#fb923c'];
+            for (let i = 0; i < 45; i++) {
+                confettiPieces.push({
+                    x: window.innerWidth * 0.5 + (Math.random() - 0.5) * 120,
+                    y: window.innerHeight * 0.55,
+                    vx: (Math.random() - 0.5) * 12,
+                    vy: -7 - Math.random() * 8,
+                    size: 7 + Math.random() * 6,
+                    color: colors[i % colors.length],
+                    rot: Math.random() * Math.PI,
+                    vRot: (Math.random() - 0.5) * 0.2
+                });
+            }
+        }
+
+        function updateConfetti() {
+            ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+            for (let i = confettiPieces.length - 1; i >= 0; i--) {
+                const p = confettiPieces[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.38;
+                p.rot += p.vRot;
+
+                if (p.y > confettiCanvas.height + 20) {
+                    confettiPieces.splice(i, 1);
+                    continue;
+                }
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.rot);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.65);
+                ctx.restore();
+            }
+            requestAnimationFrame(updateConfetti);
+        }
+
+        window.onload = () => {
+            generateProblem();
+            updateConfetti();
+        };
+    </script>
+</body>
+</html>

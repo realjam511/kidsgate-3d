@@ -1,0 +1,2534 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta name="game-icon" content="🔴">
+    <meta name="game-tag" content="大人気">
+    <meta name="game-category" content="puzzle">
+    <meta name="game-age" content="2">
+    <meta name="description" content="アンパンマンやドキンちゃん、コキンちゃん、かわいいパンたちの楽しい3D○×パタパタゲーム！パネルをタッチして並べよう！">
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>アンパンマン 3Dパタパタ○×ゲーム</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            background: radial-gradient(circle at 50% 45%, #fffbeb 0%, #fde68a 50%, #f59e0b 100%);
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            height: 100dvh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 立体的なおもちゃ風ボタン */
+        .btn-toy {
+            transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 0 #b45309, 0 6px 12px rgba(0,0,0,0.2);
+            transform: translateY(0);
+        }
+        .btn-toy:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #b45309, 0 2px 4px rgba(0,0,0,0.18);
+        }
+
+        .btn-toy-slate {
+            transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 0 #334155, 0 6px 12px rgba(0,0,0,0.2);
+            transform: translateY(0);
+        }
+        .btn-toy-slate:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #334155, 0 2px 4px rgba(0,0,0,0.18);
+        }
+
+        /* キャラクターバッジのアニメーション */
+        .turn-badge {
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .turn-active {
+            transform: scale(1.03);
+            box-shadow: 0 8px 18px -4px rgba(0, 0, 0, 0.28), 0 0 0 3px #ffffff, 0 0 0 6px #f59e0b;
+            z-index: 5;
+        }
+        .turn-inactive {
+            transform: scale(0.95);
+            opacity: 0.72;
+            filter: grayscale(20%);
+        }
+
+        @keyframes pulseGentle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+        .guide-pulse {
+            animation: pulseGentle 2.4s ease-in-out infinite;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.4); opacity: 0; }
+            70% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .modal-pop {
+            animation: popIn 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        /* カスタムスクロールバー（設定モーダル内） */
+        .custom-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #fef3c7;
+            border-radius: 9999px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #f59e0b;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==========================================
+         上部ヘッダー領域（3Dパネルと絶対に重ならない専用エリア）
+         ========================================== -->
+    <header id="top-ui-header" class="w-full flex-shrink-0 z-20 pt-2 pb-1 px-2 sm:px-4 bg-gradient-to-b from-amber-100/95 via-amber-50/85 to-transparent">
+        <div class="w-full max-w-xl mx-auto flex flex-col items-center gap-1.5 sm:gap-2">
+            
+            <!-- 最上部バー：タイトル ＆ 「もういっかい！」「せってい」ボタン -->
+            <div class="w-full flex justify-between items-center gap-1.5">
+                <!-- タイトルロゴ -->
+                <div class="bg-white/95 px-2.5 sm:px-3.5 py-1.5 rounded-full shadow-sm border-2 border-amber-400 flex items-center gap-1 flex-shrink-0">
+                    <span class="text-sm sm:text-base">🍞</span>
+                    <span class="text-amber-700 font-black text-xs sm:text-sm tracking-tight">パタパタ○×ゲーム</span>
+                </div>
+
+                <!-- 上部コントロールボタン群（誤タップ防止のため上部に集約） -->
+                <div class="flex items-center gap-1.5 sm:gap-2">
+                    <!-- もういっかい！ボタン -->
+                    <button id="reset-btn" class="btn-toy bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-amber-950 font-black py-1.5 px-3 sm:px-4 rounded-full border-2 border-white flex items-center gap-1 text-xs sm:text-sm cursor-pointer">
+                        <span>✨</span>
+                        <span>もういっかい！</span>
+                    </button>
+
+                    <!-- せっていボタン -->
+                    <button id="settings-btn" class="btn-toy-slate bg-gradient-to-b from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white font-black py-1.5 px-3 sm:px-4 rounded-full border-2 border-white flex items-center gap-1 text-xs sm:text-sm cursor-pointer">
+                        <span>⚙️</span>
+                        <span>せってい</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- プレイヤーカード（せんこう / こうこう 順番インジケーター） -->
+            <div class="w-full grid grid-cols-2 gap-2.5 sm:gap-4 px-0.5">
+                
+                <!-- プレイヤー1（せんこう） -->
+                <div id="badge-p1" class="cursor-pointer turn-badge turn-active bg-gradient-to-b from-red-500 to-red-600 text-white p-1.5 sm:p-2.5 rounded-2xl sm:rounded-3xl border-[3px] border-white flex items-center justify-between shadow-md" onclick="selectTurnManually(1)">
+                    <div class="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+                        <div class="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/90 border-2 border-white overflow-hidden flex-shrink-0 shadow-inner flex items-center justify-center">
+                            <canvas id="icon-p1" width="128" height="128" class="w-full h-full"></canvas>
+                        </div>
+                        <div class="leading-tight min-w-0">
+                            <div class="text-[9px] sm:text-[11px] font-bold text-white/95 bg-black/25 px-1.5 py-0.5 rounded-full inline-block mb-0.5">せんこう</div>
+                            <div id="name-p1" class="text-xs sm:text-base font-black tracking-tight drop-shadow truncate">アンパンマン</div>
+                        </div>
+                    </div>
+                    <div id="score-p1" class="bg-white text-red-600 font-black text-base sm:text-xl w-7 h-7 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-inner flex-shrink-0 ml-1">
+                        0
+                    </div>
+                </div>
+
+                <!-- プレイヤー2（こうこう） -->
+                <div id="badge-p2" class="cursor-pointer turn-badge turn-inactive bg-gradient-to-b from-purple-600 to-indigo-800 text-white p-1.5 sm:p-2.5 rounded-2xl sm:rounded-3xl border-[3px] border-white flex items-center justify-between shadow-md" onclick="selectTurnManually(2)">
+                    <div class="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+                        <div class="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/90 border-2 border-white overflow-hidden flex-shrink-0 shadow-inner flex items-center justify-center">
+                            <canvas id="icon-p2" width="128" height="128" class="w-full h-full"></canvas>
+                        </div>
+                        <div class="leading-tight min-w-0">
+                            <div class="text-[9px] sm:text-[11px] font-bold text-white/95 bg-black/25 px-1.5 py-0.5 rounded-full inline-block mb-0.5">こうこう</div>
+                            <div id="name-p2" class="text-xs sm:text-base font-black tracking-tight drop-shadow truncate">バイキンマン</div>
+                        </div>
+                    </div>
+                    <div id="score-p2" class="bg-white text-purple-700 font-black text-base sm:text-xl w-7 h-7 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-inner flex-shrink-0 ml-1">
+                        0
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 現在のガイドメッセージ（ヘッダー内に収め、ボードに重ならないように配置） -->
+            <div id="guide-banner" class="guide-pulse bg-white/95 px-4 py-1 rounded-full shadow-sm border-2 border-amber-400 text-center">
+                <span id="guide-text" class="text-xs sm:text-sm font-black text-red-600">
+                    アンパンマンのばん！ パネルをタッチしてね
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==========================================
+         中央〜下部：3Dキャンバス領域（残りの高さを100%使用し、文字と重ならない）
+         ========================================== -->
+    <main id="canvas-container" class="flex-1 relative w-full min-h-0 overflow-hidden">
+        <!-- 左下にさりげない操作ヒント（タップ透過で邪魔にならない） -->
+        <div class="pointer-events-none absolute bottom-2 inset-x-0 flex justify-center z-10">
+            <div class="text-amber-950/75 text-[11px] sm:text-xs font-bold bg-white/65 px-3 py-0.5 rounded-full backdrop-blur-sm shadow-sm">
+                💡 パネルにタッチしてね！ ゆびでボードの角度も動かせるよ
+            </div>
+        </div>
+    </main>
+
+    <!-- ==========================================
+         勝利・引き分けポップアップバナー
+         ========================================== -->
+    <div id="result-overlay" class="fixed inset-x-0 bottom-8 z-30 flex justify-center items-center pointer-events-none hidden px-4">
+        <div class="pointer-events-auto modal-pop bg-white/95 backdrop-blur-md border-4 border-amber-400 rounded-3xl p-4 sm:p-5 shadow-2xl max-w-sm w-full flex flex-col items-center text-center">
+            <div id="result-title" class="text-xl sm:text-2xl font-black text-red-600 drop-shadow-sm mb-1">
+                アンパンマンのかち！
+            </div>
+            <div id="result-subtitle" class="text-xs sm:text-sm font-bold text-amber-800 mb-3">
+                やったね！ 3つそろったよ！🎉
+            </div>
+            <button onclick="resetGame()" class="btn-toy bg-gradient-to-r from-red-500 to-amber-500 text-white font-black text-base sm:text-lg py-2.5 px-7 rounded-full border-4 border-white shadow-xl flex items-center gap-2 cursor-pointer">
+                <span>🎮</span>
+                <span>つぎのゲームへ！</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         ⚙️ せっていモーダル（キャラ・パン変更、ゲームルール、音設定）
+         ========================================== -->
+    <div id="settings-modal" class="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden">
+        <div class="modal-pop bg-amber-50 border-4 border-amber-400 rounded-3xl max-w-lg w-full max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden">
+            
+            <!-- モーダルヘッダー -->
+            <div class="bg-gradient-to-r from-amber-400 to-orange-400 px-4 py-3 flex items-center justify-between border-b-4 border-amber-500 flex-shrink-0">
+                <div class="flex items-center gap-2 text-amber-950 font-black text-base sm:text-lg">
+                    <span>⚙️</span>
+                    <span>ゲームのせってい・デザイン変更</span>
+                </div>
+                <button id="close-settings-btn" class="bg-white hover:bg-red-50 text-amber-900 font-black w-8 h-8 rounded-full border-2 border-amber-600 flex items-center justify-center shadow cursor-pointer text-base">
+                    ✕
+                </button>
+            </div>
+
+            <!-- モーダルコンテンツ（スクロール可能） -->
+            <div class="p-3.5 sm:p-5 overflow-y-auto custom-scroll space-y-4 text-amber-950">
+                
+                <!-- かんたんペアセット（ワンタップ切り替え） -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-amber-200 shadow-sm">
+                    <div class="text-xs sm:text-sm font-black text-amber-800 mb-2 flex items-center gap-1.5">
+                        <span>🌟</span>
+                        <span>おすすめペアでえらぶ（ワンタッチ）</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="applyPresetPair('anpanman', 'baikinman')" class="bg-red-50 hover:bg-red-100 border-2 border-red-300 rounded-xl p-2 text-xs font-black text-red-900 flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition">
+                            <span>🔴</span><span>アンパン vs バイキン</span>
+                        </button>
+                        <button onclick="applyPresetPair('dokinchan', 'kokinchan')" class="bg-pink-50 hover:bg-pink-100 border-2 border-pink-300 rounded-xl p-2 text-xs font-black text-pink-900 flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition">
+                            <span>💖</span><span>ドキンちゃん vs コキンちゃん</span>
+                        </button>
+                        <button onclick="applyPresetPair('anpanman', 'dokinchan')" class="bg-orange-50 hover:bg-orange-100 border-2 border-orange-300 rounded-xl p-2 text-xs font-black text-orange-900 flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition">
+                            <span>✨</span><span>アンパン vs ドキンちゃん</span>
+                        </button>
+                        <button onclick="applyPresetPair('melonpan', 'currypan')" class="bg-amber-50 hover:bg-amber-100 border-2 border-amber-300 rounded-xl p-2 text-xs font-black text-amber-900 flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition">
+                            <span>🍈</span><span>メロンパン vs カレーパン</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- せんこう（プレイヤー1）のイラスト選択 -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-red-200 shadow-sm">
+                    <div class="text-xs sm:text-sm font-black text-red-600 mb-2 flex items-center justify-between">
+                        <span>🔴 せんこう（左カード）のイラスト</span>
+                        <span id="setting-p1-current" class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">アンパンマン</span>
+                    </div>
+                    <div id="p1-selector-grid" class="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                        <!-- JSで生成 -->
+                    </div>
+                </div>
+
+                <!-- こうこう（プレイヤー2）のイラスト選択 -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-purple-200 shadow-sm">
+                    <div class="text-xs sm:text-sm font-black text-purple-700 mb-2 flex items-center justify-between">
+                        <span>🟣 こうこう（右カード）のイラスト</span>
+                        <span id="setting-p2-current" class="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">バイキンマン</span>
+                    </div>
+                    <div id="p2-selector-grid" class="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                        <!-- JSで生成 -->
+                    </div>
+                </div>
+
+                <!-- めくる前のオモテ面パネルデザイン -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-sky-200 shadow-sm">
+                    <div class="text-xs sm:text-sm font-black text-sky-800 mb-2 flex items-center gap-1.5">
+                        <span>🎨</span>
+                        <span>めくる前のパネルデザイン（1〜9のパネル）</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <button id="front-style-star" onclick="setFrontPanelStyle('star')" class="border-3 rounded-xl p-2.5 flex items-center gap-2 font-black text-xs sm:text-sm cursor-pointer transition">
+                            <span class="text-xl">⭐</span>
+                            <div class="text-left leading-tight">
+                                <div>キラキラ星パネル</div>
+                                <div class="text-[10px] font-bold opacity-75">さわやかな空色と星</div>
+                            </div>
+                        </button>
+                        <button id="front-style-bakery" onclick="setFrontPanelStyle('bakery')" class="border-3 rounded-xl p-2.5 flex items-center gap-2 font-black text-xs sm:text-sm cursor-pointer transition">
+                            <span class="text-xl">🥐</span>
+                            <div class="text-left leading-tight">
+                                <div>やきたてパンパネル</div>
+                                <div class="text-[10px] font-bold opacity-75">かわいいパンデザイン</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ルール＆サウンド設定 -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-amber-200 shadow-sm space-y-2.5">
+                    <div class="text-xs sm:text-sm font-black text-amber-800 mb-1 flex items-center gap-1.5">
+                        <span>🎮</span>
+                        <span>あそびかた・おとの設定</span>
+                    </div>
+
+                    <!-- いつでも裏返せる（2さいモード） -->
+                    <div class="flex items-center justify-between bg-amber-50/80 p-2.5 rounded-xl border border-amber-200">
+                        <div>
+                            <div class="text-xs sm:text-sm font-black text-amber-950">🔄 いつでも裏返せる（2さいモード）</div>
+                            <div class="text-[10px] sm:text-xs font-bold text-amber-700">ONにすると、すでにめくったパネルもタッチで裏返せます</div>
+                        </div>
+                        <button id="setting-mode-btn" class="px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2">
+                            ON
+                        </button>
+                    </div>
+
+                    <!-- おと ON/OFF -->
+                    <div class="flex items-center justify-between bg-amber-50/80 p-2.5 rounded-xl border border-amber-200">
+                        <div>
+                            <div class="text-xs sm:text-sm font-black text-amber-950">🔊 ゲームのおと（効果音）</div>
+                            <div class="text-[10px] sm:text-xs font-bold text-amber-700">パネルをめくる音やファンファーレを鳴らします</div>
+                        </div>
+                        <button id="setting-sound-btn" class="px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2">
+                            🔊 ON
+                        </button>
+                    </div>
+
+                    <!-- スコアリセット -->
+                    <div class="flex items-center justify-between bg-amber-50/80 p-2.5 rounded-xl border border-amber-200">
+                        <div>
+                            <div class="text-xs sm:text-sm font-black text-amber-950">🏆 かち数（スコア）を0に戻す</div>
+                            <div class="text-[10px] sm:text-xs font-bold text-amber-700">ふたりのスコアを 0 - 0 にリセットします</div>
+                        </div>
+                        <button onclick="resetScores()" class="bg-slate-500 hover:bg-slate-600 active:scale-95 text-white px-3.5 py-2 rounded-xl font-black text-xs shadow cursor-pointer flex-shrink-0 ml-2">
+                            0に戻す
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- モーダルフッター -->
+            <div class="bg-amber-100 px-4 py-3 border-t-2 border-amber-300 flex justify-center flex-shrink-0">
+                <button id="ok-settings-btn" class="btn-toy bg-gradient-to-r from-amber-400 to-orange-400 text-amber-950 font-black text-sm sm:text-base py-2 px-10 rounded-full border-2 border-white cursor-pointer">
+                    ✨ けってい（ゲームにもどる）
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================
+         * 1. サウンドエンジン (Web Audio API)
+         * 外部ファイルを使わず、楽しいおもちゃの効果音を合成
+         * ========================================== */
+        class ToySoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            // パネルがくるっとひっくり返る音
+            playFlip(player) {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                if (player === 1) {
+                    // プレイヤー1：明るく元気な「ポヨン♪」
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(340, now);
+                    osc.frequency.exponentialRampToValueAtTime(720, now + 0.14);
+                    osc.frequency.exponentialRampToValueAtTime(540, now + 0.25);
+                } else {
+                    // プレイヤー2：かわいいポップな「ピョン♪」
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(260, now);
+                    osc.frequency.exponentialRampToValueAtTime(520, now + 0.12);
+                    osc.frequency.exponentialRampToValueAtTime(340, now + 0.25);
+                }
+
+                gain.gain.setValueAtTime(0.28, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.26);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.27);
+            }
+
+            // すでに埋まっているパネルを押したときの「ププッ」音
+            playBump() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.linearRampToValueAtTime(130, now + 0.12);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.13);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.14);
+            }
+
+            // 3つ揃ったときのファンファーレ！
+            playWinFanfare() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50];
+                const durations = [0.12, 0.12, 0.12, 0.22, 0.12, 0.45];
+                let timeOffset = 0;
+
+                notes.forEach((freq, idx) => {
+                    const now = this.ctx.currentTime + timeOffset;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now);
+
+                    gain.gain.setValueAtTime(0.32, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + durations[idx]);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + durations[idx] + 0.02);
+
+                    timeOffset += durations[idx] * 0.95;
+                });
+            }
+
+            // リセット・ボタン操作時のシャラン♪という音
+            playReset() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [783.99, 659.25, 523.25, 659.25, 783.99];
+                notes.forEach((freq, i) => {
+                    const now = this.ctx.currentTime + i * 0.045;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now);
+                    gain.gain.setValueAtTime(0.16, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                });
+            }
+        }
+
+        const sound = new ToySoundEngine();
+
+        /* ==========================================
+         * 2. イラストテクスチャ生成 (Canvas 2D)
+         * アンパンマン・バイキンマン・ドキンちゃん・コキンちゃん・
+         * メロンパン・しょくぱん・カレーパン・表面パネルを高解像度描画
+         * ========================================== */
+        function drawRoundedRect(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+        }
+
+        // 共通の背景サンバースト＆フレーム描画ヘルパー
+        function drawPanelBackdrop(ctx, isIcon, innerColor, midColor, outerColor, borderColor, subBorderColor) {
+            const bgGrad = ctx.createRadialGradient(256, 256, 40, 256, 256, 320);
+            bgGrad.addColorStop(0, innerColor);
+            bgGrad.addColorStop(0.65, midColor);
+            bgGrad.addColorStop(1, outerColor);
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, 512, 512);
+
+            // 放射状の光ライン
+            ctx.save();
+            ctx.translate(256, 256);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+            for (let i = 0; i < 12; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.arc(0, 0, 400, (i * Math.PI) / 6, (i * Math.PI) / 6 + Math.PI / 12);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+
+            if (!isIcon) {
+                ctx.lineWidth = 28;
+                ctx.strokeStyle = borderColor;
+                drawRoundedRect(ctx, 22, 22, 468, 468, 70);
+                ctx.stroke();
+
+                ctx.lineWidth = 8;
+                ctx.strokeStyle = subBorderColor;
+                drawRoundedRect(ctx, 38, 38, 436, 436, 56);
+                ctx.stroke();
+            }
+        }
+
+        // ① アンパンマンのイラスト描画
+        function createAnpanmanCanvas(size = 512, isIcon = false) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const s = size / 512;
+            ctx.save();
+            ctx.scale(s, s);
+
+            drawPanelBackdrop(ctx, isIcon, '#fffbeb', '#fde047', '#ef4444', '#dc2626', '#ffffff');
+
+            // 顔の輪郭（こんがりパン色）
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.22)';
+            ctx.shadowBlur = 18;
+            ctx.shadowOffsetY = 8;
+
+            const faceGrad = ctx.createRadialGradient(220, 190, 30, 256, 260, 185);
+            faceGrad.addColorStop(0, '#f6ad55');
+            faceGrad.addColorStop(0.7, '#dd6b20');
+            faceGrad.addColorStop(1, '#9c4221');
+
+            ctx.fillStyle = faceGrad;
+            ctx.beginPath();
+            ctx.arc(256, 265, 165, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = '#4a1d05';
+            ctx.beginPath();
+            ctx.arc(256, 265, 165, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // 眉毛
+            ctx.lineWidth = 11;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#3b1806';
+            ctx.beginPath();
+            ctx.arc(195, 195, 36, Math.PI * 1.15, Math.PI * 1.85);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(317, 195, 36, Math.PI * 1.15, Math.PI * 1.85);
+            ctx.stroke();
+
+            // 目
+            ctx.fillStyle = '#1e1b18';
+            ctx.beginPath();
+            ctx.ellipse(200, 210, 18, 25, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(312, 210, 18, 25, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(194, 200, 7, 0, Math.PI * 2);
+            ctx.arc(306, 200, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 大きな笑顔の口
+            ctx.fillStyle = '#c53030';
+            ctx.beginPath();
+            ctx.arc(256, 295, 78, 0.08 * Math.PI, 0.92 * Math.PI, false);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(256, 295, 78, 0.08 * Math.PI, 0.92 * Math.PI, false);
+            ctx.clip();
+            ctx.fillStyle = '#fc8181';
+            ctx.beginPath();
+            ctx.arc(256, 365, 60, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.lineWidth = 9;
+            ctx.strokeStyle = '#3b1806';
+            ctx.beginPath();
+            ctx.arc(256, 295, 78, 0.08 * Math.PI, 0.92 * Math.PI, false);
+            ctx.closePath();
+            ctx.stroke();
+
+            // ぷっくりほっぺ
+            const drawCheek = (cx, cy) => {
+                const cGrad = ctx.createRadialGradient(cx - 10, cy - 10, 5, cx, cy, 46);
+                cGrad.addColorStop(0, '#ff876d');
+                cGrad.addColorStop(0.6, '#f95738');
+                cGrad.addColorStop(1, '#c83e2b');
+                ctx.fillStyle = cGrad;
+                ctx.beginPath();
+                ctx.arc(cx, cy, 44, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 8;
+                ctx.strokeStyle = '#3b1806';
+                ctx.stroke();
+            };
+            drawCheek(146, 275);
+            drawCheek(366, 275);
+
+            // まっかなお鼻
+            const nGrad = ctx.createRadialGradient(242, 250, 6, 256, 268, 52);
+            nGrad.addColorStop(0, '#ff6b6b');
+            nGrad.addColorStop(0.55, '#e53e3e');
+            nGrad.addColorStop(1, '#9b2c2c');
+            ctx.fillStyle = nGrad;
+            ctx.beginPath();
+            ctx.arc(256, 268, 49, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 9;
+            ctx.strokeStyle = '#3b1806';
+            ctx.stroke();
+
+            // ツヤハイライト
+            ctx.fillStyle = '#ffffff';
+            drawRoundedRect(ctx, 232, 240, 22, 22, 5);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(264, 264, 6, 0, Math.PI * 2);
+            ctx.fill();
+            drawRoundedRect(ctx, 128, 252, 16, 16, 4);
+            ctx.fill();
+            drawRoundedRect(ctx, 350, 252, 16, 16, 4);
+            ctx.fill();
+
+            ctx.restore();
+            return canvas;
+        }
+
+        // ② バイキンマンのイラスト描画
+        function createBaikinmanCanvas(size = 512, isIcon = false) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const s = size / 512;
+            ctx.save();
+            ctx.scale(s, s);
+
+            drawPanelBackdrop(ctx, isIcon, '#f3e8ff', '#a855f7', '#3b0764', '#6b21a8', '#d8b4fe');
+
+            // ツノ（触角2本）
+            ctx.strokeStyle = '#1e1b4b';
+            ctx.fillStyle = '#312e81';
+            ctx.lineWidth = 10;
+
+            ctx.beginPath();
+            ctx.moveTo(195, 145);
+            ctx.quadraticCurveTo(155, 85, 130, 95);
+            ctx.lineTo(145, 70);
+            ctx.quadraticCurveTo(185, 70, 220, 140);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(135, 84, 18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(317, 145);
+            ctx.quadraticCurveTo(357, 85, 382, 95);
+            ctx.lineTo(367, 70);
+            ctx.quadraticCurveTo(327, 70, 292, 140);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(377, 84, 18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // 顔の輪郭
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.35)';
+            ctx.shadowBlur = 18;
+            ctx.shadowOffsetY = 8;
+            const headGrad = ctx.createRadialGradient(220, 210, 20, 256, 280, 175);
+            headGrad.addColorStop(0, '#4c1d95');
+            headGrad.addColorStop(0.6, '#2e1065');
+            headGrad.addColorStop(1, '#170736');
+            ctx.fillStyle = headGrad;
+            ctx.beginPath();
+            ctx.ellipse(256, 285, 168, 152, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = '#0f0524';
+            ctx.beginPath();
+            ctx.ellipse(256, 285, 168, 152, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // 大きな目
+            ctx.fillStyle = '#f5d0fe';
+            ctx.strokeStyle = '#1e1b4b';
+            ctx.lineWidth = 9;
+            ctx.beginPath();
+            ctx.ellipse(192, 225, 52, 62, -0.12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.ellipse(320, 225, 52, 62, 0.12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // まぶた
+            ctx.fillStyle = '#2e1065';
+            ctx.beginPath();
+            ctx.moveTo(135, 180);
+            ctx.lineTo(250, 212);
+            ctx.lineTo(250, 155);
+            ctx.lineTo(135, 155);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(377, 180);
+            ctx.lineTo(262, 212);
+            ctx.lineTo(262, 155);
+            ctx.lineTo(377, 155);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.lineWidth = 9;
+            ctx.strokeStyle = '#0f0524';
+            ctx.beginPath();
+            ctx.moveTo(142, 186);
+            ctx.lineTo(246, 214);
+            ctx.moveTo(370, 186);
+            ctx.lineTo(266, 214);
+            ctx.stroke();
+
+            // 黒目
+            ctx.fillStyle = '#1e1b4b';
+            ctx.beginPath();
+            ctx.arc(212, 238, 17, 0, Math.PI * 2);
+            ctx.arc(300, 238, 17, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(207, 232, 6, 0, Math.PI * 2);
+            ctx.arc(295, 232, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ギザギザな口
+            ctx.save();
+            ctx.beginPath();
+            ctx.ellipse(256, 345, 125, 62, 0, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            ctx.clip();
+
+            ctx.strokeStyle = '#1e1b4b';
+            ctx.lineWidth = 7;
+            ctx.beginPath();
+            ctx.moveTo(125, 345);
+            const steps = 6;
+            const stepW = 260 / steps;
+            for (let i = 1; i <= steps; i++) {
+                const tx = 125 + i * stepW;
+                const ty = i % 2 === 1 ? 362 : 330;
+                ctx.lineTo(tx, ty);
+            }
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.lineWidth = 9;
+            ctx.strokeStyle = '#0f0524';
+            ctx.beginPath();
+            ctx.ellipse(256, 345, 125, 62, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // 鼻
+            const bnGrad = ctx.createRadialGradient(248, 258, 4, 256, 268, 32);
+            bnGrad.addColorStop(0, '#c084fc');
+            bnGrad.addColorStop(0.6, '#7e22ce');
+            bnGrad.addColorStop(1, '#3b0764');
+            ctx.fillStyle = bnGrad;
+            ctx.beginPath();
+            ctx.arc(256, 268, 28, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#0f0524';
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(247, 258, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+            return canvas;
+        }
+
+        // ③ ドキンちゃんのイラスト描画
+        function createDokinchanCanvas(size = 512, isIcon = false) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const s = size / 512;
+            ctx.save();
+            ctx.scale(s, s);
+
+            drawPanelBackdrop(ctx, isIcon, '#fff1f2', '#fda4af', '#e11d48', '#be123c', '#ffe4e6');
+
+            // 頭の1本ツノ（黄色い丸がついた可愛いツノ）
+            ctx.fillStyle = '#f97316';
+            ctx.strokeStyle = '#7c2d12';
+            ctx.lineWidth = 10;
+            ctx.beginPath();
+            ctx.moveTo(232, 138);
+            ctx.quadraticCurveTo(256, 72, 256, 68);
+            ctx.quadraticCurveTo(256, 72, 280, 138);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // ツノの先の黄色いポンポン
+            ctx.fillStyle = '#fde047';
+            ctx.beginPath();
+            ctx.arc(256, 65, 22, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // ドキンちゃんの顔の輪郭（ぷっくりした下ぶくれぎみの可愛いオレンジレッド）
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.22)';
+            ctx.shadowBlur = 18;
+            ctx.shadowOffsetY = 8;
+            const faceGrad = ctx.createRadialGradient(225, 210, 25, 256, 280, 175);
+            faceGrad.addColorStop(0, '#fb923c');
+            faceGrad.addColorStop(0.65, '#ea580c');
+            faceGrad.addColorStop(1, '#be123c');
+            ctx.fillStyle = faceGrad;
+            ctx.beginPath();
+            ctx.ellipse(256, 285, 162, 150, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = '#5c1906';
+            ctx.beginPath();
+            ctx.ellipse(256, 285, 162, 150, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // まつ毛（左右にキュートな上向きまつ毛）
+            ctx.strokeStyle = '#431407';
+            ctx.lineWidth = 9;
+            ctx.lineCap = 'round';
+            // 左まつ毛
+            ctx.beginPath();
+            ctx.moveTo(155, 185); ctx.lineTo(135, 165);
+            ctx.moveTo(175, 173); ctx.lineTo(165, 150);
+            // 右まつ毛
+            ctx.moveTo(357, 185); ctx.lineTo(377, 165);
+            ctx.moveTo(337, 173); ctx.lineTo(347, 150);
+            ctx.stroke();
+
+            // 大きな白い目
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#431407';
+            ctx.lineWidth = 9;
+            ctx.beginPath();
+            ctx.ellipse(196, 228, 46, 56, -0.06, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.ellipse(316, 228, 46, 56, 0.06, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // エメラルドグリーンの可愛い瞳
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath();
+            ctx.ellipse(206, 236, 24, 30, 0, 0, Math.PI * 2);
+            ctx.ellipse(306, 236, 24, 30, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#064e3b';
+            ctx.beginPath();
+            ctx.arc(206, 238, 13, 0, Math.PI * 2);
+            ctx.arc(306, 238, 13, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 瞳のキラキラハイライト
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(198, 226, 9, 0, Math.PI * 2);
+            ctx.arc(298, 226, 9, 0, Math.PI * 2);
+            ctx.arc(213, 246, 4, 0, Math.PI * 2);
+            ctx.arc(313, 246, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ほっぺのピンクチーク
+            ctx.fillStyle = 'rgba(255, 182, 193, 0.65)';
+            ctx.beginPath();
+            ctx.ellipse(140, 292, 30, 20, 0, 0, Math.PI * 2);
+            ctx.ellipse(372, 292, 30, 20, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // にっこり笑顔のお口
+            ctx.fillStyle = '#f43f5e';
+            ctx.strokeStyle = '#431407';
+            ctx.lineWidth = 9;
+            ctx.beginPath();
+            ctx.arc(256, 305, 68, 0.1 * Math.PI, 0.9 * Math.PI, false);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // ピンクの可愛い舌
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(256, 305, 68, 0.1 * Math.PI, 0.9 * Math.PI, false);
+            ctx.clip();
+            ctx.fillStyle = '#fda4af';
+            ctx.beginPath();
+            ctx.arc(256, 365, 50, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // ちょこんとした可愛い丸い鼻
+            const noseGrad = ctx.createRadialGradient(250, 265, 3, 256, 272, 24);
+            noseGrad.addColorStop(0, '#fed7aa');
+            noseGrad.addColorStop(0.6, '#f97316');
+            noseGrad.addColorStop(1, '#9a3412');
+            ctx.fillStyle = noseGrad;
+            ctx.beginPath();
+            ctx.arc(256, 272, 22, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#431407';
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(249, 265, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+            return canvas;
+        }
+
+        // ④ コキンちゃんのイラスト描画
+        function createKokinchanCanvas(size = 512, isIcon = false) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const s = size / 512;
+            ctx.save();
+            ctx.scale(s, s);
+
+            drawPanelBackdrop(ctx, isIcon, '#f0f9ff', '#7dd3fc', '#0284c7', '#0369a1', '#e0f2fe');
+
+            // 頭の1本ツノ（コキンちゃんの丸みのある青いツノ＋黄色い先）
+            ctx.fillStyle = '#38bdf8';
+            ctx.strokeStyle = '#0c4a6e';
+            ctx.lineWidth = 10;
+            ctx.beginPath();
+            ctx.moveTo(232, 138);
+            ctx.quadraticCurveTo(256, 75, 256, 70);
+            ctx.quadraticCurveTo(256, 75, 280, 138);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#fde047';
+            ctx.beginPath();
+            ctx.arc(256, 66, 22, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // 顔の輪郭（あざやかなスカイブルー）
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.22)';
+            ctx.shadowBlur = 18;
+            ctx.shadowOffsetY = 8;
+            const faceGrad = ctx.createRadialGradient(225, 210, 25, 256, 280, 175);
+            faceGrad.addColorStop(0, '#7dd3fc');
+            faceGrad.addColorStop(0.65, '#0ea5e9');
+            faceGrad.addColorStop(1, '#0369a1');
+            ctx.fillStyle = faceGrad;
+            ctx.beginPath();
+            ctx.ellipse(256, 288, 164, 148, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = '#082f49';
+            ctx.beginPath();
+            ctx.ellipse(256, 288, 164, 148, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // まつ毛
+            ctx.strokeStyle = '#082f49';
+            ctx.lineWidth = 9;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(150, 190); ctx.lineTo(132, 172);
+            ctx.moveTo(172, 176); ctx.lineTo(162, 155);
+            ctx.moveTo(362, 190); ctx.lineTo(380, 172);
+            ctx.moveTo(340, 176); ctx.lineTo(350, 155);
+            ctx.stroke();
+
+            // 大きな白い目
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#082f49';
+            ctx.lineWidth = 9;
+            ctx.beginPath();
+            ctx.ellipse(194, 232, 48, 56, -0.05, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.ellipse(318, 232, 48, 56, 0.05, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // コキンちゃんのうるうるブルーの大きな瞳
+            ctx.fillStyle = '#1d4ed8';
+            ctx.beginPath();
+            ctx.ellipse(204, 240, 27, 33, 0, 0, Math.PI * 2);
+            ctx.ellipse(308, 240, 27, 33, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // うるうるキラキラのハイライト（大小3つずつ）
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(194, 226, 11, 0, Math.PI * 2);
+            ctx.arc(298, 226, 11, 0, Math.PI * 2);
+            ctx.arc(214, 250, 6, 0, Math.PI * 2);
+            ctx.arc(318, 250, 6, 0, Math.PI * 2);
+            ctx.arc(196, 252, 4, 0, Math.PI * 2);
+            ctx.arc(300, 252, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ピンクのほっぺ
+            ctx.fillStyle = 'rgba(251, 113, 133, 0.65)';
+            ctx.beginPath();
+            ctx.ellipse(136, 296, 32, 22, 0, 0, Math.PI * 2);
+            ctx.ellipse(376, 296, 32, 22, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // あどけない可愛い笑顔の口
+            ctx.fillStyle = '#fb7185';
+            ctx.strokeStyle = '#082f49';
+            ctx.lineWidth = 9;
+            ctx.beginPath();
+            ctx.arc(256, 312, 60, 0.08 * Math.PI, 0.92 * Math.PI, false);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // ちょこんとした水色の鼻
+            const noseGrad = ctx.createRadialGradient(250, 268, 3, 256, 275, 22);
+            noseGrad.addColorStop(0, '#e0f2fe');
+            noseGrad.addColorStop(0.6, '#38bdf8');
+            noseGrad.addColorStop(1, '#0284c7');
+            ctx.fillStyle = noseGrad;
+            ctx.beginPath();
+            ctx.arc(256, 275, 21, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#082f49';
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(250, 269, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+            return canvas;
+        }
+
+        // ⑤ メロンパン（メロンパンナちゃん風の可愛い格子模様パン）描画
+        function createMelonpanCanvas(size = 512, isIcon = false) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const s = size / 512;
+            ctx.save();
+            ctx.scale(s, s);
+
+            drawPanelBackdrop(ctx, isIcon, '#f7fee7', '#bef264', '#16a34a', '#15803d', '#ecfccb');
+
+            // メロンパンの丸いクッキー生地輪郭
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.22)';
+            ctx.shadowBlur = 18;
+            ctx.shadowOffsetY = 8;
+            const melonGrad = ctx.createRadialGradient(220, 195, 25, 256, 265, 175);
+            melonGrad.addColorStop(0, '#fef08a');
+            melonGrad.addColorStop(0.55, '#d9f99d');
+            melonGrad.addColorStop(1, '#65a30d');
+            ctx.fillStyle = melonGrad;
+            ctx.beginPath();
+            ctx.arc(256, 268, 166, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // メロンパン特有の格子（ビスケット）ライン（顔の上半分を中心に可愛く配置）
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(256, 268, 164, 0, Math.PI * 2);
+            ctx.clip();
+
+            ctx.strokeStyle = 'rgba(101, 163, 13, 0.55)';
+            ctx.lineWidth = 8;
+            for (let i = -3; i <= 3; i++) {
+                // 斜め線1
+                ctx.beginPath();
+                ctx.moveTo(256 + i * 65 - 140, 80);
+                ctx.lineTo(256 + i * 65 + 140, 440);
+                ctx.stroke();
+                // 斜め線2
+                ctx.beginPath();
+                ctx.moveTo(256 + i * 65 + 140, 80);
+                ctx.lineTo(256 + i * 65 - 140, 440);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // 外周の輪郭線
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = '#365314';
+            ctx.beginPath();
+            ctx.arc(256, 268, 166, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // 額の「M」マーク風リボン飾り
+            ctx.strokeStyle = '#15803d';
+            ctx.lineWidth = 9;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(226, 155);
+            ctx.lineTo(240, 132);
+            ctx.lineTo(256, 152);
+            ctx.lineTo(272, 132);
+            ctx.lineTo(286, 155);
+            ctx.stroke();
+
+            // ぱっちりした可愛い目
+            ctx.fillStyle = '#365314';
+            ctx.beginPath();
+            ctx.ellipse(196, 232, 22, 28, 0, 0, Math.PI * 2);
+            ctx.ellipse(316, 232, 22, 28, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // キラキラハイライト
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(189, 222, 9, 0, Math.PI * 2);
+            ctx.arc(309, 222, 9, 0, Math.PI * 2);
+            ctx.arc(204, 240, 5, 0, Math.PI * 2);
+            ctx.arc(324, 240, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ほんのりピンクのほっぺ
+            ctx.fillStyle = 'rgba(251, 113, 133, 0.7)';
+            ctx.beginPath();
+            ctx.ellipse(142, 278, 30, 22, 0, 0, Math.PI * 2);
+            ctx.ellipse(370, 278, 30, 22, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // まるい可愛い鼻
+            ctx.fillStyle = '#bef264';
+            ctx.strokeStyle = '#365314';
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.arc(256, 266, 20, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // にっこりスマイル
+            ctx.fillStyle = '#f43f5e';
+            ctx.beginPath();
+            ctx.arc(256, 298, 52, 0.08 * Math.PI, 0.92 * Math.PI, false);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+            return canvas;
+        }
+
+        // ⑥ しょくぱん（しょくぱんまん風の山型食パンデザイン）描画
+        function createShokupanCanvas(size = 512, isIcon = false) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const s = size / 512;
+            ctx.save();
+            ctx.scale(s, s);
+
+            drawPanelBackdrop(ctx, isIcon, '#ffffff', '#fed7aa', '#ea580c', '#c2410c', '#ffedd5');
+
+            // 食パンの耳（こんがりゴールデンブラウンの外枠）と白いクラム
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.22)';
+            ctx.shadowBlur = 18;
+            ctx.shadowOffsetY = 8;
+
+            const drawBreadShape = (scale = 1) => {
+                ctx.beginPath();
+                ctx.save();
+                ctx.translate(256, 275);
+                ctx.scale(scale, scale);
+                // 上部がぷっくり山型の食パンシルエット
+                ctx.moveTo(-140, -65);
+                ctx.bezierCurveTo(-165, -165, -20, -180, 0, -145);
+                ctx.bezierCurveTo(20, -180, 165, -165, 140, -65);
+                ctx.lineTo(132, 125);
+                ctx.quadraticCurveTo(132, 155, 100, 155);
+                ctx.lineTo(-100, 155);
+                ctx.quadraticCurveTo(-132, 155, -132, 125);
+                ctx.closePath();
+                ctx.restore();
+            };
+
+            // パンの耳
+            ctx.fillStyle = '#d97706';
+            drawBreadShape(1.0);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = '#78350f';
+            drawBreadShape(1.0);
+            ctx.stroke();
+
+            // 内側のふんわり白い食パン生地
+            const whiteGrad = ctx.createRadialGradient(256, 250, 20, 256, 275, 160);
+            whiteGrad.addColorStop(0, '#ffffff');
+            whiteGrad.addColorStop(1, '#fef3c7');
+            ctx.fillStyle = whiteGrad;
+            drawBreadShape(0.86);
+            ctx.fill();
+
+            // 爽やかな眉毛と優しい目
+            ctx.strokeStyle = '#78350f';
+            ctx.lineWidth = 9;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(198, 205, 30, Math.PI * 1.15, Math.PI * 1.85);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(314, 205, 30, Math.PI * 1.15, Math.PI * 1.85);
+            ctx.stroke();
+
+            ctx.fillStyle = '#451a03';
+            ctx.beginPath();
+            ctx.ellipse(202, 228, 16, 23, 0, 0, Math.PI * 2);
+            ctx.ellipse(310, 228, 16, 23, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(197, 220, 6, 0, Math.PI * 2);
+            ctx.arc(305, 220, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ほっぺ
+            ctx.fillStyle = 'rgba(251, 146, 60, 0.55)';
+            ctx.beginPath();
+            ctx.ellipse(158, 282, 26, 18, 0, 0, Math.PI * 2);
+            ctx.ellipse(354, 282, 26, 18, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 鼻
+            ctx.fillStyle = '#fde68a';
+            ctx.strokeStyle = '#78350f';
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.arc(256, 268, 18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // にっこり爽やかな口
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(256, 305, 55, 0.08 * Math.PI, 0.92 * Math.PI, false);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+            return canvas;
+        }
+
+        // ⑦ カレーパン（カレーパンマン風の元気な揚げパンデザイン）描画
+        function createCurrypanCanvas(size = 512, isIcon = false) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const s = size / 512;
+            ctx.save();
+            ctx.scale(s, s);
+
+            drawPanelBackdrop(ctx, isIcon, '#fef9c3', '#facc15', '#ca8a04', '#854d0e', '#fef08a');
+
+            // カレーパンの横長ラグビーボール型のこんがりボディ
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.28)';
+            ctx.shadowBlur = 18;
+            ctx.shadowOffsetY = 8;
+
+            const curryGrad = ctx.createRadialGradient(230, 210, 25, 256, 270, 190);
+            curryGrad.addColorStop(0, '#f59e0b');
+            curryGrad.addColorStop(0.65, '#b45309');
+            curryGrad.addColorStop(1, '#78350f');
+            ctx.fillStyle = curryGrad;
+
+            ctx.beginPath();
+            ctx.ellipse(256, 272, 182, 142, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = '#451a03';
+            ctx.beginPath();
+            ctx.ellipse(256, 272, 182, 142, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // サクサク衣のドット模様
+            ctx.fillStyle = 'rgba(254, 243, 199, 0.35)';
+            const crumbs = [
+                [130, 200], [380, 205], [160, 165], [350, 168],
+                [115, 310], [395, 310], [200, 385], [312, 385]
+            ];
+            crumbs.forEach(([cx, cy]) => {
+                ctx.beginPath();
+                ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 元気いっぱいの目
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.ellipse(196, 222, 30, 36, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.ellipse(316, 222, 30, 36, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath();
+            ctx.arc(202, 226, 14, 0, Math.PI * 2);
+            ctx.arc(310, 226, 14, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(197, 220, 5, 0, Math.PI * 2);
+            ctx.arc(305, 220, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ぷっくりほっぺ
+            ctx.fillStyle = '#f97316';
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.arc(128, 272, 32, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(384, 272, 32, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // ワイドで元気な口（波型のユニークなスマイル）
+            ctx.fillStyle = '#991b1b';
+            ctx.beginPath();
+            ctx.ellipse(256, 322, 85, 42, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath();
+            ctx.ellipse(256, 338, 52, 22, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 鼻
+            ctx.fillStyle = '#fbbf24';
+            ctx.beginPath();
+            ctx.arc(256, 262, 24, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+            return canvas;
+        }
+
+        // ⑧ オモテ面（めくる前）デザインA：キラキラ星パネル（1〜9）
+        function createNeutralStarCanvas(index, size = 512) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const s = size / 512;
+            ctx.save();
+            ctx.scale(s, s);
+
+            const bgGrad = ctx.createRadialGradient(256, 256, 20, 256, 256, 340);
+            bgGrad.addColorStop(0, '#ffffff');
+            bgGrad.addColorStop(0.6, '#bae6fd');
+            bgGrad.addColorStop(1, '#38bdf8');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, 512, 512);
+
+            ctx.lineWidth = 26;
+            ctx.strokeStyle = '#0284c7';
+            drawRoundedRect(ctx, 22, 22, 468, 468, 70);
+            ctx.stroke();
+
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#ffffff';
+            drawRoundedRect(ctx, 38, 38, 436, 436, 56);
+            ctx.stroke();
+
+            ctx.save();
+            ctx.translate(256, 256);
+            ctx.shadowColor = 'rgba(2, 132, 199, 0.35)';
+            ctx.shadowBlur = 20;
+            ctx.shadowOffsetY = 10;
+
+            ctx.beginPath();
+            const spikes = 5;
+            const outerR = 145;
+            const innerR = 72;
+            for (let i = 0; i < spikes * 2; i++) {
+                const r = i % 2 === 0 ? outerR : innerR;
+                const angle = (i * Math.PI) / spikes - Math.PI / 2;
+                const x = Math.cos(angle) * r;
+                const y = Math.sin(angle) * r;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+
+            const starGrad = ctx.createRadialGradient(-25, -35, 10, 0, 0, 150);
+            starGrad.addColorStop(0, '#fef08a');
+            starGrad.addColorStop(0.6, '#facc15');
+            starGrad.addColorStop(1, '#ea580c');
+            ctx.fillStyle = starGrad;
+            ctx.fill();
+
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = 14;
+            ctx.strokeStyle = '#b45309';
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#9a3412';
+            ctx.lineWidth = 12;
+            ctx.font = '900 110px "M PLUS Rounded 1c", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const numText = String(index + 1);
+            ctx.strokeText(numText, 0, 8);
+            ctx.fillText(numText, 0, 8);
+
+            ctx.restore();
+            ctx.restore();
+            return canvas;
+        }
+
+        // ⑨ オモテ面（めくる前）デザインB：やきたてパンパネル（1〜9）
+        function createNeutralBakeryCanvas(index, size = 512) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const s = size / 512;
+            ctx.save();
+            ctx.scale(s, s);
+
+            // 温かみのあるベーカリーギンガム風クリーム背景
+            const bgGrad = ctx.createRadialGradient(256, 256, 20, 256, 256, 340);
+            bgGrad.addColorStop(0, '#fffbeb');
+            bgGrad.addColorStop(0.65, '#fde68a');
+            bgGrad.addColorStop(1, '#f59e0b');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, 512, 512);
+
+            // ドット装飾
+            ctx.fillStyle = 'rgba(217, 119, 6, 0.14)';
+            for (let gx = 80; gx <= 432; gx += 88) {
+                for (let gy = 80; gy <= 432; gy += 88) {
+                    ctx.beginPath();
+                    ctx.arc(gx, gy, 14, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // 外枠
+            ctx.lineWidth = 26;
+            ctx.strokeStyle = '#b45309';
+            drawRoundedRect(ctx, 22, 22, 468, 468, 70);
+            ctx.stroke();
+
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#fef3c7';
+            drawRoundedRect(ctx, 38, 38, 436, 436, 56);
+            ctx.stroke();
+
+            // 中央にぷっくり焼きたての丸パンを描画
+            ctx.save();
+            ctx.translate(256, 260);
+            ctx.shadowColor = 'rgba(120, 53, 15, 0.32)';
+            ctx.shadowBlur = 18;
+            ctx.shadowOffsetY = 10;
+
+            const bunGrad = ctx.createRadialGradient(-30, -35, 15, 0, 0, 145);
+            bunGrad.addColorStop(0, '#fcd34d');
+            bunGrad.addColorStop(0.55, '#d97706');
+            bunGrad.addColorStop(1, '#78350f');
+            ctx.fillStyle = bunGrad;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 140, 122, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.lineWidth = 12;
+            ctx.strokeStyle = '#451a03';
+            ctx.stroke();
+
+            // パンのツヤとゴマ粒
+            ctx.fillStyle = 'rgba(255,255,255,0.45)';
+            ctx.beginPath();
+            ctx.ellipse(-48, -52, 34, 16, -0.35, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 数字（1〜9）
+            ctx.fillStyle = '#fffbeb';
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 14;
+            ctx.font = '900 112px "M PLUS Rounded 1c", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const numText = String(index + 1);
+            ctx.strokeText(numText, 0, 8);
+            ctx.fillText(numText, 0, 8);
+
+            ctx.restore();
+            ctx.restore();
+            return canvas;
+        }
+
+        /* ==========================================
+         * 3. キャラクター＆パンデザインのカタログ定義
+         * ========================================== */
+        const CHARACTER_CATALOG = {
+            anpanman: {
+                id: 'anpanman',
+                name: 'アンパンマン',
+                drawFn: createAnpanmanCanvas,
+                badgeClass: 'from-red-500 to-red-600',
+                scoreTextClass: 'text-red-600',
+                guideTextClass: 'text-red-600',
+                sideHex: 0xfee2e2,
+                beamHex: 0xfacc15,
+                winMessage: 'げんき100ばい！ 3つそろったね！✨',
+                confettiColors: [0xef4444, 0xfacc15, 0xf97316, 0xffffff, 0x38bdf8]
+            },
+            baikinman: {
+                id: 'baikinman',
+                name: 'バイキンマン',
+                drawFn: createBaikinmanCanvas,
+                badgeClass: 'from-purple-600 to-indigo-800',
+                scoreTextClass: 'text-purple-700',
+                guideTextClass: 'text-purple-700',
+                sideHex: 0xf3e8ff,
+                beamHex: 0x4ade80,
+                winMessage: 'ハヒフヘホ〜！ 3つそろったぞ！⚡',
+                confettiColors: [0xa855f7, 0x4ade80, 0xfacc15, 0xf472b6, 0xffffff]
+            },
+            dokinchan: {
+                id: 'dokinchan',
+                name: 'ドキンちゃん',
+                drawFn: createDokinchanCanvas,
+                badgeClass: 'from-pink-500 to-rose-600',
+                scoreTextClass: 'text-rose-600',
+                guideTextClass: 'text-rose-600',
+                sideHex: 0xffe4e6,
+                beamHex: 0xf43f5e,
+                winMessage: 'わぁ〜い♪ とってもキュートに3つそろったわ！💖',
+                confettiColors: [0xf43f5e, 0xfb7185, 0xfde047, 0xffffff, 0xf97316]
+            },
+            kokinchan: {
+                id: 'kokinchan',
+                name: 'コキンちゃん',
+                drawFn: createKokinchanCanvas,
+                badgeClass: 'from-sky-400 to-blue-600',
+                scoreTextClass: 'text-blue-600',
+                guideTextClass: 'text-blue-600',
+                sideHex: 0xe0f2fe,
+                beamHex: 0x38bdf8,
+                winMessage: 'やったぁ〜！ キラキラ3つそろったよ！💧✨',
+                confettiColors: [0x38bdf8, 0x60a5fa, 0xfde047, 0xf472b6, 0xffffff]
+            },
+            melonpan: {
+                id: 'melonpan',
+                name: 'メロンパン',
+                drawFn: createMelonpanCanvas,
+                badgeClass: 'from-lime-500 to-green-600',
+                scoreTextClass: 'text-green-600',
+                guideTextClass: 'text-green-700',
+                sideHex: 0xecfccb,
+                beamHex: 0x84cc16,
+                winMessage: 'メロンジュースみたいに甘くてかわいい勝利！🍈',
+                confettiColors: [0x84cc16, 0xfef08a, 0x22c55e, 0xf472b6, 0xffffff]
+            },
+            shokupan: {
+                id: 'shokupan',
+                name: 'しょくぱん',
+                drawFn: createShokupanCanvas,
+                badgeClass: 'from-amber-500 to-orange-600',
+                scoreTextClass: 'text-orange-600',
+                guideTextClass: 'text-orange-700',
+                sideHex: 0xffedd5,
+                beamHex: 0xf97316,
+                winMessage: 'ふんわり焼きたて！ 美しく3つそろいました！🍞',
+                confettiColors: [0xf97316, 0xfde047, 0xffffff, 0x38bdf8, 0xfb7185]
+            },
+            currypan: {
+                id: 'currypan',
+                name: 'カレーパン',
+                drawFn: createCurrypanCanvas,
+                badgeClass: 'from-yellow-500 to-amber-700',
+                scoreTextClass: 'text-amber-700',
+                guideTextClass: 'text-amber-800',
+                sideHex: 0xfef9c3,
+                beamHex: 0xeab308,
+                winMessage: 'アツアツ辛口！ 元気いっぱいに3つそろったぜ！🍛',
+                confettiColors: [0xeab308, 0xef4444, 0xf97316, 0xffffff, 0x22c55e]
+            }
+        };
+
+        const CHARACTER_KEYS = Object.keys(CHARACTER_CATALOG);
+
+        // 現在の選択キャラクター＆パネル設定
+        let playerCharKeys = {
+            1: 'anpanman',
+            2: 'baikinman'
+        };
+        let frontPanelStyle = 'star'; // 'star' | 'bakery'
+
+        // 生成済みThree.jsテクスチャキャッシュ
+        const textureCache = {};
+        const iconCanvasCache = {};
+
+        function getCharacterTexture(charKey) {
+            if (!textureCache[charKey]) {
+                const canvas = CHARACTER_CATALOG[charKey].drawFn(512, false);
+                const tex = new THREE.CanvasTexture(canvas);
+                tex.anisotropy = 4;
+                textureCache[charKey] = tex;
+            }
+            return textureCache[charKey];
+        }
+
+        function getCharacterIconCanvas(charKey) {
+            if (!iconCanvasCache[charKey]) {
+                iconCanvasCache[charKey] = CHARACTER_CATALOG[charKey].drawFn(128, true);
+            }
+            return iconCanvasCache[charKey];
+        }
+
+        /* ==========================================
+         * 4. Three.js 3Dシーン＆ゲームボード構築
+         * ========================================== */
+        let scene, camera, renderer;
+        let boardGroup;
+        let tiles = [];
+        let confettiParticles = [];
+        let winLineMesh = null;
+
+        // ゲームの状態管理
+        let boardState = Array(9).fill(0); // 0: 未選択, 1: プレイヤー1, 2: プレイヤー2
+        let currentPlayer = 1;
+        let isGameOver = false;
+        let winningCombo = null;
+        let allowOverwrite = true; // 2歳児向け：いつでも裏返せるモード
+        let scores = { 1: 0, 2: 0 };
+
+        // カメラ・ボード回転ドラッグ用
+        let isDragging = false;
+        let dragStartPos = { x: 0, y: 0 };
+        let previousPointerPos = { x: 0, y: 0 };
+        let targetBoardRotation = { x: -0.18, y: 0 };
+
+        const WIN_LINES = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // 横
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // 縦
+            [0, 4, 8], [2, 4, 6]             // 斜め
+        ];
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+
+            scene = new THREE.Scene();
+
+            const w = container.clientWidth || window.innerWidth;
+            const h = container.clientHeight || (window.innerHeight - 160);
+
+            camera = new THREE.PerspectiveCamera(40, w / h, 0.1, 100);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(w, h);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // ライティング
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xfffbeb, 0.85);
+            dirLight.position.set(6, 12, 10);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            dirLight.shadow.camera.near = 0.5;
+            dirLight.shadow.camera.far = 30;
+            const d = 7;
+            dirLight.shadow.camera.left = -d;
+            dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d;
+            dirLight.shadow.camera.bottom = -d;
+            scene.add(dirLight);
+
+            const rimLight = new THREE.DirectionalLight(0xfde047, 0.35);
+            rimLight.position.set(-8, -6, 5);
+            scene.add(rimLight);
+
+            // ボードグループの作成
+            boardGroup = new THREE.Group();
+            boardGroup.rotation.x = targetBoardRotation.x;
+            boardGroup.rotation.y = targetBoardRotation.y;
+            scene.add(boardGroup);
+
+            createToyBoardFrame();
+            createNineTiles();
+
+            updateCameraAndRendererSize();
+
+            // リサイズ監視（ヘッダー高さ変化や画面回転にも完全追従）
+            window.addEventListener('resize', updateCameraAndRendererSize);
+            if (window.ResizeObserver) {
+                const ro = new ResizeObserver(() => updateCameraAndRendererSize());
+                ro.observe(container);
+            }
+
+            setupPointerInteractions(renderer.domElement);
+        }
+
+        // #canvas-container の実寸に合わせて、3Dボードが絶対に文字や枠外にはみ出さないようカメラ距離を自動計算
+        function updateCameraAndRendererSize() {
+            if (!camera || !renderer) return;
+            const container = document.getElementById('canvas-container');
+            const w = Math.max(100, container.clientWidth);
+            const h = Math.max(100, container.clientHeight);
+
+            renderer.setSize(w, h);
+            const aspect = w / h;
+            camera.aspect = aspect;
+
+            // ボードの直径は約7.6ユニット＋余白を考慮して約9.2ユニットが収まる距離を計算
+            const boardSpan = 9.3;
+            const fovRad = THREE.MathUtils.degToRad(camera.fov);
+
+            // 縦方向に収めるために必要な距離
+            const distVertical = (boardSpan / 2) / Math.tan(fovRad / 2);
+            // 横方向に収めるために必要な距離
+            const distHorizontal = (boardSpan / 2) / (Math.tan(fovRad / 2) * aspect);
+
+            const finalDist = Math.max(distVertical, distHorizontal, 10.6);
+
+            camera.position.set(0, 0.1, finalDist);
+            camera.lookAt(0, 0.05, 0);
+            camera.updateProjectionMatrix();
+        }
+
+        // 木のおもちゃ風の立体ボードフレームを作成
+        function createToyBoardFrame() {
+            const baseGeo = new THREE.BoxGeometry(7.2, 7.2, 0.5);
+            const baseMat = new THREE.MeshStandardMaterial({
+                color: 0xd97706,
+                roughness: 0.35,
+                metalness: 0.05
+            });
+            const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+            baseMesh.position.z = -0.45;
+            baseMesh.receiveShadow = true;
+            boardGroup.add(baseMesh);
+
+            const innerGeo = new THREE.BoxGeometry(6.6, 6.6, 0.42);
+            const innerMat = new THREE.MeshStandardMaterial({
+                color: 0xfef3c7,
+                roughness: 0.4
+            });
+            const innerMesh = new THREE.Mesh(innerGeo, innerMat);
+            innerMesh.position.z = -0.36;
+            innerMesh.receiveShadow = true;
+            boardGroup.add(innerMesh);
+
+            const barMat = new THREE.MeshStandardMaterial({
+                color: 0xef4444,
+                roughness: 0.3,
+                metalness: 0.1
+            });
+
+            const positions = [-1.05, 1.05];
+            positions.forEach(pos => {
+                const vBar = new THREE.Mesh(new THREE.BoxGeometry(0.16, 6.3, 0.35), barMat);
+                vBar.position.set(pos, 0, -0.18);
+                vBar.receiveShadow = true;
+                vBar.castShadow = true;
+                boardGroup.add(vBar);
+
+                const hBar = new THREE.Mesh(new THREE.BoxGeometry(6.3, 0.16, 0.35), barMat);
+                hBar.position.set(0, pos, -0.18);
+                hBar.receiveShadow = true;
+                hBar.castShadow = true;
+                boardGroup.add(hBar);
+            });
+
+            const pinGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.6, 24);
+            pinGeo.rotateX(Math.PI / 2);
+            const pinMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.25 });
+            const corners = [
+                [-3.2, -3.2], [3.2, -3.2],
+                [-3.2, 3.2], [3.2, 3.2]
+            ];
+            corners.forEach(([cx, cy]) => {
+                const pin = new THREE.Mesh(pinGeo, pinMat);
+                pin.position.set(cx, cy, -0.32);
+                boardGroup.add(pin);
+            });
+        }
+
+        // 9マスの3Dパタパタタイル作成
+        function createNineTiles() {
+            tiles = [];
+            const spacing = 2.1;
+
+            for (let i = 0; i < 9; i++) {
+                const row = Math.floor(i / 3);
+                const col = i % 3;
+                const x = (col - 1) * spacing;
+                const y = (1 - row) * spacing;
+
+                const frontCanvas = frontPanelStyle === 'bakery'
+                    ? createNeutralBakeryCanvas(i, 512)
+                    : createNeutralStarCanvas(i, 512);
+                const frontTex = new THREE.CanvasTexture(frontCanvas);
+                frontTex.anisotropy = 4;
+
+                const sideMat = new THREE.MeshStandardMaterial({
+                    color: 0xffffff,
+                    roughness: 0.25
+                });
+                const frontMat = new THREE.MeshStandardMaterial({
+                    map: frontTex,
+                    roughness: 0.22
+                });
+                const backMat = new THREE.MeshStandardMaterial({
+                    map: getCharacterTexture(playerCharKeys[1]),
+                    roughness: 0.22
+                });
+
+                const materials = [
+                    sideMat, sideMat, sideMat, sideMat,
+                    frontMat,
+                    backMat
+                ];
+
+                const tileGeo = new THREE.BoxGeometry(1.78, 1.78, 0.34);
+                const tileMesh = new THREE.Mesh(tileGeo, materials);
+                tileMesh.position.set(x, y, 0);
+                tileMesh.castShadow = true;
+                tileMesh.receiveShadow = true;
+
+                tileMesh.userData = {
+                    index: i,
+                    baseX: x,
+                    baseY: y,
+                    baseZ: 0,
+                    targetRotY: 0,
+                    currentRotY: 0,
+                    flipProgress: 0,
+                    isFlipping: false,
+                    isWinningTile: false
+                };
+
+                boardGroup.add(tileMesh);
+                tiles.push(tileMesh);
+            }
+        }
+
+        // オモテ面（めくる前）パネルデザインを全9タイルに反映
+        function refreshFrontTileTextures() {
+            tiles.forEach((tile, i) => {
+                const frontCanvas = frontPanelStyle === 'bakery'
+                    ? createNeutralBakeryCanvas(i, 512)
+                    : createNeutralStarCanvas(i, 512);
+                const frontTex = new THREE.CanvasTexture(frontCanvas);
+                frontTex.anisotropy = 4;
+                tile.material[4].map = frontTex;
+                tile.material[4].needsUpdate = true;
+            });
+        }
+
+        // すでにめくられているタイルのキャラクターテクスチャを即時更新
+        function refreshActiveBoardCharacterTextures() {
+            tiles.forEach((tile, idx) => {
+                const owner = boardState[idx];
+                if (owner === 1 || owner === 2) {
+                    const charCfg = CHARACTER_CATALOG[playerCharKeys[owner]];
+                    tile.material[5].map = getCharacterTexture(charCfg.id);
+                    tile.material[5].needsUpdate = true;
+                    for (let s = 0; s < 4; s++) {
+                        tile.material[s].color.setHex(charCfg.sideHex);
+                    }
+                }
+            });
+        }
+
+        /* ==========================================
+         * 5. インタラクション＆ゲーム進行ロジック
+         * ========================================== */
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+
+        function setupPointerInteractions(domElement) {
+            domElement.addEventListener('pointerdown', (e) => {
+                isDragging = true;
+                dragStartPos.x = e.clientX;
+                dragStartPos.y = e.clientY;
+                previousPointerPos.x = e.clientX;
+                previousPointerPos.y = e.clientY;
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - previousPointerPos.x;
+                const dy = e.clientY - previousPointerPos.y;
+                previousPointerPos.x = e.clientX;
+                previousPointerPos.y = e.clientY;
+
+                targetBoardRotation.y = Math.max(-0.55, Math.min(0.55, targetBoardRotation.y + dx * 0.006));
+                targetBoardRotation.x = Math.max(-0.6, Math.min(0.35, targetBoardRotation.x + dy * 0.006));
+            });
+
+            window.addEventListener('pointerup', (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+
+                const moveDist = Math.hypot(e.clientX - dragStartPos.x, e.clientY - dragStartPos.y);
+                if (moveDist < 18) {
+                    handleBoardTap(e.clientX, e.clientY);
+                }
+            });
+        }
+
+        function handleBoardTap(clientX, clientY) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+            pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(pointer, camera);
+            const intersects = raycaster.intersectObjects(tiles);
+
+            if (intersects.length > 0) {
+                const hitTile = intersects[0].object;
+                const idx = hitTile.userData.index;
+                onTileSelected(idx);
+            }
+        }
+
+        function onTileSelected(idx) {
+            if (isGameOver) {
+                triggerTileHop(tiles[idx]);
+                sound.playFlip(boardState[idx] || 1);
+                return;
+            }
+
+            const currentOwner = boardState[idx];
+
+            if (currentOwner !== 0 && !allowOverwrite) {
+                triggerTileHop(tiles[idx]);
+                sound.playBump();
+                return;
+            }
+
+            let nextOwner = currentPlayer;
+            if (currentOwner === currentPlayer && allowOverwrite) {
+                nextOwner = currentPlayer === 1 ? 2 : 1;
+            }
+
+            boardState[idx] = nextOwner;
+            flipTileToPlayer(idx, nextOwner);
+            sound.playFlip(nextOwner);
+
+            const winResult = checkWin();
+            if (winResult) {
+                handleGameWin(winResult.winner, winResult.line);
+                return;
+            }
+
+            if (!allowOverwrite && boardState.every(cell => cell !== 0)) {
+                handleGameDraw();
+                return;
+            }
+
+            currentPlayer = nextOwner === 1 ? 2 : 1;
+            updateHeaderAndTurnUI();
+        }
+
+        function flipTileToPlayer(idx, player) {
+            const tile = tiles[idx];
+            const charCfg = CHARACTER_CATALOG[playerCharKeys[player]];
+            const backMaterial = tile.material[5];
+
+            backMaterial.map = getCharacterTexture(charCfg.id);
+            backMaterial.needsUpdate = true;
+
+            for (let s = 0; s < 4; s++) {
+                tile.material[s].color.setHex(charCfg.sideHex);
+            }
+
+            const currentPiMultiple = Math.round(tile.userData.targetRotY / Math.PI);
+            let nextOddMultiple = currentPiMultiple + 1;
+            if (nextOddMultiple % 2 === 0) {
+                nextOddMultiple += 1;
+            }
+            tile.userData.targetRotY = nextOddMultiple * Math.PI;
+            tile.userData.isFlipping = true;
+            tile.userData.flipProgress = 0;
+        }
+
+        function triggerTileHop(tile) {
+            tile.userData.isFlipping = true;
+            tile.userData.flipProgress = 0;
+        }
+
+        function checkWin() {
+            for (const line of WIN_LINES) {
+                const [a, b, c] = line;
+                if (boardState[a] !== 0 &&
+                    boardState[a] === boardState[b] &&
+                    boardState[a] === boardState[c]) {
+                    return { winner: boardState[a], line };
+                }
+            }
+            return null;
+        }
+
+        /* ==========================================
+         * 6. 勝利演出・3Dライン・紙吹雪エフェクト
+         * ========================================== */
+        function handleGameWin(winner, line) {
+            isGameOver = true;
+            winningCombo = line;
+            scores[winner]++;
+
+            document.getElementById('score-p1').textContent = scores[1];
+            document.getElementById('score-p2').textContent = scores[2];
+
+            line.forEach(idx => {
+                tiles[idx].userData.isWinningTile = true;
+            });
+
+            const charCfg = CHARACTER_CATALOG[playerCharKeys[winner]];
+            createWinLine3D(line, charCfg.beamHex);
+            spawn3DConfetti(charCfg.confettiColors);
+
+            setTimeout(() => sound.playWinFanfare(), 180);
+
+            const overlay = document.getElementById('result-overlay');
+            const titleEl = document.getElementById('result-title');
+            const subEl = document.getElementById('result-subtitle');
+            const guideText = document.getElementById('guide-text');
+
+            titleEl.textContent = `${charCfg.name}のかち！`;
+            titleEl.className = `text-xl sm:text-2xl font-black drop-shadow-sm mb-1 ${charCfg.guideTextClass}`;
+            subEl.textContent = charCfg.winMessage;
+
+            guideText.textContent = `🎉 ${charCfg.name} 3つそろったよ！ 🎉`;
+            guideText.className = `text-xs sm:text-sm font-black ${charCfg.guideTextClass}`;
+
+            overlay.classList.remove('hidden');
+        }
+
+        function handleGameDraw() {
+            isGameOver = true;
+            sound.playReset();
+
+            const overlay = document.getElementById('result-overlay');
+            const titleEl = document.getElementById('result-title');
+            const subEl = document.getElementById('result-subtitle');
+            const guideText = document.getElementById('guide-text');
+
+            titleEl.textContent = 'ひきわけ〜！';
+            titleEl.className = 'text-xl sm:text-2xl font-black text-amber-600 drop-shadow-sm mb-1';
+            subEl.textContent = 'どっちもがんばったね！ もう1回あそぼう♪';
+            guideText.textContent = '🤝 なかよし ひきわけ！ 🤝';
+            overlay.classList.remove('hidden');
+        }
+
+        function createWinLine3D(line, beamHex) {
+            if (winLineMesh) {
+                boardGroup.remove(winLineMesh);
+            }
+            const startTile = tiles[line[0]];
+            const endTile = tiles[line[2]];
+
+            const startVec = new THREE.Vector3(startTile.userData.baseX, startTile.userData.baseY, 0.42);
+            const endVec = new THREE.Vector3(endTile.userData.baseX, endTile.userData.baseY, 0.42);
+
+            const distance = startVec.distanceTo(endVec) + 0.8;
+            const midPoint = new THREE.Vector3().addVectors(startVec, endVec).multiplyScalar(0.5);
+
+            const barGeo = new THREE.CylinderGeometry(0.16, 0.16, distance, 20);
+            const barMat = new THREE.MeshStandardMaterial({
+                color: beamHex,
+                emissive: beamHex,
+                emissiveIntensity: 0.45,
+                roughness: 0.2
+            });
+
+            winLineMesh = new THREE.Mesh(barGeo, barMat);
+            winLineMesh.position.copy(midPoint);
+
+            const direction = new THREE.Vector3().subVectors(endVec, startVec).normalize();
+            const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+            winLineMesh.setRotationFromQuaternion(quaternion);
+
+            boardGroup.add(winLineMesh);
+        }
+
+        function spawn3DConfetti(colors) {
+            confettiParticles.forEach(p => scene.remove(p));
+            confettiParticles = [];
+
+            const geo = new THREE.PlaneGeometry(0.28, 0.18);
+
+            for (let i = 0; i < 75; i++) {
+                const mat = new THREE.MeshBasicMaterial({
+                    color: colors[i % colors.length],
+                    side: THREE.DoubleSide
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(
+                    (Math.random() - 0.5) * 9,
+                    4.5 + Math.random() * 4,
+                    1.5 + (Math.random() - 0.5) * 3
+                );
+                mesh.rotation.set(
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI
+                );
+                mesh.userData = {
+                    vy: -0.04 - Math.random() * 0.05,
+                    vx: (Math.random() - 0.5) * 0.03,
+                    vrx: (Math.random() - 0.5) * 0.14,
+                    vry: (Math.random() - 0.5) * 0.14
+                };
+                scene.add(mesh);
+                confettiParticles.push(mesh);
+            }
+        }
+
+        /* ==========================================
+         * 7. ヘッダーUI・設定モーダル制御・ゲームリセット
+         * ========================================== */
+        function updateHeaderAndTurnUI() {
+            const c1 = CHARACTER_CATALOG[playerCharKeys[1]];
+            const c2 = CHARACTER_CATALOG[playerCharKeys[2]];
+
+            // アイコン描画
+            const iconP1 = document.getElementById('icon-p1').getContext('2d');
+            iconP1.clearRect(0, 0, 128, 128);
+            iconP1.drawImage(getCharacterIconCanvas(c1.id), 0, 0);
+
+            const iconP2 = document.getElementById('icon-p2').getContext('2d');
+            iconP2.clearRect(0, 0, 128, 128);
+            iconP2.drawImage(getCharacterIconCanvas(c2.id), 0, 0);
+
+            // 名前更新
+            document.getElementById('name-p1').textContent = c1.name;
+            document.getElementById('name-p2').textContent = c2.name;
+
+            // スコア文字色
+            const scoreP1 = document.getElementById('score-p1');
+            const scoreP2 = document.getElementById('score-p2');
+            scoreP1.className = `bg-white ${c1.scoreTextClass} font-black text-base sm:text-xl w-7 h-7 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-inner flex-shrink-0 ml-1`;
+            scoreP2.className = `bg-white ${c2.scoreTextClass} font-black text-base sm:text-xl w-7 h-7 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-inner flex-shrink-0 ml-1`;
+
+            // バッジ配色＆アクティブ状態
+            const badgeP1 = document.getElementById('badge-p1');
+            const badgeP2 = document.getElementById('badge-p2');
+            const activeClass1 = currentPlayer === 1 ? 'turn-active' : 'turn-inactive';
+            const activeClass2 = currentPlayer === 2 ? 'turn-active' : 'turn-inactive';
+
+            badgeP1.className = `cursor-pointer turn-badge ${activeClass1} bg-gradient-to-b ${c1.badgeClass} text-white p-1.5 sm:p-2.5 rounded-2xl sm:rounded-3xl border-[3px] border-white flex items-center justify-between shadow-md`;
+            badgeP2.className = `cursor-pointer turn-badge ${activeClass2} bg-gradient-to-b ${c2.badgeClass} text-white p-1.5 sm:p-2.5 rounded-2xl sm:rounded-3xl border-[3px] border-white flex items-center justify-between shadow-md`;
+
+            // ガイドテキスト更新
+            if (!isGameOver) {
+                const activeChar = currentPlayer === 1 ? c1 : c2;
+                const guideText = document.getElementById('guide-text');
+                guideText.textContent = `${activeChar.name}のばん！ パネルをタッチしてね`;
+                guideText.className = `text-xs sm:text-sm font-black ${activeChar.guideTextClass}`;
+            }
+        }
+
+        // 設定モーダル内のキャラクター選択グリッドを構築・更新
+        function renderSettingsSelectorGrids() {
+            const p1Grid = document.getElementById('p1-selector-grid');
+            const p2Grid = document.getElementById('p2-selector-grid');
+            p1Grid.innerHTML = '';
+            p2Grid.innerHTML = '';
+
+            document.getElementById('setting-p1-current').textContent = CHARACTER_CATALOG[playerCharKeys[1]].name;
+            document.getElementById('setting-p2-current').textContent = CHARACTER_CATALOG[playerCharKeys[2]].name;
+
+            CHARACTER_KEYS.forEach(key => {
+                const item = CHARACTER_CATALOG[key];
+
+                // P1用ボタン
+                const btn1 = createCharSelectButton(item, playerCharKeys[1] === key, 'red', () => {
+                    selectCharacterForPlayer(1, key);
+                });
+                p1Grid.appendChild(btn1);
+
+                // P2用ボタン
+                const btn2 = createCharSelectButton(item, playerCharKeys[2] === key, 'purple', () => {
+                    selectCharacterForPlayer(2, key);
+                });
+                p2Grid.appendChild(btn2);
+            });
+
+            // オモテ面スタイルボタンの選択状態更新
+            const starBtn = document.getElementById('front-style-star');
+            const bakeryBtn = document.getElementById('front-style-bakery');
+            if (frontPanelStyle === 'star') {
+                starBtn.className = 'border-3 border-sky-500 bg-sky-100 text-sky-950 rounded-xl p-2.5 flex items-center gap-2 font-black text-xs sm:text-sm cursor-pointer shadow-inner';
+                bakeryBtn.className = 'border-2 border-slate-200 bg-slate-50 text-slate-600 rounded-xl p-2.5 flex items-center gap-2 font-black text-xs sm:text-sm cursor-pointer hover:bg-amber-50';
+            } else {
+                bakeryBtn.className = 'border-3 border-amber-500 bg-amber-100 text-amber-950 rounded-xl p-2.5 flex items-center gap-2 font-black text-xs sm:text-sm cursor-pointer shadow-inner';
+                starBtn.className = 'border-2 border-slate-200 bg-slate-50 text-slate-600 rounded-xl p-2.5 flex items-center gap-2 font-black text-xs sm:text-sm cursor-pointer hover:bg-sky-50';
+            }
+
+            // 2さいモード＆サウンドボタンの表示同期
+            const modeBtn = document.getElementById('setting-mode-btn');
+            if (allowOverwrite) {
+                modeBtn.textContent = 'ON';
+                modeBtn.className = 'bg-blue-500 hover:bg-blue-400 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2';
+            } else {
+                modeBtn.textContent = 'OFF';
+                modeBtn.className = 'bg-slate-400 hover:bg-slate-500 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2';
+            }
+
+            const soundBtn = document.getElementById('setting-sound-btn');
+            if (sound.enabled) {
+                soundBtn.textContent = '🔊 ON';
+                soundBtn.className = 'bg-amber-500 hover:bg-amber-400 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2';
+            } else {
+                soundBtn.textContent = '🔇 OFF';
+                soundBtn.className = 'bg-slate-400 hover:bg-slate-500 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2';
+            }
+        }
+
+        function createCharSelectButton(charObj, isSelected, themeColor, onClick) {
+            const btn = document.createElement('button');
+            const ringStyle = isSelected
+                ? (themeColor === 'red' ? 'border-red-500 bg-red-50 ring-2 ring-red-400 scale-105' : 'border-purple-600 bg-purple-50 ring-2 ring-purple-400 scale-105')
+                : 'border-slate-200 bg-slate-50 opacity-80 hover:opacity-100';
+
+            btn.className = `border-2 rounded-xl p-1.5 flex flex-col items-center gap-1 transition cursor-pointer ${ringStyle}`;
+            btn.onclick = onClick;
+
+            const iconWrap = document.createElement('div');
+            iconWrap.className = 'w-11 h-11 rounded-lg overflow-hidden shadow-sm border border-white bg-white';
+            const c = document.createElement('canvas');
+            c.width = 128;
+            c.height = 128;
+            c.className = 'w-full h-full';
+            c.getContext('2d').drawImage(getCharacterIconCanvas(charObj.id), 0, 0);
+            iconWrap.appendChild(c);
+
+            const label = document.createElement('span');
+            label.className = 'text-[10px] font-black text-slate-800 truncate w-full text-center';
+            label.textContent = charObj.name;
+
+            btn.appendChild(iconWrap);
+            btn.appendChild(label);
+            return btn;
+        }
+
+        function selectCharacterForPlayer(playerNum, newCharKey) {
+            const otherPlayer = playerNum === 1 ? 2 : 1;
+            // もし相手と同じキャラを選んだ場合は、相手のキャラと入れ替える（見分けがつくように）
+            if (playerCharKeys[otherPlayer] === newCharKey) {
+                playerCharKeys[otherPlayer] = playerCharKeys[playerNum];
+            }
+            playerCharKeys[playerNum] = newCharKey;
+
+            sound.playFlip(playerNum);
+            updateHeaderAndTurnUI();
+            refreshActiveBoardCharacterTextures();
+            renderSettingsSelectorGrids();
+        }
+
+        window.applyPresetPair = function(key1, key2) {
+            playerCharKeys[1] = key1;
+            playerCharKeys[2] = key2;
+            sound.playReset();
+            updateHeaderAndTurnUI();
+            refreshActiveBoardCharacterTextures();
+            renderSettingsSelectorGrids();
+        };
+
+        window.setFrontPanelStyle = function(style) {
+            frontPanelStyle = style;
+            sound.playFlip(1);
+            refreshFrontTileTextures();
+            renderSettingsSelectorGrids();
+        };
+
+        window.resetScores = function() {
+            scores[1] = 0;
+            scores[2] = 0;
+            document.getElementById('score-p1').textContent = '0';
+            document.getElementById('score-p2').textContent = '0';
+            sound.playReset();
+        };
+
+        window.selectTurnManually = function(player) {
+            if (isGameOver) return;
+            currentPlayer = player;
+            sound.playFlip(player);
+            updateHeaderAndTurnUI();
+        };
+
+        window.resetGame = function() {
+            sound.playReset();
+            isGameOver = false;
+            winningCombo = null;
+            boardState.fill(0);
+            currentPlayer = 1;
+
+            document.getElementById('result-overlay').classList.add('hidden');
+
+            if (winLineMesh) {
+                boardGroup.remove(winLineMesh);
+                winLineMesh = null;
+            }
+
+            confettiParticles.forEach(p => scene.remove(p));
+            confettiParticles = [];
+
+            targetBoardRotation.x = -0.18;
+            targetBoardRotation.y = 0;
+
+            tiles.forEach((tile) => {
+                tile.userData.isWinningTile = false;
+                tile.scale.set(1, 1, 1);
+
+                const currentPiMultiple = Math.round(tile.userData.targetRotY / Math.PI);
+                let nextEvenMultiple = currentPiMultiple;
+                if (nextEvenMultiple % 2 !== 0) {
+                    nextEvenMultiple += 1;
+                }
+                tile.userData.targetRotY = nextEvenMultiple * Math.PI;
+                tile.userData.isFlipping = true;
+                tile.userData.flipProgress = 0;
+
+                for (let s = 0; s < 4; s++) {
+                    tile.material[s].color.setHex(0xffffff);
+                }
+            });
+
+            updateHeaderAndTurnUI();
+        };
+
+        /* ==========================================
+         * 8. メインアニメーションループ
+         * ========================================== */
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const elapsedTime = clock.getElapsedTime();
+
+            if (boardGroup) {
+                boardGroup.rotation.x += (targetBoardRotation.x - boardGroup.rotation.x) * 0.12;
+                boardGroup.rotation.y += (targetBoardRotation.y - boardGroup.rotation.y) * 0.12;
+            }
+
+            tiles.forEach((tile, idx) => {
+                const ud = tile.userData;
+
+                const rotDiff = ud.targetRotY - ud.currentRotY;
+                if (Math.abs(rotDiff) > 0.001) {
+                    ud.currentRotY += rotDiff * 0.18;
+                    tile.rotation.y = ud.currentRotY;
+                } else {
+                    ud.currentRotY = ud.targetRotY;
+                    tile.rotation.y = ud.targetRotY;
+                }
+
+                if (ud.isFlipping) {
+                    ud.flipProgress += 0.075;
+                    if (ud.flipProgress >= 1) {
+                        ud.flipProgress = 0;
+                        ud.isFlipping = false;
+                        tile.position.z = ud.baseZ;
+                    } else {
+                        tile.position.z = ud.baseZ + Math.sin(ud.flipProgress * Math.PI) * 1.15;
+                    }
+                }
+
+                if (ud.isWinningTile) {
+                    const pulse = 1 + Math.sin(elapsedTime * 7 + idx) * 0.08;
+                    tile.scale.set(pulse, pulse, pulse);
+                    if (!ud.isFlipping) {
+                        tile.position.z = 0.25 + Math.sin(elapsedTime * 7 + idx) * 0.18;
+                    }
+                }
+            });
+
+            if (winLineMesh) {
+                winLineMesh.material.emissiveIntensity = 0.5 + Math.sin(elapsedTime * 8) * 0.35;
+            }
+
+            for (let i = confettiParticles.length - 1; i >= 0; i--) {
+                const p = confettiParticles[i];
+                p.position.y += p.userData.vy;
+                p.position.x += p.userData.vx + Math.sin(elapsedTime * 3 + i) * 0.01;
+                p.rotation.x += p.userData.vrx;
+                p.rotation.y += p.userData.vry;
+
+                if (p.position.y < -6) {
+                    p.position.y = 6;
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // 初期化＆イベント登録
+        window.onload = function() {
+            init3D();
+            updateHeaderAndTurnUI();
+            renderSettingsSelectorGrids();
+
+            // 「もういっかい！」ボタン（上部）
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                resetGame();
+            });
+
+            // 「せってい」モーダル開閉
+            const settingsModal = document.getElementById('settings-modal');
+            const openSettings = () => {
+                sound.playFlip(1);
+                renderSettingsSelectorGrids();
+                settingsModal.classList.remove('hidden');
+            };
+            const closeSettings = () => {
+                sound.playFlip(2);
+                settingsModal.classList.add('hidden');
+            };
+
+            document.getElementById('settings-btn').addEventListener('click', openSettings);
+            document.getElementById('close-settings-btn').addEventListener('click', closeSettings);
+            document.getElementById('ok-settings-btn').addEventListener('click', closeSettings);
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === settingsModal) closeSettings();
+            });
+
+            // 設定内の「いつでも裏返せる」トグル
+            document.getElementById('setting-mode-btn').addEventListener('click', () => {
+                allowOverwrite = !allowOverwrite;
+                sound.playFlip(1);
+                renderSettingsSelectorGrids();
+            });
+
+            // 設定内の「おと ON/OFF」トグル
+            document.getElementById('setting-sound-btn').addEventListener('click', () => {
+                sound.enabled = !sound.enabled;
+                if (sound.enabled) sound.playFlip(1);
+                renderSettingsSelectorGrids();
+            });
+
+            animate();
+        };
+    </script>
+</body>
+</html>

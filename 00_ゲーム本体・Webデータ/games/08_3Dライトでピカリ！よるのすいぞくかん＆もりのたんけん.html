@@ -1,0 +1,2344 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta name="game-icon" content="🔦">
+    <meta name="game-tag" content="大人気・たんけん">
+    <meta name="game-category" content="adventure">
+    <meta name="game-age" content="2">
+    <meta name="description" content="3Dの懐中電灯でピカッと照らそう！夜のすいぞくかん・よるのもり・ほしぞらにかくれている仲間たちを見つける楽しい3Dたんけんゲーム！">
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>★ 3Dライトでピカリ！ よるのすいぞくかん＆もりのたんけん ★</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            height: 100dvh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            transition: background 0.6s ease;
+        }
+
+        /* テーマ別の夜空・深海グラデーション背景 */
+        body.bg-aquarium {
+            background: radial-gradient(circle at 50% 55%, #0c4a6e 0%, #082f49 55%, #020617 100%);
+        }
+        body.bg-forest {
+            background: radial-gradient(circle at 50% 55%, #064e3b 0%, #022c22 55%, #020617 100%);
+        }
+        body.bg-anpanman {
+            background: radial-gradient(circle at 50% 55%, #311042 0%, #1e1b4b 55%, #090514 100%);
+        }
+        body.bg-mix {
+            background: radial-gradient(circle at 50% 55%, #1e1b4b 0%, #0f172a 55%, #020617 100%);
+        }
+
+        /* 全員発見後の明るい祝福背景 */
+        body.bg-cleared {
+            background: radial-gradient(circle at 50% 50%, #fef9c3 0%, #38bdf8 55%, #0284c7 100%) !important;
+        }
+
+        /* 立体的なおもちゃ風ボタン */
+        .btn-toy {
+            transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 0 #b45309, 0 6px 12px rgba(0,0,0,0.35);
+            transform: translateY(0);
+        }
+        .btn-toy:active:not(:disabled) {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #b45309, 0 2px 4px rgba(0,0,0,0.25);
+        }
+
+        .btn-toy-flash {
+            transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 0 #ca8a04, 0 6px 14px rgba(250, 204, 21, 0.4);
+            transform: translateY(0);
+        }
+        .btn-toy-flash:active:not(:disabled) {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #ca8a04, 0 2px 4px rgba(0,0,0,0.25);
+        }
+        .btn-toy-flash:disabled {
+            opacity: 0.55;
+            filter: grayscale(40%);
+            cursor: not-allowed;
+        }
+
+        .btn-toy-slate {
+            transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 0 #334155, 0 6px 12px rgba(0,0,0,0.35);
+            transform: translateY(0);
+        }
+        .btn-toy-slate:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #334155, 0 2px 4px rgba(0,0,0,0.25);
+        }
+
+        /* コレクションアイコンのスタイル */
+        .collection-slot {
+            transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .slot-unfound {
+            filter: brightness(0.25) contrast(1.2) grayscale(80%);
+            opacity: 0.65;
+            transform: scale(0.92);
+        }
+        .slot-target {
+            filter: brightness(0.95);
+            opacity: 1;
+            transform: scale(1.08);
+            box-shadow: 0 0 0 3px #facc15, 0 0 12px #facc15;
+        }
+        .slot-found {
+            filter: brightness(1) grayscale(0%);
+            opacity: 1;
+            transform: scale(1.05);
+            box-shadow: 0 4px 10px rgba(250, 204, 21, 0.45);
+        }
+
+        @keyframes pulseGentle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.025); }
+        }
+        .guide-pulse {
+            animation: pulseGentle 2.4s ease-in-out infinite;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.38); opacity: 0; }
+            70% { transform: scale(1.06); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .modal-pop {
+            animation: popIn 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        /* カスタムスクロールバー */
+        .custom-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #fef3c7;
+            border-radius: 9999px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #f59e0b;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="bg-aquarium">
+
+    <!-- ==========================================
+         上部ヘッダー領域（3Dステージやキャラクターと絶対に重ならない専用エリア）
+         ========================================== -->
+    <header id="top-ui-header" class="w-full flex-shrink-0 z-20 pt-2 pb-1.5 px-2 sm:px-4 bg-gradient-to-b from-slate-900/90 via-slate-900/75 to-transparent">
+        <div class="w-full max-w-xl mx-auto flex flex-col items-center gap-1.5">
+            
+            <!-- 最上部バー：タイトル ＆ 「ピカッ！」「もういっかい！」「せってい」ボタン -->
+            <div class="w-full flex justify-between items-center gap-1">
+                <!-- タイトルバッジ -->
+                <div class="bg-slate-900/90 px-2.5 sm:px-3.5 py-1 rounded-full shadow-md border-2 border-amber-400 flex items-center gap-1.5 flex-shrink-0">
+                    <span class="text-sm sm:text-base">🔦</span>
+                    <span class="text-xs sm:text-sm text-amber-300 font-black tracking-tight">3Dライトでピカリ！たんけん</span>
+                </div>
+
+                <!-- 上部アクションボタン群（誤タップ防止のためすべて上部に集約） -->
+                <div class="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                    <!-- ピカッ！おたすけフラッシュボタン -->
+                    <button id="flash-btn" class="btn-toy-flash bg-gradient-to-b from-yellow-300 to-amber-400 hover:from-yellow-200 hover:to-amber-300 text-amber-950 font-black py-1.5 px-2.5 sm:px-3.5 rounded-full border-2 border-white flex items-center gap-1 text-xs sm:text-sm cursor-pointer">
+                        <span>💡</span>
+                        <span>ピカッ！</span>
+                    </button>
+
+                    <!-- もういっかい！ボタン -->
+                    <button id="reset-btn" class="btn-toy bg-gradient-to-b from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-white font-black py-1.5 px-2.5 sm:px-3.5 rounded-full border-2 border-white flex items-center gap-1 text-xs sm:text-sm cursor-pointer">
+                        <span>✨</span>
+                        <span>もういっかい！</span>
+                    </button>
+
+                    <!-- せっていボタン -->
+                    <button id="settings-btn" class="btn-toy-slate bg-gradient-to-b from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white font-black py-1.5 px-2.5 sm:px-3.5 rounded-full border-2 border-white flex items-center gap-1 text-xs sm:text-sm cursor-pointer">
+                        <span>⚙️</span>
+                        <span>せってい</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 見つけたなかまコレクションバー -->
+            <div class="w-full bg-slate-800/90 backdrop-blur-md border-2 border-sky-400/80 rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 shadow-lg flex items-center justify-between gap-2">
+                <!-- 左：見つけた数バッジ -->
+                <div class="bg-gradient-to-b from-amber-400 to-amber-500 text-amber-950 rounded-xl sm:rounded-2xl px-2.5 py-1 flex flex-col items-center justify-center flex-shrink-0 border-2 border-white shadow">
+                    <span class="text-[9px] sm:text-[10px] font-black leading-none">みつけた数</span>
+                    <span id="found-counter" class="text-sm sm:text-lg font-black leading-tight">0 / 6</span>
+                </div>
+
+                <!-- 中央〜右：隠れているキャラクターのアイコン一覧（見つけるとピカッと点灯！） -->
+                <div id="collection-list" class="flex-1 flex items-center justify-around gap-1 sm:gap-2 overflow-x-auto py-0.5 px-1">
+                    <!-- JSで生成 -->
+                </div>
+            </div>
+
+            <!-- ガイドメッセージバナー -->
+            <div id="guide-banner" class="guide-pulse bg-white/95 px-4 py-1 rounded-full shadow-md border-2 border-amber-400 flex items-center gap-2 text-center">
+                <div id="target-mini-icon-wrap" class="w-6 h-6 rounded-full border border-amber-500 overflow-hidden hidden flex-shrink-0 bg-amber-50">
+                    <canvas id="target-mini-canvas" width="64" height="64" class="w-full h-full"></canvas>
+                </div>
+                <span id="guide-text" class="text-xs sm:text-sm font-black text-sky-900">
+                    🔦 ゆびでライトをうごかして、かくれている仲間をさがそう！
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==========================================
+         中央〜下部：3Dキャンバス領域（残りの高さを100%使用し、文字と重ならない）
+         ========================================== -->
+    <main id="canvas-container" class="flex-1 relative w-full min-h-0 overflow-hidden cursor-crosshair">
+        
+        <!-- 発見した瞬間のキラキラポップアップトースト（タップ透過） -->
+        <div id="found-toast" class="fixed inset-x-0 top-1/2 -translate-y-1/2 z-30 flex justify-center items-center pointer-events-none hidden px-4">
+            <div class="modal-pop bg-white/95 backdrop-blur-md border-4 border-yellow-400 rounded-3xl px-6 py-3.5 shadow-2xl flex items-center gap-3.5">
+                <div class="w-16 h-16 rounded-2xl bg-amber-50 border-2 border-amber-400 overflow-hidden flex-shrink-0 shadow-inner">
+                    <canvas id="toast-char-canvas" width="128" height="128" class="w-full h-full"></canvas>
+                </div>
+                <div class="text-left">
+                    <div id="toast-badge" class="inline-block bg-yellow-300 text-amber-950 text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-full mb-0.5">
+                        🔦 ピカリ〜ン！ はっけん！
+                    </div>
+                    <div id="toast-title" class="text-lg sm:text-2xl font-black text-sky-700 leading-tight">
+                        いるかさん みつけた！🎉
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 下部のさりげない操作ヒント（タップ透過） -->
+        <div class="pointer-events-none absolute bottom-1.5 inset-x-0 flex justify-center z-10 px-2">
+            <div class="text-amber-200/90 text-[10px] sm:text-xs font-bold bg-slate-900/70 px-3.5 py-0.5 rounded-full backdrop-blur-sm border border-amber-400/40 shadow-sm text-center">
+                💡 画面をゆびでなぞってライトを照らそう！ 上のアイコンにタッチするとヒントが揺れるよ
+            </div>
+        </div>
+    </main>
+
+    <!-- ==========================================
+         ぜんぶはっけん！祝福ポップアップバナー
+         ========================================== -->
+    <div id="result-overlay" class="fixed inset-x-0 bottom-7 z-30 flex justify-center items-center pointer-events-none hidden px-4">
+        <div class="pointer-events-auto modal-pop bg-white/95 backdrop-blur-md border-4 border-amber-400 rounded-3xl p-4 sm:p-6 shadow-2xl max-w-sm w-full flex flex-col items-center text-center">
+            <div class="text-3xl sm:text-4xl mb-1">🌟🔦🎉</div>
+            <div id="result-score-pill" class="bg-yellow-100 text-amber-900 font-black text-xs sm:text-sm px-3.5 py-0.5 rounded-full mb-1 border border-amber-400">
+                6ぴき ぜんぶはっけん！
+            </div>
+            <div id="result-title" class="text-xl sm:text-2xl font-black text-sky-700 drop-shadow-sm mb-1">
+                たんけん だいせいこう！
+            </div>
+            <div id="result-subtitle" class="text-xs sm:text-sm font-bold text-amber-800 mb-4">
+                ライトで上手にみんなを見つけられたね！✨
+            </div>
+            <button onclick="resetGame()" class="btn-toy bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black text-base sm:text-lg py-2.5 px-8 rounded-full border-4 border-white shadow-xl flex items-center gap-2 cursor-pointer">
+                <span>🔦</span>
+                <span>もういっかい たんけんする！</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         ⚙️ せっていモーダル（ステージ・あそびかた・かくれる数・ライトの大きさ・おと）
+         ========================================== -->
+    <div id="settings-modal" class="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden">
+        <div class="modal-pop bg-amber-50 border-4 border-amber-400 rounded-3xl max-w-lg w-full max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden">
+            
+            <!-- モーダルヘッダー -->
+            <div class="bg-gradient-to-r from-sky-600 to-indigo-700 px-4 py-3 flex items-center justify-between border-b-4 border-amber-400 flex-shrink-0">
+                <div class="flex items-center gap-2 text-white font-black text-base sm:text-lg">
+                    <span>⚙️</span>
+                    <span>たんけんのせってい・ステージ変更</span>
+                </div>
+                <button id="close-settings-btn" class="bg-white hover:bg-red-50 text-slate-900 font-black w-8 h-8 rounded-full border-2 border-slate-300 flex items-center justify-center shadow cursor-pointer text-base">
+                    ✕
+                </button>
+            </div>
+
+            <!-- モーダルコンテンツ（スクロール可能） -->
+            <div class="p-3.5 sm:p-5 overflow-y-auto custom-scroll space-y-4 text-slate-900">
+                
+                <!-- 1. たんけんするステージ（テーマ選択） -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-sky-200 shadow-sm">
+                    <div class="text-xs sm:text-sm font-black text-sky-800 mb-2 flex items-center gap-1.5">
+                        <span>🗺️</span>
+                        <span>たんけんするステージ（全24種類のキャラクター！）</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="theme-btn-aquarium" onclick="changeTheme('aquarium')" class="p-2.5 rounded-xl font-black text-xs cursor-pointer transition flex items-center gap-2 text-left">
+                            <span class="text-2xl">🫧</span>
+                            <div>
+                                <div>よるのすいぞくかん</div>
+                                <div class="text-[10px] opacity-75">イルカ・ペンギン・ウミガメ</div>
+                            </div>
+                        </button>
+                        <button id="theme-btn-forest" onclick="changeTheme('forest')" class="p-2.5 rounded-xl font-black text-xs cursor-pointer transition flex items-center gap-2 text-left">
+                            <span class="text-2xl">🌳</span>
+                            <div>
+                                <div>よるのもり・どうぶつ</div>
+                                <div class="text-[10px] opacity-75">ライオン・パンダ・ふくろう</div>
+                            </div>
+                        </button>
+                        <button id="theme-btn-anpanman" onclick="changeTheme('anpanman')" class="p-2.5 rounded-xl font-black text-xs cursor-pointer transition flex items-center gap-2 text-left">
+                            <span class="text-2xl">🍞</span>
+                            <div>
+                                <div>アンパンマンとほしぞら</div>
+                                <div class="text-[10px] opacity-75">アンパン・ドキン・パン</div>
+                            </div>
+                        </button>
+                        <button id="theme-btn-mix" onclick="changeTheme('mix')" class="p-2.5 rounded-xl font-black text-xs cursor-pointer transition flex items-center gap-2 text-left">
+                            <span class="text-2xl">🌈</span>
+                            <div>
+                                <div>ぜんぶミックス</div>
+                                <div class="text-[10px] opacity-75">いろんな仲間がかくれるよ</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. あそびかたモード（自由発見 vs おだいさがし） -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-amber-200 shadow-sm">
+                    <div class="text-xs sm:text-sm font-black text-amber-800 mb-2 flex items-center gap-1.5">
+                        <span>🔍</span>
+                        <span>あそびかたモード</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <button id="mode-btn-free" onclick="changeGameMode('free')" class="rounded-xl p-2.5 flex items-center gap-2 font-black text-xs cursor-pointer transition text-left">
+                            <span class="text-xl">🔦</span>
+                            <div>
+                                <div>なんでもはっけん</div>
+                                <div class="text-[10px] font-bold opacity-75">照らした順にどんどん発見！</div>
+                            </div>
+                        </button>
+                        <button id="mode-btn-quest" onclick="changeGameMode('quest')" class="rounded-xl p-2.5 flex items-center gap-2 font-black text-xs cursor-pointer transition text-left">
+                            <span class="text-xl">🎯</span>
+                            <div>
+                                <div>おだいさがしモード</div>
+                                <div class="text-[10px] font-bold opacity-75">「〇〇はどこ？」を順番に探す</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. かくれる仲間の数 -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-emerald-200 shadow-sm">
+                    <div class="text-xs sm:text-sm font-black text-emerald-800 mb-2 flex items-center gap-1.5">
+                        <span>🐾</span>
+                        <span>かくれる仲間の数</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button id="count-btn-5" onclick="changeTargetCount(5)" class="py-2 px-2 rounded-xl font-black text-xs cursor-pointer transition flex flex-col items-center">
+                            <span class="text-sm">5ひき</span>
+                            <span class="text-[10px] opacity-80">かんたん</span>
+                        </button>
+                        <button id="count-btn-6" onclick="changeTargetCount(6)" class="py-2 px-2 rounded-xl font-black text-xs cursor-pointer transition flex flex-col items-center">
+                            <span class="text-sm">6ぴき</span>
+                            <span class="text-[10px] opacity-80">おすすめ</span>
+                        </button>
+                        <button id="count-btn-8" onclick="changeTargetCount(8)" class="py-2 px-2 rounded-xl font-black text-xs cursor-pointer transition flex flex-col items-center">
+                            <span class="text-sm">8ひき</span>
+                            <span class="text-[10px] opacity-80">いっぱい</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 4. ライトの大きさ＆サウンド設定 -->
+                <div class="bg-white rounded-2xl p-3 border-2 border-amber-200 shadow-sm space-y-2.5">
+                    <div class="text-xs sm:text-sm font-black text-amber-800 flex items-center gap-1.5">
+                        <span>💡</span>
+                        <span>ライトの大きさ・おとの設定</span>
+                    </div>
+
+                    <!-- ライトの大きさ（2さい向けワイドライト） -->
+                    <div class="flex items-center justify-between bg-amber-50/80 p-2.5 rounded-xl border border-amber-200">
+                        <div>
+                            <div class="text-xs sm:text-sm font-black text-amber-950">🔦 おおきいライト（2さいモード）</div>
+                            <div class="text-[10px] sm:text-xs font-bold text-amber-700">ONにするとライトの光が広がり、すぐ見つけられます</div>
+                        </div>
+                        <button id="setting-lightsize-btn" class="px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2">
+                            ON (おおきい)
+                        </button>
+                    </div>
+
+                    <!-- おと ON/OFF -->
+                    <div class="flex items-center justify-between bg-amber-50/80 p-2.5 rounded-xl border border-amber-200">
+                        <div>
+                            <div class="text-xs sm:text-sm font-black text-amber-950">🔊 ゲームのおと（効果音）</div>
+                            <div class="text-[10px] sm:text-xs font-bold text-amber-700">ピカリ〜ン！の発見チャイムやファンファーレ</div>
+                        </div>
+                        <button id="setting-sound-btn" class="px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2">
+                            🔊 ON
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- モーダルフッター -->
+            <div class="bg-amber-100 px-4 py-3 border-t-2 border-amber-300 flex justify-center flex-shrink-0">
+                <button id="ok-settings-btn" class="btn-toy bg-gradient-to-r from-amber-400 to-orange-400 text-amber-950 font-black text-sm sm:text-base py-2 px-10 rounded-full border-2 border-white cursor-pointer">
+                    ✨ けってい（たんけんにもどる）
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================
+         * 1. サウンドエンジン (Web Audio API)
+         * 照射中のキラキラ音・ピカリ〜ン発見音・フラッシュ音・ファンファーレ
+         * ========================================== */
+        class FlashlightSoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            // ライトが隠れているキャラに当たっているときの「キラッ」音
+            playSparkleTick(progress = 0.5) {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                const freq = 620 + progress * 480;
+                osc.frequency.setValueAtTime(freq, now);
+                osc.frequency.exponentialRampToValueAtTime(freq * 1.18, now + 0.07);
+
+                gain.gain.setValueAtTime(0.14, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.085);
+            }
+
+            // キャラクター発見時の「ピカリ〜ン！♪」チャイム
+            playFoundChime() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [587.33, 783.99, 987.77, 1174.66]; // D5, G5, B5, D6
+                notes.forEach((f, idx) => {
+                    const now = this.ctx.currentTime + idx * 0.075;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(f, now);
+                    gain.gain.setValueAtTime(0.28, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.24);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                });
+            }
+
+            // 💡 ピカッ！おたすけフラッシュ時の魔法チャイム
+            playFlashHelper() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+                notes.forEach((f, idx) => {
+                    const now = this.ctx.currentTime + idx * 0.05;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(f, now);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.22);
+                });
+            }
+
+            // おだいさがしモードで別のキャラを照らしたときの優しい「ポヨン」音
+            playGentleBoing() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(420, now + 0.14);
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.16);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.17);
+            }
+
+            // 全員発見時の豪華ファンファーレ！
+            playAllClearFanfare() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50];
+                const durations = [0.12, 0.12, 0.12, 0.22, 0.12, 0.5];
+                let timeOffset = 0;
+
+                notes.forEach((freq, idx) => {
+                    const now = this.ctx.currentTime + timeOffset;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now);
+                    gain.gain.setValueAtTime(0.32, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + durations[idx]);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + durations[idx] + 0.02);
+                    timeOffset += durations[idx] * 0.95;
+                });
+            }
+        }
+
+        const sound = new FlashlightSoundEngine();
+
+        /* ==========================================
+         * 2. 高解像度 2D Canvas イラスト生成 (全24キャラクター)
+         * ========================================== */
+        function drawRoundedRect(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+        }
+
+        function drawMedalBackdrop(ctx, isIcon, innerColor, midColor, outerColor, rimColor, labelText = '') {
+            const bgGrad = ctx.createRadialGradient(256, 256, 30, 256, 256, 256);
+            bgGrad.addColorStop(0, innerColor);
+            bgGrad.addColorStop(0.68, midColor);
+            bgGrad.addColorStop(1, outerColor);
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, 512, 512);
+
+            // 放射状のサンバースト光線
+            ctx.save();
+            ctx.translate(256, 240);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.24)';
+            for (let i = 0; i < 12; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.arc(0, 0, 320, (i * Math.PI) / 6, (i * Math.PI) / 6 + Math.PI / 12);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+
+            // メダル外枠リング
+            ctx.lineWidth = 24;
+            ctx.strokeStyle = rimColor;
+            ctx.beginPath();
+            ctx.arc(256, 256, 236, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(256, 256, 220, 0, Math.PI * 2);
+            ctx.stroke();
+
+            if (!isIcon && labelText) {
+                ctx.save();
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
+                ctx.strokeStyle = rimColor;
+                ctx.lineWidth = 8;
+                drawRoundedRect(ctx, 86, 392, 340, 62, 31);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.font = '900 36px "M PLUS Rounded 1c", sans-serif';
+                ctx.fillStyle = rimColor;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(labelText, 256, 424);
+                ctx.restore();
+            }
+        }
+
+        // --- 🫧 よるのすいぞくかん (8種) ---
+        function drawDolphin(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#f0f9ff', '#38bdf8', '#0284c7', '#0369a1', 'いるか');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            ctx.fillStyle = '#0ea5e9'; ctx.strokeStyle = '#082f49'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(225, 125); ctx.quadraticCurveTo(256, 65, 290, 88); ctx.lineTo(280, 130); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(122, 295, 44, 22, -0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(390, 295, 44, 22, 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(256, 265, 140, 132, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#f0f9ff';
+            ctx.beginPath(); ctx.ellipse(256, 320, 105, 68, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath(); ctx.ellipse(256, 282, 70, 30, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath(); ctx.arc(256, 300, 42, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#082f49';
+            ctx.beginPath(); ctx.ellipse(190, 232, 16, 22, 0, 0, Math.PI * 2); ctx.ellipse(322, 232, 16, 22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(185, 224, 6, 0, Math.PI * 2); ctx.arc(317, 224, 6, 0, Math.PI * 2); ctx.fill();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawSealion(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fff1f2', '#fda4af', '#f43f5e', '#be123c', 'あしか');
+            ctx.save(); if (!isIcon) ctx.translate(0, -18);
+
+            ctx.fillStyle = '#fde047'; ctx.strokeStyle = '#431407'; ctx.lineWidth = 8;
+            ctx.beginPath(); ctx.arc(256, 102, 40, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(238, 102, 22, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = '#c2410c'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.ellipse(256, 275, 136, 122, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath(); ctx.ellipse(200, 236, 16, 22, 0, 0, Math.PI * 2); ctx.ellipse(312, 236, 16, 22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffedd5';
+            ctx.beginPath(); ctx.ellipse(230, 292, 36, 26, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(282, 292, 36, 26, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath(); ctx.ellipse(256, 265, 20, 14, 0, 0, Math.PI * 2); ctx.fill();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawPenguin(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#f0f9ff', '#bae6fd', '#0284c7', '#1e3a8a', 'ペンギン');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            ctx.fillStyle = '#1e293b'; ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 10;
+            ctx.beginPath(); ctx.ellipse(256, 260, 146, 140, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(204, 245, 62, 0, Math.PI * 2); ctx.arc(308, 245, 62, 0, Math.PI * 2); ctx.ellipse(256, 295, 114, 78, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath(); ctx.ellipse(202, 235, 16, 22, 0, 0, Math.PI * 2); ctx.ellipse(310, 235, 16, 22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#facc15'; ctx.lineWidth = 8;
+            ctx.beginPath(); ctx.ellipse(256, 280, 42, 25, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawWhaleshark(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#ecfeff', '#67e8f9', '#0891b2', '#155e75', 'ジンベエザメ');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            ctx.fillStyle = '#0284c7'; ctx.strokeStyle = '#083344'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(232, 140); ctx.quadraticCurveTo(256, 80, 280, 140); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(256, 265, 165, 122, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            [[180, 190], [230, 178], [282, 178], [332, 190], [205, 218], [256, 210], [307, 218]].forEach(([x, y]) => {
+                ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.fill();
+            });
+
+            ctx.fillStyle = '#f0f9ff';
+            ctx.beginPath(); ctx.ellipse(256, 318, 138, 62, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#083344';
+            ctx.beginPath(); ctx.arc(150, 265, 15, 0, Math.PI * 2); ctx.arc(362, 265, 15, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath(); ctx.ellipse(256, 305, 86, 32, 0, 0, Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawClownfish(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fff7ed', '#fdba74', '#ea580c', '#9a3412', 'クマノミ');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            // 尾びれ・背びれ
+            ctx.fillStyle = '#f97316'; ctx.strokeStyle = '#431407'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(360, 256); ctx.lineTo(430, 195); ctx.lineTo(430, 317); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(256, 148, 65, 32, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // オレンジの魚ボディ
+            ctx.beginPath(); ctx.ellipse(245, 258, 145, 108, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // 白いしましま模様（クリッピング）
+            ctx.save();
+            ctx.beginPath(); ctx.ellipse(245, 258, 145, 108, 0, 0, Math.PI * 2); ctx.clip();
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(218, 130, 38, 260); ctx.strokeRect(218, 130, 38, 260);
+            ctx.fillRect(318, 130, 32, 260); ctx.strokeRect(318, 130, 32, 260);
+            ctx.restore();
+            ctx.beginPath(); ctx.ellipse(245, 258, 145, 108, 0, 0, Math.PI * 2); ctx.stroke();
+
+            // にっこり顔
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath(); ctx.ellipse(162, 232, 16, 22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(157, 224, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath(); ctx.arc(158, 275, 26, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawSeaturtle(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#f0fdf4', '#86efac', '#16a34a', '#14532d', 'ウミガメ');
+            ctx.save(); if (!isIcon) ctx.translate(0, -20);
+
+            // ヒレ（左右）
+            ctx.fillStyle = '#4ade80'; ctx.strokeStyle = '#14532d'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.ellipse(112, 258, 56, 26, -0.35, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(400, 258, 56, 26, 0.35, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // 甲羅（背面に少し見える）
+            ctx.fillStyle = '#15803d';
+            ctx.beginPath(); ctx.ellipse(256, 282, 138, 105, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // まるい可愛い頭
+            ctx.fillStyle = '#86efac';
+            ctx.beginPath(); ctx.arc(256, 240, 108, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // 瞳＆スマイル
+            ctx.fillStyle = '#052e16';
+            ctx.beginPath(); ctx.ellipse(208, 222, 16, 22, 0, 0, Math.PI * 2); ctx.ellipse(304, 222, 16, 22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(202, 214, 6, 0, Math.PI * 2); ctx.arc(298, 214, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath(); ctx.arc(256, 268, 36, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawOctopus(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fff1f2', '#fda4af', '#e11d48', '#881337', 'タコさん');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            // くるんと並んだタコの足
+            ctx.fillStyle = '#ef4444'; ctx.strokeStyle = '#7f1d1d'; ctx.lineWidth = 9;
+            for (let i = -2; i <= 2; i++) {
+                ctx.beginPath();
+                ctx.ellipse(256 + i * 52, 338, 28, 42, i * -0.15, 0, Math.PI * 2);
+                ctx.fill(); ctx.stroke();
+            }
+
+            // 丸い頭
+            ctx.beginPath(); ctx.ellipse(256, 232, 134, 118, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // 目と丸いタコ口
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath(); ctx.ellipse(202, 218, 16, 22, 0, 0, Math.PI * 2); ctx.ellipse(310, 218, 16, 22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(196, 210, 6, 0, Math.PI * 2); ctx.arc(304, 210, 6, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = '#fca5a5';
+            ctx.beginPath(); ctx.arc(256, 268, 28, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#991b1b';
+            ctx.beginPath(); ctx.arc(256, 268, 13, 0, Math.PI * 2); ctx.fill();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawJellyfish(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fdf4ff', '#f0abfc', '#9333ea', '#581c87', 'クラゲ');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            // ゆらゆら触手
+            ctx.strokeStyle = '#7e22ce'; ctx.lineWidth = 12; ctx.lineCap = 'round';
+            [-75, -25, 25, 75].forEach(dx => {
+                ctx.beginPath();
+                ctx.moveTo(256 + dx, 275);
+                ctx.quadraticCurveTo(256 + dx - 22, 325, 256 + dx + 10, 368);
+                ctx.stroke();
+            });
+
+            // ぷるぷるドーム型の傘
+            ctx.fillStyle = '#f5d0fe'; ctx.strokeStyle = '#6b21a8'; ctx.lineWidth = 9;
+            ctx.beginPath();
+            ctx.arc(256, 255, 138, Math.PI, 0, false);
+            ctx.quadraticCurveTo(340, 290, 256, 275);
+            ctx.quadraticCurveTo(172, 290, 118, 255);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+
+            // にっこり顔
+            ctx.fillStyle = '#3b0764';
+            ctx.beginPath(); ctx.ellipse(206, 212, 15, 21, 0, 0, Math.PI * 2); ctx.ellipse(306, 212, 15, 21, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(200, 204, 6, 0, Math.PI * 2); ctx.arc(300, 204, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(256, 232, 24, 0.1 * Math.PI, 0.9 * Math.PI); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        // --- 🌳 よるのもり・どうぶつ (8種) ---
+        function drawLion(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fffbeb', '#fde047', '#f97316', '#c2410c', 'ライオン');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            ctx.fillStyle = '#b45309'; ctx.strokeStyle = '#451a03'; ctx.lineWidth = 8;
+            for (let i = 0; i < 12; i++) {
+                const a = (i * Math.PI * 2) / 12;
+                ctx.beginPath(); ctx.arc(256 + Math.cos(a) * 136, 255 + Math.sin(a) * 136, 44, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            }
+            ctx.fillStyle = '#fbbf24';
+            ctx.beginPath(); ctx.arc(256, 258, 114, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#292524';
+            ctx.beginPath(); ctx.ellipse(208, 236, 15, 21, 0, 0, Math.PI * 2); ctx.ellipse(304, 236, 15, 21, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fffbeb';
+            ctx.beginPath(); ctx.arc(236, 286, 22, 0, Math.PI * 2); ctx.arc(276, 286, 22, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath(); ctx.moveTo(236, 262); ctx.lineTo(276, 262); ctx.lineTo(256, 282); ctx.closePath(); ctx.fill();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawPanda(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#f0fdf4', '#86efac', '#16a34a', '#15803d', 'パンダ');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            ctx.fillStyle = '#1e293b'; ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.arc(146, 146, 48, 0, Math.PI * 2); ctx.arc(366, 146, 48, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.ellipse(256, 265, 148, 136, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath(); ctx.ellipse(196, 242, 38, 48, 0.35, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(316, 242, 38, 48, -0.35, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(202, 232, 13, 0, Math.PI * 2); ctx.arc(310, 232, 13, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath(); ctx.ellipse(256, 276, 20, 14, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath(); ctx.arc(256, 302, 22, 0, Math.PI); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawElephant(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#f0f9ff', '#93c5fd', '#2563eb', '#1d4ed8', 'ゾウ');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            ctx.fillStyle = '#60a5fa'; ctx.strokeStyle = '#1e3a8a'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.ellipse(125, 255, 74, 95, 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(387, 255, 74, 95, -0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(256, 250, 118, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath(); ctx.ellipse(202, 224, 15, 20, 0, 0, Math.PI * 2); ctx.ellipse(310, 224, 15, 20, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#60a5fa';
+            ctx.beginPath();
+            ctx.moveTo(232, 248); ctx.quadraticCurveTo(230, 340, 282, 340); ctx.quadraticCurveTo(316, 340, 312, 302);
+            ctx.quadraticCurveTo(272, 305, 272, 248); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawGiraffe(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fefce8', '#fde047', '#ca8a04', '#854d0e', 'キリン');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            ctx.fillStyle = '#78350f'; ctx.strokeStyle = '#451a03'; ctx.lineWidth = 9;
+            ctx.fillRect(210, 88, 18, 55); ctx.strokeRect(210, 88, 18, 55);
+            ctx.fillRect(284, 88, 18, 55); ctx.strokeRect(284, 88, 18, 55);
+            ctx.beginPath(); ctx.arc(219, 84, 19, 0, Math.PI * 2); ctx.arc(293, 84, 19, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#fde047';
+            ctx.beginPath(); ctx.ellipse(256, 255, 118, 126, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#292524';
+            ctx.beginPath(); ctx.ellipse(202, 228, 15, 21, 0, 0, Math.PI * 2); ctx.ellipse(310, 228, 15, 21, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fef3c7';
+            ctx.beginPath(); ctx.ellipse(256, 316, 90, 60, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath(); ctx.arc(256, 322, 36, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawRabbit(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fff1f2', '#fbcfe8', '#ec4899', '#be185d', 'うさぎ');
+            ctx.save(); if (!isIcon) ctx.translate(0, -18);
+
+            const ear = (cx, cy, r) => {
+                ctx.save(); ctx.translate(cx, cy); ctx.rotate(r);
+                ctx.fillStyle = '#fff1f2'; ctx.strokeStyle = '#831843'; ctx.lineWidth = 9;
+                ctx.beginPath(); ctx.ellipse(0, 0, 34, 82, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#f472b6';
+                ctx.beginPath(); ctx.ellipse(0, 8, 18, 54, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            };
+            ear(196, 145, -0.15); ear(316, 145, 0.15);
+
+            ctx.fillStyle = '#fff1f2'; ctx.strokeStyle = '#831843'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.ellipse(256, 282, 138, 118, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#500724';
+            ctx.beginPath(); ctx.ellipse(202, 262, 16, 22, 0, 0, Math.PI * 2); ctx.ellipse(310, 262, 16, 22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ec4899';
+            ctx.beginPath(); ctx.ellipse(256, 282, 15, 11, 0, 0, Math.PI * 2); ctx.fill();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawKoala(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#f0fdf4', '#a7f3d0', '#059669', '#065f46', 'コアラ');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            // ふわふわの大きな丸耳
+            ctx.fillStyle = '#94a3b8'; ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.arc(125, 205, 68, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(387, 205, 68, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#f1f5f9';
+            ctx.beginPath(); ctx.arc(125, 205, 40, 0, Math.PI * 2); ctx.arc(387, 205, 40, 0, Math.PI * 2); ctx.fill();
+
+            // 顔
+            ctx.fillStyle = '#cbd5e1';
+            ctx.beginPath(); ctx.ellipse(256, 265, 135, 122, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // 目とコアラの大きな黒鼻
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath(); ctx.arc(196, 242, 15, 0, Math.PI * 2); ctx.arc(316, 242, 15, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(256, 265, 26, 38, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath(); ctx.arc(256, 316, 24, 0, Math.PI); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawOwl(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fef3c7', '#fbbf24', '#78350f', '#451a03', 'ふくろう');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            // ボディ＆羽耳
+            ctx.fillStyle = '#92400e'; ctx.strokeStyle = '#451a03'; ctx.lineWidth = 9;
+            ctx.beginPath();
+            ctx.moveTo(145, 165); ctx.lineTo(120, 105); ctx.lineTo(195, 140);
+            ctx.moveTo(367, 165); ctx.lineTo(392, 105); ctx.lineTo(317, 140);
+            ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(256, 268, 138, 132, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // おなかの模様
+            ctx.fillStyle = '#fef3c7';
+            ctx.beginPath(); ctx.ellipse(256, 325, 95, 65, 0, 0, Math.PI * 2); ctx.fill();
+
+            // まんまるの大きなメガネ目
+            ctx.fillStyle = '#fde68a';
+            ctx.beginPath(); ctx.arc(202, 225, 52, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(310, 225, 52, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath(); ctx.arc(202, 225, 24, 0, Math.PI * 2); ctx.arc(310, 225, 24, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(194, 216, 9, 0, Math.PI * 2); ctx.arc(302, 216, 9, 0, Math.PI * 2); ctx.fill();
+
+            // 黄色いくちばし
+            ctx.fillStyle = '#f97316';
+            ctx.beginPath(); ctx.moveTo(238, 250); ctx.lineTo(274, 250); ctx.lineTo(256, 285); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawSquirrel(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fff7ed', '#fb923c', '#c2410c', '#7c2d12', 'リスさん');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            // ピンと立った耳
+            ctx.fillStyle = '#ea580c'; ctx.strokeStyle = '#431407'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.ellipse(168, 145, 28, 52, -0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(344, 145, 28, 52, 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // ぷっくりほっぺの顔
+            ctx.fillStyle = '#f97316';
+            ctx.beginPath(); ctx.ellipse(256, 265, 130, 115, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(152, 288, 52, 0, Math.PI * 2); ctx.arc(360, 288, 52, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // 目・鼻・かわいい前歯
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath(); ctx.ellipse(204, 236, 15, 21, 0, 0, Math.PI * 2); ctx.ellipse(308, 236, 15, 21, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#7c2d12';
+            ctx.beginPath(); ctx.ellipse(256, 268, 18, 13, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(242, 292, 28, 26); ctx.strokeRect(242, 292, 28, 26);
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        // --- 🍞 アンパンマンとほしぞら (8種) ---
+        function drawAnpanman(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fffbeb', '#fde047', '#ef4444', '#dc2626', 'アンパンマン');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            const fg = ctx.createRadialGradient(225, 190, 25, 256, 255, 165);
+            fg.addColorStop(0, '#f6ad55'); fg.addColorStop(0.7, '#dd6b20'); fg.addColorStop(1, '#9c4221');
+            ctx.fillStyle = fg; ctx.strokeStyle = '#4a1d05'; ctx.lineWidth = 10;
+            ctx.beginPath(); ctx.arc(256, 255, 144, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.lineWidth = 10; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.arc(200, 192, 32, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+            ctx.beginPath(); ctx.arc(312, 192, 32, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+            ctx.fillStyle = '#1e1b18';
+            ctx.beginPath(); ctx.ellipse(204, 208, 16, 23, 0, 0, Math.PI * 2); ctx.ellipse(308, 208, 16, 23, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#c53030';
+            ctx.beginPath(); ctx.arc(256, 285, 66, 0.08 * Math.PI, 0.92 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#f95738';
+            ctx.beginPath(); ctx.arc(156, 265, 38, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(356, 265, 38, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#e53e3e';
+            ctx.beginPath(); ctx.arc(256, 260, 42, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            drawRoundedRect(ctx, 236, 236, 18, 18, 4); ctx.fill();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawBaikinman(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#f3e8ff', '#a855f7', '#4c1d95', '#6b21a8', 'バイキンマン');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            ctx.fillStyle = '#312e81'; ctx.strokeStyle = '#0f0524'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(200, 140); ctx.lineTo(150, 82); ctx.lineTo(175, 75); ctx.lineTo(222, 138); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(155, 80, 16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(312, 140); ctx.lineTo(362, 82); ctx.lineTo(337, 75); ctx.lineTo(290, 138); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(357, 80, 16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#2e1065';
+            ctx.beginPath(); ctx.ellipse(256, 268, 148, 134, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#f5d0fe';
+            ctx.beginPath(); ctx.ellipse(196, 215, 44, 52, -0.1, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(316, 215, 44, 52, 0.1, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1e1b4b';
+            ctx.beginPath(); ctx.arc(212, 224, 15, 0, Math.PI * 2); ctx.arc(300, 224, 15, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.ellipse(256, 322, 108, 48, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#7e22ce';
+            ctx.beginPath(); ctx.arc(256, 255, 24, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawDokinchan(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fff1f2', '#fda4af', '#e11d48', '#be123c', 'ドキンちゃん');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            ctx.fillStyle = '#f97316'; ctx.strokeStyle = '#5c1906'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(234, 135); ctx.lineTo(256, 70); ctx.lineTo(278, 135); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fde047';
+            ctx.beginPath(); ctx.arc(256, 68, 20, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#ea580c';
+            ctx.beginPath(); ctx.ellipse(256, 268, 144, 132, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.ellipse(200, 218, 40, 48, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(312, 218, 40, 48, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath(); ctx.ellipse(208, 224, 21, 26, 0, 0, Math.PI * 2); ctx.ellipse(304, 224, 21, 26, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#f43f5e';
+            ctx.beginPath(); ctx.arc(256, 290, 56, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fb923c';
+            ctx.beginPath(); ctx.arc(256, 258, 19, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawKokinchan(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#f0f9ff', '#7dd3fc', '#0284c7', '#0369a1', 'コキンちゃん');
+            ctx.save(); if (!isIcon) ctx.translate(0, -22);
+
+            ctx.fillStyle = '#38bdf8'; ctx.strokeStyle = '#082f49'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(234, 135); ctx.lineTo(256, 70); ctx.lineTo(278, 135); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fde047';
+            ctx.beginPath(); ctx.arc(256, 68, 20, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#0ea5e9';
+            ctx.beginPath(); ctx.ellipse(256, 268, 144, 132, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.ellipse(198, 220, 42, 50, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(314, 220, 42, 50, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1d4ed8';
+            ctx.beginPath(); ctx.ellipse(206, 226, 24, 28, 0, 0, Math.PI * 2); ctx.ellipse(306, 226, 24, 28, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fb7185';
+            ctx.beginPath(); ctx.arc(256, 294, 50, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath(); ctx.arc(256, 260, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawMelonpan(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#f7fee7', '#bef264', '#16a34a', '#15803d', 'メロンパン');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            ctx.fillStyle = '#d9f99d'; ctx.strokeStyle = '#365314'; ctx.lineWidth = 10;
+            ctx.beginPath(); ctx.arc(256, 255, 144, 0, Math.PI * 2); ctx.fill();
+            ctx.save(); ctx.clip();
+            ctx.strokeStyle = 'rgba(101, 163, 13, 0.55)'; ctx.lineWidth = 8;
+            for (let i = -3; i <= 3; i++) {
+                ctx.beginPath(); ctx.moveTo(256 + i * 60 - 130, 80); ctx.lineTo(256 + i * 60 + 130, 420); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(256 + i * 60 + 130, 80); ctx.lineTo(256 + i * 60 - 130, 420); ctx.stroke();
+            }
+            ctx.restore();
+            ctx.beginPath(); ctx.arc(256, 255, 144, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = '#365314';
+            ctx.beginPath(); ctx.ellipse(200, 225, 19, 25, 0, 0, Math.PI * 2); ctx.ellipse(312, 225, 19, 25, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#f43f5e';
+            ctx.beginPath(); ctx.arc(256, 282, 44, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawShokupan(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#ffffff', '#fed7aa', '#ea580c', '#c2410c', 'しょくぱん');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            const breadPath = (s) => {
+                ctx.beginPath(); ctx.save(); ctx.translate(256, 260); ctx.scale(s, s);
+                ctx.moveTo(-125, -58);
+                ctx.bezierCurveTo(-150, -150, -20, -160, 0, -130);
+                ctx.bezierCurveTo(20, -160, 150, -150, 125, -58);
+                ctx.lineTo(118, 114); ctx.quadraticCurveTo(118, 140, 88, 140);
+                ctx.lineTo(-88, 140); ctx.quadraticCurveTo(-118, 140, -118, 114);
+                ctx.closePath(); ctx.restore();
+            };
+            ctx.fillStyle = '#d97706'; ctx.strokeStyle = '#78350f'; ctx.lineWidth = 10;
+            breadPath(1.0); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fffbeb'; breadPath(0.86); ctx.fill();
+            ctx.fillStyle = '#451a03';
+            ctx.beginPath(); ctx.ellipse(204, 220, 15, 22, 0, 0, Math.PI * 2); ctx.ellipse(308, 220, 15, 22, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath(); ctx.arc(256, 286, 46, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawCurrypan(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fef9c3', '#facc15', '#ca8a04', '#854d0e', 'カレーパン');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            ctx.fillStyle = '#d97706'; ctx.strokeStyle = '#451a03'; ctx.lineWidth = 10;
+            ctx.beginPath(); ctx.ellipse(256, 258, 158, 122, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.ellipse(200, 212, 25, 30, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(312, 212, 25, 30, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath(); ctx.arc(204, 215, 12, 0, Math.PI * 2); ctx.arc(308, 215, 12, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#991b1b';
+            ctx.beginPath(); ctx.ellipse(256, 302, 72, 34, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        function drawShootingStar(size = 512, isIcon = false) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const ctx = c.getContext('2d'); ctx.save(); ctx.scale(size / 512, size / 512);
+            drawMedalBackdrop(ctx, isIcon, '#fefce8', '#fde047', '#eab308', '#a16207', 'おほしさま');
+            ctx.save(); if (!isIcon) ctx.translate(0, -24);
+
+            ctx.save();
+            ctx.translate(256, 245);
+            ctx.beginPath();
+            const spikes = 5, outerR = 144, innerR = 72;
+            for (let i = 0; i < spikes * 2; i++) {
+                const r = i % 2 === 0 ? outerR : innerR;
+                const a = (i * Math.PI) / spikes - Math.PI / 2;
+                if (i === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+                else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+            }
+            ctx.closePath();
+            ctx.fillStyle = '#facc15'; ctx.strokeStyle = '#854d0e'; ctx.lineWidth = 12; ctx.lineJoin = 'round';
+            ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#451a03';
+            ctx.beginPath(); ctx.ellipse(-34, -8, 14, 20, 0, 0, Math.PI * 2); ctx.ellipse(34, -8, 14, 20, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#f43f5e';
+            ctx.beginPath(); ctx.arc(0, 18, 22, 0.1 * Math.PI, 0.9 * Math.PI); ctx.closePath(); ctx.fill();
+            ctx.restore();
+
+            ctx.restore(); ctx.restore();
+            return c;
+        }
+
+        /* ==========================================
+         * 3. 全24キャラクターカタログ定義＆キャッシュ
+         * ========================================== */
+        const CHARACTER_CATALOG = {
+            // 🫧 よるのすいぞくかん (8種)
+            dolphin:     { id: 'dolphin',     name: 'いるかさん',     theme: 'aquarium', rimHex: 0x38bdf8, drawFn: drawDolphin },
+            sealion:     { id: 'sealion',     name: 'あしかさん',     theme: 'aquarium', rimHex: 0xf43f5e, drawFn: drawSealion },
+            penguin:     { id: 'penguin',     name: 'ペンギンさん',   theme: 'aquarium', rimHex: 0x60a5fa, drawFn: drawPenguin },
+            whaleshark:  { id: 'whaleshark',  name: 'ジンベエザメ',   theme: 'aquarium', rimHex: 0x22d3ee, drawFn: drawWhaleshark },
+            clownfish:   { id: 'clownfish',   name: 'クマノミさん',   theme: 'aquarium', rimHex: 0xf97316, drawFn: drawClownfish },
+            seaturtle:   { id: 'seaturtle',   name: 'ウミガメさん',   theme: 'aquarium', rimHex: 0x4ade80, drawFn: drawSeaturtle },
+            octopus:     { id: 'octopus',     name: 'タコさん',       theme: 'aquarium', rimHex: 0xef4444, drawFn: drawOctopus },
+            jellyfish:   { id: 'jellyfish',   name: 'クラゲさん',     theme: 'aquarium', rimHex: 0xc084fc, drawFn: drawJellyfish },
+
+            // 🌳 よるのもり・どうぶつ (8種)
+            lion:        { id: 'lion',        name: 'ライオンさん',   theme: 'forest',   rimHex: 0xfacc15, drawFn: drawLion },
+            panda:       { id: 'panda',       name: 'パンダさん',     theme: 'forest',   rimHex: 0x4ade80, drawFn: drawPanda },
+            elephant:    { id: 'elephant',    name: 'ゾウさん',       theme: 'forest',   rimHex: 0x60a5fa, drawFn: drawElephant },
+            giraffe:     { id: 'giraffe',     name: 'キリンさん',     theme: 'forest',   rimHex: 0xfde047, drawFn: drawGiraffe },
+            rabbit:      { id: 'rabbit',      name: 'うさぎさん',     theme: 'forest',   rimHex: 0xf472b6, drawFn: drawRabbit },
+            koala:       { id: 'koala',       name: 'コアラさん',     theme: 'forest',   rimHex: 0x34d399, drawFn: drawKoala },
+            owl:         { id: 'owl',         name: 'ふくろうさん',   theme: 'forest',   rimHex: 0xfbbf24, drawFn: drawOwl },
+            squirrel:    { id: 'squirrel',    name: 'リスさん',       theme: 'forest',   rimHex: 0xf97316, drawFn: drawSquirrel },
+
+            // 🍞 アンパンマンとほしぞら (8種)
+            anpanman:    { id: 'anpanman',    name: 'アンパンマン',   theme: 'anpanman', rimHex: 0xef4444, drawFn: drawAnpanman },
+            baikinman:   { id: 'baikinman',   name: 'バイキンマン',   theme: 'anpanman', rimHex: 0xa855f7, drawFn: drawBaikinman },
+            dokinchan:   { id: 'dokinchan',   name: 'ドキンちゃん',   theme: 'anpanman', rimHex: 0xf43f5e, drawFn: drawDokinchan },
+            kokinchan:   { id: 'kokinchan',   name: 'コキンちゃん',   theme: 'anpanman', rimHex: 0x38bdf8, drawFn: drawKokinchan },
+            melonpan:    { id: 'melonpan',    name: 'メロンパン',     theme: 'anpanman', rimHex: 0x84cc16, drawFn: drawMelonpan },
+            shokupan:    { id: 'shokupan',    name: 'しょくぱん',     theme: 'anpanman', rimHex: 0xf97316, drawFn: drawShokupan },
+            currypan:    { id: 'currypan',    name: 'カレーパン',     theme: 'anpanman', rimHex: 0xeab308, drawFn: drawCurrypan },
+            shootingstar:{ id: 'shootingstar',name: 'おほしさま',     theme: 'anpanman', rimHex: 0xfef08a, drawFn: drawShootingStar }
+        };
+
+        const charTexCache = {};
+        const charIconCache = {};
+
+        function getCharMedalTexture(charId) {
+            if (!charTexCache[charId]) {
+                const tex = new THREE.CanvasTexture(CHARACTER_CATALOG[charId].drawFn(512, false));
+                tex.anisotropy = 4;
+                charTexCache[charId] = tex;
+            }
+            return charTexCache[charId];
+        }
+
+        function getCharIconCanvas(charId) {
+            if (!charIconCache[charId]) {
+                charIconCache[charId] = CHARACTER_CATALOG[charId].drawFn(128, true);
+            }
+            return charIconCache[charId];
+        }
+
+        /* ==========================================
+         * 4. ゲーム設定＆たんけんステート管理
+         * ========================================== */
+        let currentTheme = 'aquarium'; // 'aquarium' | 'forest' | 'anpanman' | 'mix'
+        let gameMode = 'free';         // 'free' (なんでもはっけん) | 'quest' (おだいさがし)
+        let targetCount = 6;           // 5 | 6 | 8
+        let wideLightMode = true;      // 2さい向け大きいライトモード
+
+        // ステージ内のキャラクター管理配列
+        let stageCharacters = [];      // [{ charId, found, chargeProgress, meshGroup, propMesh, spotPos, ... }]
+        let currentQuestIndex = 0;     // おだいさがしモード時の現在のターゲット番号
+        let isFlashHelperActive = false;
+        let isAllCleared = false;
+
+        /* ==========================================
+         * 5. Three.js 3D夜のステージ・懐中電灯・スポットライト構築
+         * ========================================== */
+        let scene, camera, renderer;
+        let stageGroup;
+        let ambientLight, stageDirLight;
+        let flashlightGroup, lightBeamCone, spotLight, pointLight, targetRingGroup;
+        let floatingParticles = [];    // 泡・ホタル・キラキラ星
+        let confettiParticles = [];
+
+        // ライトが照らしている3Dステージ上の目標座標
+        let pointerWorldPos = new THREE.Vector3(0, 0.2, 0);
+        let smoothLightPos = new THREE.Vector3(0, 0.2, 0);
+        let lastSparkleSoundTime = 0;
+
+        const STAGE_WIDTH = 10.6;
+        const STAGE_HEIGHT = 6.8;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+
+            const w = container.clientWidth || window.innerWidth;
+            const h = container.clientHeight || (window.innerHeight - 170);
+
+            camera = new THREE.PerspectiveCamera(42, w / h, 0.1, 100);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(w, h);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // 1. 夜の環境光（暗すぎず、懐中電灯がドラマチックに映える明るさ）
+            ambientLight = new THREE.AmbientLight(0x1e293b, 0.34);
+            scene.add(ambientLight);
+
+            // ステージ全体をほんのり照らす月明かり（フラッシュ時やクリア時に明るくなる）
+            stageDirLight = new THREE.DirectionalLight(0x93c5fd, 0.22);
+            stageDirLight.position.set(4, 10, 12);
+            scene.add(stageDirLight);
+
+            stageGroup = new THREE.Group();
+            scene.add(stageGroup);
+
+            // 2. 3D懐中電灯＆スポットライトの構築
+            create3DFlashlightSystem();
+
+            // 3. ステージと隠れている仲間たちの生成
+            buildExplorationStage();
+            updateCameraAndRendererSize();
+
+            window.addEventListener('resize', updateCameraAndRendererSize);
+            if (window.ResizeObserver) {
+                const ro = new ResizeObserver(() => updateCameraAndRendererSize());
+                ro.observe(container);
+            }
+
+            setupFlashlightPointerControls(renderer.domElement);
+        }
+
+        // #canvas-container の実寸に合わせて、3Dステージ全体＋手前の懐中電灯が切れないようカメラ距離を自動調整
+        function updateCameraAndRendererSize() {
+            if (!camera || !renderer) return;
+            const container = document.getElementById('canvas-container');
+            const w = Math.max(100, container.clientWidth);
+            const h = Math.max(100, container.clientHeight);
+
+            renderer.setSize(w, h);
+            const aspect = w / h;
+            camera.aspect = aspect;
+
+            const fovRad = THREE.MathUtils.degToRad(camera.fov);
+            const requiredW = STAGE_WIDTH + 1.4;
+            const requiredH = STAGE_HEIGHT + 2.2;
+
+            const distV = (requiredH / 2) / Math.tan(fovRad / 2);
+            const distH = (requiredW / 2) / (Math.tan(fovRad / 2) * aspect);
+
+            const finalDist = Math.max(distV, distH, 10.8);
+            camera.position.set(0, -0.25, finalDist);
+            camera.lookAt(0, 0.1, 0);
+            camera.updateProjectionMatrix();
+        }
+
+        // 画面手前中央の3Dおもちゃ懐中電灯＋光のビームコーン＋SpotLight/PointLight＋ターゲットリングを作成
+        function create3DFlashlightSystem() {
+            // ① 3D懐中電灯モデル（手前中央下に配置し、指の方向へ首を振る）
+            flashlightGroup = new THREE.Group();
+            flashlightGroup.position.set(0, -3.75, 2.8);
+            scene.add(flashlightGroup);
+
+            // 赤と黄色の可愛いおもちゃの懐中電灯ボディ
+            const bodyMesh = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.32, 0.26, 1.15, 24),
+                new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3 })
+            );
+            bodyMesh.rotation.x = Math.PI / 2;
+            flashlightGroup.add(bodyMesh);
+
+            const headMesh = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.46, 0.34, 0.42, 24),
+                new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.25 })
+            );
+            headMesh.rotation.x = Math.PI / 2;
+            headMesh.position.z = -0.65;
+            flashlightGroup.add(headMesh);
+
+            const lensMesh = new THREE.Mesh(
+                new THREE.CircleGeometry(0.42, 24),
+                new THREE.MeshBasicMaterial({ color: 0xfef08a })
+            );
+            lensMesh.position.z = -0.87;
+             lensMesh.rotation.y = Math.PI;
+            flashlightGroup.add(lensMesh);
+
+            // ボリュメトリック風の半透明ライトコーン（懐中電灯の先から伸びる光の束）
+            const coneGeo = new THREE.CylinderGeometry(0.35, 2.1, 4.6, 28, 1, true);
+            coneGeo.translate(0, -2.3, 0);
+            coneGeo.rotateX(Math.PI / 2);
+            const coneMat = new THREE.MeshBasicMaterial({
+                color: 0xfef9c3,
+                transparent: true,
+                opacity: 0.15,
+                side: THREE.DoubleSide,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending
+            });
+            lightBeamCone = new THREE.Mesh(coneGeo, coneMat);
+            lightBeamCone.position.z = -0.85;
+            flashlightGroup.add(lightBeamCone);
+
+            // ② ステージを照らすSpotLight＆PointLight
+            spotLight = new THREE.SpotLight(0xfffbeb, 2.6);
+            spotLight.position.set(0, -3.2, 5.5);
+            spotLight.angle = wideLightMode ? 0.46 : 0.32;
+            spotLight.penumbra = 0.65;
+            spotLight.distance = 22;
+            scene.add(spotLight);
+            scene.add(spotLight.target);
+
+            // 照らしている場所の周囲を明るく浮かび上がらせるPointLight
+            pointLight = new THREE.PointLight(0xfef08a, 2.1, wideLightMode ? 4.8 : 3.4, 1.5);
+            pointLight.position.set(0, 0, 1.6);
+            scene.add(pointLight);
+
+            // ③ 照らしている位置を示すキラキラサーチリング
+            targetRingGroup = new THREE.Group();
+            targetRingGroup.position.set(0, 0, 0.38);
+            scene.add(targetRingGroup);
+
+            const outerRing = new THREE.Mesh(
+                new THREE.RingGeometry(1.15, 1.28, 36),
+                new THREE.MeshBasicMaterial({
+                    color: 0xfef08a,
+                    transparent: true,
+                    opacity: 0.75,
+                    side: THREE.DoubleSide
+                })
+            );
+            targetRingGroup.add(outerRing);
+
+            const innerGlow = new THREE.Mesh(
+                new THREE.CircleGeometry(1.15, 36),
+                new THREE.MeshBasicMaterial({
+                    color: 0xfef08a,
+                    transparent: true,
+                    opacity: 0.14,
+                    side: THREE.DoubleSide
+                })
+            );
+            targetRingGroup.add(innerGlow);
+
+            targetRingGroup.userData = { outerRing, innerGlow };
+            applyLightSizeMode();
+        }
+
+        function applyLightSizeMode() {
+            if (!spotLight || !pointLight || !targetRingGroup) return;
+            spotLight.angle = wideLightMode ? 0.48 : 0.32;
+            pointLight.distance = wideLightMode ? 5.2 : 3.5;
+            const ringScale = wideLightMode ? 1.15 : 0.82;
+            targetRingGroup.scale.set(ringScale, ringScale, 1);
+        }
+
+        /* ==========================================
+         * 6. 3D背景プロップ（サンゴ・海藻・木・きのこ・雲・星）＆隠れキャラ配置
+         * ========================================== */
+        // 隠れるスポットの候補座標リスト（重ならずバランスよく配置）
+        const HIDING_SPOTS_8 = [
+            { x: -3.4, y:  1.75 }, { x:  0.0, y:  1.95 }, { x:  3.4, y:  1.75 },
+            { x: -3.7, y: -0.05 },                        { x:  3.7, y: -0.05 },
+            { x: -2.8, y: -1.65 }, { x:  0.0, y: -1.55 }, { x:  2.8, y: -1.65 }
+        ];
+
+        function buildExplorationStage() {
+            while (stageGroup.children.length > 0) {
+                stageGroup.remove(stageGroup.children[0]);
+            }
+            floatingParticles = [];
+            confettiParticles.forEach(p => scene.remove(p));
+            confettiParticles = [];
+            stageCharacters = [];
+            currentQuestIndex = 0;
+            isAllCleared = false;
+            isFlashHelperActive = false;
+
+            document.getElementById('result-overlay').classList.add('hidden');
+            document.getElementById('found-toast').classList.add('hidden');
+
+            // 夜の環境光にリセット
+            const nightColors = {
+                aquarium: { amb: 0x0c4a6e, dir: 0x38bdf8, backBoard: 0x082f49, floor: 0x0369a1 },
+                forest:   { amb: 0x064e3b, dir: 0x34d399, backBoard: 0x022c22, floor: 0x14532d },
+                anpanman: { amb: 0x311042, dir: 0xc084fc, backBoard: 0x1e1b4b, floor: 0x3b0764 },
+                mix:      { amb: 0x1e293b, dir: 0x60a5fa, backBoard: 0x0f172a, floor: 0x1e3a8a }
+            }[currentTheme];
+
+            ambientLight.color.setHex(nightColors.amb);
+            ambientLight.intensity = 0.42;
+            stageDirLight.color.setHex(nightColors.dir);
+            stageDirLight.intensity = 0.25;
+
+            // 1. 背面ステージボード＆ 바닥（ライトの光を受け止める3Dキャンバス背景）
+            const backWall = new THREE.Mesh(
+                new THREE.PlaneGeometry(16, 11),
+                new THREE.MeshStandardMaterial({ color: nightColors.backBoard, roughness: 0.7 })
+            );
+            backWall.position.set(0, 0.4, -0.8);
+            backWall.receiveShadow = true;
+            stageGroup.add(backWall);
+
+            // ステージ枠フレーム
+            const stageFloor = new THREE.Mesh(
+                new THREE.BoxGeometry(10.8, 6.6, 0.3),
+                new THREE.MeshStandardMaterial({ color: nightColors.floor, roughness: 0.55 })
+            );
+            stageFloor.position.set(0, 0.15, -0.45);
+            stageFloor.receiveShadow = true;
+            stageGroup.add(stageFloor);
+
+            // 2. 浮遊する環境パーティクル（泡・ホタル・星）の生成
+            createAmbientParticles();
+
+            // 3. 登場するキャラクターをシャッフル選出
+            const allKeys = Object.keys(CHARACTER_CATALOG);
+            let pool = currentTheme === 'mix'
+                ? [...allKeys]
+                : allKeys.filter(k => CHARACTER_CATALOG[k].theme === currentTheme);
+            pool.sort(() => Math.random() - 0.5);
+            const selectedCharKeys = pool.slice(0, targetCount);
+
+            // スポット座標を選出（5, 6, 8匹に合わせてバランスよく選択）
+            let spots = [...HIDING_SPOTS_8];
+            if (targetCount === 5) {
+                spots = [
+                    { x: -3.1, y:  1.65 }, { x:  3.1, y:  1.65 },
+                    { x:  0.0, y:  0.15 },
+                    { x: -2.8, y: -1.55 }, { x:  2.8, y: -1.55 }
+                ];
+            } else if (targetCount === 6) {
+                spots = [
+                    { x: -3.2, y:  1.65 }, { x:  0.0, y:  1.80 }, { x:  3.2, y:  1.65 },
+                    { x: -3.1, y: -1.45 }, { x:  0.0, y: -1.35 }, { x:  3.1, y: -1.45 }
+                ];
+            }
+
+            // 4. 各スポットに「3D隠れプロップ（サンゴ・岩・木・雲）」と「3Dキャラクターメダル」を配置
+            selectedCharKeys.forEach((charId, idx) => {
+                const spot = spots[idx];
+                createCharacterAndHidingProp(charId, spot.x, spot.y, idx);
+            });
+
+            renderCollectionBarUI();
+            updateHeaderGuideUI();
+        }
+
+        // テーマに合わせた3D隠れプロップ（岩・サンゴ・木・雲）と3Dキャラクターを生成
+        function createCharacterAndHidingProp(charId, x, y, index) {
+            const charInfo = CHARACTER_CATALOG[charId];
+
+            // ① 3Dキャラクターメダルグループ
+            const charGroup = new THREE.Group();
+            // 隠れているときは少し後ろ(-Z)＆斜めにひょっこり顔を出している
+            charGroup.position.set(x, y + 0.18, -0.05);
+
+            // 厚みのある丸い3Dキャラクターメダル
+            const medalGeo = new THREE.CylinderGeometry(0.82, 0.82, 0.24, 36);
+            medalGeo.rotateX(Math.PI / 2);
+            medalGeo.rotateZ(Math.PI / 2);
+
+            const rimMat = new THREE.MeshStandardMaterial({
+                color: charInfo.rimHex,
+                roughness: 0.28
+            });
+            const faceMat = new THREE.MeshStandardMaterial({
+                map: getCharMedalTexture(charId),
+                roughness: 0.22
+            });
+
+            const medalMesh = new THREE.Mesh(medalGeo, [rimMat, faceMat, faceMat]);
+            medalMesh.castShadow = true;
+            medalMesh.receiveShadow = true;
+            charGroup.add(medalMesh);
+
+            // ライトを当てている間に溜まるキラキラ発見ゲージリング
+            const gaugeGeo = new THREE.RingGeometry(0.88, 1.04, 32);
+            const gaugeMat = new THREE.MeshBasicMaterial({
+                color: 0xfacc15,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0
+            });
+            const gaugeMesh = new THREE.Mesh(gaugeGeo, gaugeMat);
+            gaugeMesh.position.z = 0.16;
+            charGroup.add(gaugeMesh);
+
+            // 発見後にそのキャラをずっと明るく照らし続ける専用ライト
+            const personalLight = new THREE.PointLight(0xfffbeb, 0, 3.2);
+            personalLight.position.set(0, 0, 1.2);
+            charGroup.add(personalLight);
+
+            stageGroup.add(charGroup);
+
+            // ② 手前に配置する3D隠れプロップ（キャラの下半分を隠して「ひょっこり感」を出す）
+            const propGroup = createThemeHidingProp(charInfo.theme, index);
+            propGroup.position.set(x, y - 0.38, 0.22);
+            stageGroup.add(propGroup);
+
+            stageCharacters.push({
+                index,
+                charId,
+                name: charInfo.name,
+                baseX: x,
+                baseY: y,
+                found: false,
+                chargeProgress: 0,
+                celebrateSpin: 0,
+                hintWiggleTimer: 0,
+                charGroup,
+                medalMesh,
+                gaugeMesh,
+                personalLight,
+                propGroup
+            });
+        }
+
+        // テーマ別のかわいい3Dプロップ（サンゴ＆海藻 / 木＆きのこ / ふわふわ雲＆星）を作成
+        function createThemeHidingProp(themeType, idx) {
+            const g = new THREE.Group();
+
+            if (themeType === 'aquarium') {
+                // 🫧 サンゴ礁・海藻・海の岩
+                const rockColors = [0x0284c7, 0x0ea5e9, 0x38bdf8];
+                const coralColors = [0xf43f5e, 0xfb7185, 0xa855f7, 0xfacc15];
+
+                const rock = new THREE.Mesh(
+                    new THREE.DodecahedronGeometry(0.55, 1),
+                    new THREE.MeshStandardMaterial({ color: rockColors[idx % rockColors.length], roughness: 0.5 })
+                );
+                rock.scale.set(1.35, 0.72, 0.7);
+                g.add(rock);
+
+                // 海藻・サンゴの枝
+                const coralMat = new THREE.MeshStandardMaterial({
+                    color: coralColors[idx % coralColors.length],
+                    roughness: 0.35
+                });
+                [-0.42, 0.42].forEach((ox, i) => {
+                    const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.75, 12), coralMat);
+                    branch.position.set(ox, 0.25, 0.05);
+                    branch.rotation.z = i === 0 ? 0.28 : -0.28;
+                    g.add(branch);
+                });
+            } else if (themeType === 'forest') {
+                // 🌳 森の茂み＆かわいい水玉きのこ
+                const bushMat = new THREE.MeshStandardMaterial({
+                    color: idx % 2 === 0 ? 0x16a34a : 0x15803d,
+                    roughness: 0.45
+                });
+                [[-0.38, -0.05, 0.45], [0, 0.05, 0.52], [0.38, -0.05, 0.45]].forEach(([bx, by, br]) => {
+                    const sphere = new THREE.Mesh(new THREE.SphereGeometry(br, 16, 16), bushMat);
+                    sphere.position.set(bx, by, 0);
+                    g.add(sphere);
+                });
+
+                // ちょこんと生えた赤いきのこ
+                const stem = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.1, 0.13, 0.35, 12),
+                    new THREE.MeshStandardMaterial({ color: 0xfef3c7 })
+                );
+                stem.position.set(0.45, 0.12, 0.25);
+                g.add(stem);
+
+                const cap = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.24, 0.22, 16),
+                    new THREE.MeshStandardMaterial({ color: 0xef4444 })
+                );
+                cap.position.set(0.45, 0.32, 0.25);
+                g.add(cap);
+            } else {
+                // 🍞 ふわふわの夜空の雲＆キラキラ星
+                const cloudMat = new THREE.MeshStandardMaterial({
+                    color: 0xe0e7ff,
+                    roughness: 0.3
+                });
+                [[-0.42, -0.04, 0.44], [0, 0.06, 0.52], [0.42, -0.04, 0.44]].forEach(([cx, cy, cr]) => {
+                    const puff = new THREE.Mesh(new THREE.SphereGeometry(cr, 18, 18), cloudMat);
+                    puff.position.set(cx, cy, 0);
+                    g.add(puff);
+                });
+
+                const miniStar = new THREE.Mesh(
+                    new THREE.OctahedronGeometry(0.2, 0),
+                    new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xf59e0b, emissiveIntensity: 0.3 })
+                );
+                miniStar.position.set(-0.48, 0.22, 0.28);
+                g.add(miniStar);
+            }
+
+            return g;
+        }
+
+        // 海の泡・森のホタル・夜空の星パーティクルを作成
+        function createAmbientParticles() {
+            const pColor = currentTheme === 'aquarium' ? 0x7dd3fc : (currentTheme === 'forest' ? 0xbef264 : 0xfef08a);
+            const geo = new THREE.SphereGeometry(0.08, 10, 10);
+            const mat = new THREE.MeshBasicMaterial({
+                color: pColor,
+                transparent: true,
+                opacity: 0.65
+            });
+
+            for (let i = 0; i < 36; i++) {
+                const p = new THREE.Mesh(geo, mat);
+                p.position.set(
+                    (Math.random() - 0.5) * 10.5,
+                    (Math.random() - 0.5) * 6.2,
+                    -0.2 + Math.random() * 1.2
+                );
+                p.userData = {
+                    speedY: 0.006 + Math.random() * 0.012,
+                    phase: Math.random() * Math.PI * 2
+                };
+                stageGroup.add(p);
+                floatingParticles.push(p);
+            }
+        }
+
+        /* ==========================================
+         * 7. ライト操作・発見判定・おたすけフラッシュ
+         * ========================================== */
+        const raycaster = new THREE.Raycaster();
+        const pointerNDC = new THREE.Vector2();
+        const stagePlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+
+        function setupFlashlightPointerControls(domElement) {
+            const updatePointerFromEvent = (clientX, clientY) => {
+                const rect = domElement.getBoundingClientRect();
+                pointerNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+                pointerNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+                raycaster.setFromCamera(pointerNDC, camera);
+                const hitPoint = new THREE.Vector3();
+                raycaster.ray.intersectPlane(stagePlane, hitPoint);
+
+                if (hitPoint) {
+                    pointerWorldPos.x = Math.max(-5.0, Math.min(5.0, hitPoint.x));
+                    pointerWorldPos.y = Math.max(-2.9, Math.min(2.8, hitPoint.y));
+                }
+            };
+
+            domElement.addEventListener('pointerdown', (e) => {
+                sound.init();
+                updatePointerFromEvent(e.clientX, e.clientY);
+                // タップした瞬間にその座標にキャラがいれば即座にチャージを加速させる（2歳のお子様がタッチしただけでも見つけられる配慮）
+                checkDirectTapBoost();
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                updatePointerFromEvent(e.clientX, e.clientY);
+            });
+        }
+
+        function checkDirectTapBoost() {
+            if (isAllCleared) return;
+            const hitRadius = wideLightMode ? 1.55 : 1.15;
+            stageCharacters.forEach(sc => {
+                const dist = Math.hypot(pointerWorldPos.x - sc.baseX, pointerWorldPos.y - sc.baseY);
+                if (dist < hitRadius) {
+                    if (sc.found) {
+                        // すでに見つけたキャラをタッチすると喜んでジャンプ＆回転する
+                        sc.celebrateSpin = Math.PI * 2;
+                        sound.playSparkleTick(0.8);
+                    } else {
+                        // 未発見キャラを直接タッチしたら素早く発見！
+                        sc.chargeProgress += 0.65;
+                    }
+                }
+            });
+        }
+
+        // 毎フレーム呼ばれるライト照射＆発見チャージ判定
+        function updateFlashlightDetection(dt) {
+            if (isAllCleared) return;
+
+            const detectRadius = wideLightMode ? 1.45 : 1.05;
+            const now = performance.now();
+
+            stageCharacters.forEach((sc, idx) => {
+                if (sc.found) return;
+
+                const dist = Math.hypot(smoothLightPos.x - sc.baseX, smoothLightPos.y - sc.baseY);
+                if (dist < detectRadius) {
+                    // おだいさがしモードで、今のお題と違うキャラを照らした場合
+                    if (gameMode === 'quest' && idx !== currentQuestIndex) {
+                        sc.charGroup.position.z = -0.05 + Math.sin(now * 0.02) * 0.08;
+                        return;
+                    }
+
+                    // ライトが当たっている！ゲージをチャージ
+                    sc.chargeProgress = Math.min(1, sc.chargeProgress + dt * 3.2);
+                    sc.gaugeMesh.material.opacity = 0.85;
+                    const s = 0.7 + sc.chargeProgress * 0.45;
+                    sc.gaugeMesh.scale.set(s, s, 1);
+
+                    // 少しずつ手前にひょっこり出てくる
+                    sc.charGroup.position.z = -0.05 + sc.chargeProgress * 0.35;
+
+                    if (now - lastSparkleSoundTime > 120) {
+                        sound.playSparkleTick(sc.chargeProgress);
+                        lastSparkleSoundTime = now;
+                    }
+
+                    // チャージ完了で「はっけん！！」
+                    if (sc.chargeProgress >= 1.0) {
+                        triggerCharacterFound(sc);
+                    }
+                } else {
+                    // ライトが外れたら少しずつゲージが減る
+                    sc.chargeProgress = Math.max(0, sc.chargeProgress - dt * 1.8);
+                    sc.gaugeMesh.material.opacity = sc.chargeProgress * 0.7;
+                }
+            });
+        }
+
+        // 🎉 キャラクターを発見したときの処理
+        function triggerCharacterFound(sc) {
+            sc.found = true;
+            sc.chargeProgress = 1;
+            sc.gaugeMesh.material.opacity = 0;
+            sc.celebrateSpin = Math.PI * 2;
+
+            // 隠れプロップの前に元気よく飛び出して、専用ライトが点灯！
+            sc.charGroup.position.z = 0.48;
+            sc.charGroup.position.y = sc.baseY + 0.08;
+            sc.personalLight.intensity = 1.65;
+            sc.medalMesh.material[0].emissive.setHex(0xfacc15);
+            sc.medalMesh.material[0].emissiveIntensity = 0.35;
+
+            sound.playFoundChime();
+            spawnDiscoverySparkles(sc.baseX, sc.baseY);
+            showFoundToast(sc);
+
+            // おだいさがしモードなら次のお題へ進める
+            if (gameMode === 'quest') {
+                const nextUnfound = stageCharacters.findIndex(c => !c.found);
+                if (nextUnfound !== -1) {
+                    currentQuestIndex = nextUnfound;
+                }
+            }
+
+            renderCollectionBarUI();
+            updateHeaderGuideUI();
+
+            // 全員見つけたかチェック
+            if (stageCharacters.every(c => c.found)) {
+                setTimeout(() => {
+                    triggerStageAllClear();
+                }, 950);
+            }
+        }
+
+        function showFoundToast(sc) {
+            const toast = document.getElementById('found-toast');
+            const canvas = document.getElementById('toast-char-canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 128, 128);
+            ctx.drawImage(getCharIconCanvas(sc.charId), 0, 0);
+
+            document.getElementById('toast-title').textContent = `${sc.name} みつけた！🎉`;
+            toast.classList.remove('hidden');
+
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 1250);
+        }
+
+        function spawnDiscoverySparkles(x, y) {
+            const colors = [0xfacc15, 0x38bdf8, 0xf43f5e, 0x4ade80, 0xffffff];
+            const geo = new THREE.PlaneGeometry(0.24, 0.24);
+            for (let i = 0; i < 20; i++) {
+                const mat = new THREE.MeshBasicMaterial({
+                    color: colors[i % colors.length],
+                    side: THREE.DoubleSide
+                });
+                const p = new THREE.Mesh(geo, mat);
+                p.position.set(x, y, 0.55);
+                const angle = (Math.PI * 2 * i) / 20;
+                const speed = 0.04 + Math.random() * 0.05;
+                p.userData = {
+                    isRain: false,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed + 0.02,
+                    vz: 0.03 + Math.random() * 0.04,
+                    vrx: (Math.random() - 0.5) * 0.2,
+                    vry: (Math.random() - 0.5) * 0.2,
+                    life: 42
+                };
+                stageGroup.add(p);
+                confettiParticles.push(p);
+            }
+        }
+
+        // 💡 ピカッ！おたすけフラッシュ（2秒間ステージ全体を明るく照らし、まだ見つけていない仲間がピョコピョコ揺れる）
+        function triggerFlashHelper() {
+            if (isAllCleared || isFlashHelperActive) return;
+            isFlashHelperActive = true;
+            document.getElementById('flash-btn').disabled = true;
+
+            sound.playFlashHelper();
+            ambientLight.intensity = 1.15;
+            stageDirLight.intensity = 0.95;
+
+            stageCharacters.forEach(sc => {
+                if (!sc.found) {
+                    sc.hintWiggleTimer = 1.0;
+                }
+            });
+
+            const guideText = document.getElementById('guide-text');
+            guideText.textContent = '💡 ピカッ！ かくれている場所が見えたかな？';
+
+            setTimeout(() => {
+                if (!isAllCleared) {
+                    ambientLight.intensity = 0.42;
+                    stageDirLight.intensity = 0.25;
+                }
+                isFlashHelperActive = false;
+                document.getElementById('flash-btn').disabled = false;
+                updateHeaderGuideUI();
+            }, 1900);
+        }
+
+        /* ==========================================
+         * 8. 全員発見！オールクリア祝福演出
+         * ========================================== */
+        function triggerStageAllClear() {
+            isAllCleared = true;
+            sound.playAllClearFanfare();
+
+            // ステージ全体をパッと明るく照らす！
+            document.body.classList.add('bg-cleared');
+            ambientLight.color.setHex(0xffffff);
+            ambientLight.intensity = 1.1;
+            stageDirLight.color.setHex(0xfffbeb);
+            stageDirLight.intensity = 0.9;
+
+            // 紙吹雪のシャワー
+            const colors = [0xef4444, 0xfacc15, 0x38bdf8, 0x4ade80, 0xf472b6, 0xffffff];
+            const geo = new THREE.PlaneGeometry(0.32, 0.2);
+            for (let i = 0; i < 85; i++) {
+                const mat = new THREE.MeshBasicMaterial({
+                    color: colors[i % colors.length],
+                    side: THREE.DoubleSide
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(
+                    (Math.random() - 0.5) * 11,
+                    5.2 + Math.random() * 4,
+                    1.6 + (Math.random() - 0.5) * 2
+                );
+                mesh.rotation.set(
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI
+                );
+                mesh.userData = {
+                    isRain: true,
+                    vy: -0.045 - Math.random() * 0.05,
+                    vx: (Math.random() - 0.5) * 0.03,
+                    vrx: (Math.random() - 0.5) * 0.14,
+                    vry: (Math.random() - 0.5) * 0.14
+                };
+                scene.add(mesh);
+                confettiParticles.push(mesh);
+            }
+
+            const overlay = document.getElementById('result-overlay');
+            document.getElementById('result-score-pill').textContent = `${targetCount}ひき ぜんぶはっけん！`;
+            document.getElementById('guide-text').textContent = '🎊 やったー！ かくれていた仲間をぜんぶ見つけたよ！ 🎊';
+            overlay.classList.remove('hidden');
+        }
+
+        /* ==========================================
+         * 9. ヘッダーコレクションバー＆設定モーダルUI更新
+         * ========================================== */
+        function renderCollectionBarUI() {
+            const listEl = document.getElementById('collection-list');
+            listEl.innerHTML = '';
+
+            const foundCount = stageCharacters.filter(c => c.found).length;
+            document.getElementById('found-counter').textContent = `${foundCount} / ${targetCount}`;
+
+            stageCharacters.forEach((sc, idx) => {
+                const btn = document.createElement('button');
+                let stateClass = 'slot-unfound border-slate-500 bg-slate-700';
+                if (sc.found) {
+                    stateClass = 'slot-found border-yellow-300 bg-white';
+                } else if (gameMode === 'quest' && idx === currentQuestIndex) {
+                    stateClass = 'slot-target border-yellow-400 bg-amber-100';
+                }
+
+                btn.className = `collection-slot relative w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 overflow-hidden flex-shrink-0 cursor-pointer ${stateClass}`;
+                btn.title = sc.name;
+
+                // アイコンをタップしたら、まだ見つけていないそのキャラが3Dステージ内でひょこひょこ揺れてヒントを出す
+                btn.onclick = () => {
+                    if (!sc.found) {
+                        sc.hintWiggleTimer = 1.0;
+                        sound.playSparkleTick(0.4);
+                    } else {
+                        sc.celebrateSpin = Math.PI * 2;
+                        sound.playSparkleTick(0.9);
+                    }
+                };
+
+                const c = document.createElement('canvas');
+                c.width = 128; c.height = 128;
+                c.className = 'w-full h-full';
+                c.getContext('2d').drawImage(getCharIconCanvas(sc.charId), 0, 0);
+                btn.appendChild(c);
+
+                // 発見済みなら右下にキラキラマーク
+                if (sc.found) {
+                    const badge = document.createElement('span');
+                    badge.className = 'absolute bottom-0 right-0 text-[10px] leading-none bg-yellow-300 rounded-full px-0.5 shadow';
+                    badge.textContent = '⭐';
+                    btn.appendChild(badge);
+                }
+
+                listEl.appendChild(btn);
+            });
+        }
+
+        function updateHeaderGuideUI() {
+            if (!isAllCleared) {
+                document.body.className = `bg-${currentTheme}`;
+            }
+
+            const guideText = document.getElementById('guide-text');
+            const miniWrap = document.getElementById('target-mini-icon-wrap');
+
+            if (isAllCleared) {
+                miniWrap.classList.add('hidden');
+                return;
+            }
+
+            if (gameMode === 'quest') {
+                const targetObj = stageCharacters[currentQuestIndex];
+                if (targetObj && !targetObj.found) {
+                    miniWrap.classList.remove('hidden');
+                    const mCtx = document.getElementById('target-mini-canvas').getContext('2d');
+                    mCtx.clearRect(0, 0, 64, 64);
+                    mCtx.drawImage(getCharIconCanvas(targetObj.charId), 0, 0, 64, 64);
+
+                    guideText.textContent = `🎯 つぎは「${targetObj.name}」をライトでさがしてね！`;
+                    return;
+                }
+            }
+
+            miniWrap.classList.add('hidden');
+            const remaining = stageCharacters.filter(c => !c.found).length;
+            if (remaining === targetCount) {
+                guideText.textContent = '🔦 ゆびでライトをうごかして、かくれている仲間をさがそう！';
+            } else {
+                guideText.textContent = `🔦 あと ${remaining}ひき かくれているよ！ ライトで照らしてみてね`;
+            }
+        }
+
+        function renderSettingsModalUI() {
+            // 1. テーマボタン
+            ['aquarium', 'forest', 'anpanman', 'mix'].forEach(th => {
+                const btn = document.getElementById(`theme-btn-${th}`);
+                if (currentTheme === th) {
+                    btn.className = 'p-2.5 rounded-xl font-black text-xs cursor-pointer bg-sky-100 text-sky-950 border-3 border-sky-500 shadow-inner flex items-center gap-2 text-left scale-[1.02]';
+                } else {
+                    btn.className = 'p-2.5 rounded-xl font-black text-xs cursor-pointer bg-slate-50 text-slate-700 border-2 border-slate-200 hover:bg-sky-50 flex items-center gap-2 text-left';
+                }
+            });
+
+            // 2. モードボタン
+            ['free', 'quest'].forEach(md => {
+                const btn = document.getElementById(`mode-btn-${md}`);
+                if (gameMode === md) {
+                    btn.className = 'border-3 border-amber-500 bg-amber-100 text-amber-950 rounded-xl p-2.5 flex items-center gap-2 font-black text-xs cursor-pointer shadow-inner text-left';
+                } else {
+                    btn.className = 'border-2 border-slate-200 bg-slate-50 text-slate-600 rounded-xl p-2.5 flex items-center gap-2 font-black text-xs cursor-pointer hover:bg-amber-50 text-left';
+                }
+            });
+
+            // 3. かくれる数ボタン
+            [5, 6, 8].forEach(cnt => {
+                const btn = document.getElementById(`count-btn-${cnt}`);
+                if (targetCount === cnt) {
+                    btn.className = 'py-2 px-2 rounded-xl font-black text-xs cursor-pointer bg-emerald-500 text-white shadow border-2 border-emerald-700 flex flex-col items-center scale-105';
+                } else {
+                    btn.className = 'py-2 px-2 rounded-xl font-black text-xs cursor-pointer bg-emerald-50 text-emerald-950 border-2 border-emerald-200 hover:bg-emerald-100 flex flex-col items-center';
+                }
+            });
+
+            // 4. ライトサイズ＆サウンドボタン
+            const lightBtn = document.getElementById('setting-lightsize-btn');
+            lightBtn.textContent = wideLightMode ? 'ON (おおきい)' : 'OFF (ふつう)';
+            lightBtn.className = wideLightMode
+                ? 'bg-amber-500 hover:bg-amber-400 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2'
+                : 'bg-slate-400 hover:bg-slate-500 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2';
+
+            const soundBtn = document.getElementById('setting-sound-btn');
+            soundBtn.textContent = sound.enabled ? '🔊 ON' : '🔇 OFF';
+            soundBtn.className = sound.enabled
+                ? 'bg-sky-500 hover:bg-sky-400 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2'
+                : 'bg-slate-400 hover:bg-slate-500 px-4 py-2 rounded-xl font-black text-xs sm:text-sm text-white shadow cursor-pointer flex-shrink-0 ml-2';
+        }
+
+        // 設定変更グローバル関数
+        window.changeTheme = function(newTheme) {
+            if (currentTheme === newTheme) return;
+            currentTheme = newTheme;
+            sound.playFlashHelper();
+            renderSettingsModalUI();
+            buildExplorationStage();
+        };
+
+        window.changeGameMode = function(newMode) {
+            gameMode = newMode;
+            const nextUnfound = stageCharacters.findIndex(c => !c.found);
+            if (nextUnfound !== -1) currentQuestIndex = nextUnfound;
+            sound.playSparkleTick(0.6);
+            renderCollectionBarUI();
+            updateHeaderGuideUI();
+            renderSettingsModalUI();
+        };
+
+        window.changeTargetCount = function(newCount) {
+            if (targetCount === newCount) return;
+            targetCount = newCount;
+            sound.playFlashHelper();
+            renderSettingsModalUI();
+            buildExplorationStage();
+        };
+
+        window.resetGame = function() {
+            sound.playFlashHelper();
+            buildExplorationStage();
+        };
+
+        /* ==========================================
+         * 10. メイン60fpsアニメーションループ
+         * ========================================== */
+        const clock = new THREE.Clock();
+        let prevTime = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const elapsedTime = clock.getElapsedTime();
+            const dt = Math.min(0.1, elapsedTime - prevTime);
+            prevTime = elapsedTime;
+
+            // 1. 懐中電灯のターゲット位置を滑らかに補間
+            smoothLightPos.x += (pointerWorldPos.x - smoothLightPos.x) * 0.22;
+            smoothLightPos.y += (pointerWorldPos.y - smoothLightPos.y) * 0.22;
+
+            // SpotLight、PointLight、サーチリングの追従
+            if (spotLight && pointLight && targetRingGroup && flashlightGroup) {
+                spotLight.target.position.set(smoothLightPos.x, smoothLightPos.y, 0);
+                pointLight.position.set(smoothLightPos.x, smoothLightPos.y, 1.35);
+                targetRingGroup.position.set(smoothLightPos.x, smoothLightPos.y, 0.35);
+
+                // リングのゆっくりした回転と脈動
+                targetRingGroup.rotation.z = elapsedTime * 1.2;
+                const pulse = (wideLightMode ? 1.15 : 0.82) * (1 + Math.sin(elapsedTime * 5) * 0.05);
+                targetRingGroup.scale.set(pulse, pulse, 1);
+
+                // 3D懐中電灯本体が指の方向を向く
+                flashlightGroup.lookAt(smoothLightPos.x, smoothLightPos.y, 0);
+            }
+
+            // 2. ライトによるキャラクター発見判定
+            updateFlashlightDetection(dt);
+
+            // 3. 各キャラクターの待機ひょっこり動き・発見後のダンス・ヒント揺れ
+            stageCharacters.forEach((sc, idx) => {
+                const cg = sc.charGroup;
+
+                if (sc.found) {
+                    // 発見済みキャラクターは楽しくリズムに乗ってバウンス
+                    cg.position.y = sc.baseY + 0.08 + Math.sin(elapsedTime * 5.5 + idx) * 0.12;
+                    if (sc.celebrateSpin > 0.02) {
+                        cg.rotation.y = sc.celebrateSpin;
+                        sc.celebrateSpin *= 0.86;
+                    } else {
+                        cg.rotation.y = Math.sin(elapsedTime * 2.5 + idx) * 0.22;
+                        sc.celebrateSpin = 0;
+                    }
+                } else {
+                    // 未発見キャラクターは物陰からそっと顔をのぞかせる
+                    cg.position.y = sc.baseY + 0.16 + Math.sin(elapsedTime * 2.2 + idx * 1.3) * 0.07;
+
+                    if (sc.hintWiggleTimer > 0.01) {
+                        // ヒント発動時は隠れプロップごと一緒に揺れて場所を知らせる
+                        const w = Math.sin(elapsedTime * 22) * 0.16;
+                        cg.rotation.z = w;
+                        sc.propGroup.rotation.z = w * 0.7;
+                        cg.position.z = 0.25;
+                        sc.hintWiggleTimer = Math.max(0, sc.hintWiggleTimer - dt * 0.65);
+                    } else {
+                        cg.rotation.z = Math.sin(elapsedTime * 1.8 + idx) * 0.05;
+                        sc.propGroup.rotation.z = 0;
+                    }
+                }
+            });
+
+            // 4. 海の泡・森のホタル・夜空の星パーティクルのアニメーション
+            floatingParticles.forEach((p, i) => {
+                p.position.y += p.userData.speedY;
+                p.position.x += Math.sin(elapsedTime * 2 + p.userData.phase) * 0.004;
+                if (p.position.y > 3.5) {
+                    p.position.y = -3.2;
+                }
+            });
+
+            // 5. 紙吹雪＆発見スパークルのアニメーション
+            for (let i = confettiParticles.length - 1; i >= 0; i--) {
+                const p = confettiParticles[i];
+                if (p.userData.isRain) {
+                    p.position.y += p.userData.vy;
+                    p.position.x += p.userData.vx + Math.sin(elapsedTime * 3 + i) * 0.01;
+                    p.rotation.x += p.userData.vrx;
+                    p.rotation.y += p.userData.vry;
+                    if (p.position.y < -6) p.position.y = 6;
+                } else {
+                    p.position.x += p.userData.vx;
+                    p.position.y += p.userData.vy;
+                    p.position.z += p.userData.vz;
+                    p.userData.vz -= 0.0025;
+                    p.rotation.x += p.userData.vrx;
+                    p.rotation.y += p.userData.vry;
+                    p.userData.life--;
+                    if (p.userData.life <= 0) {
+                        stageGroup.remove(p);
+                        confettiParticles.splice(i, 1);
+                    }
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // 起動時初期化
+        window.onload = function() {
+            init3D();
+            renderSettingsModalUI();
+
+            // 💡 ピカッ！おたすけフラッシュボタン
+            document.getElementById('flash-btn').addEventListener('click', () => {
+                triggerFlashHelper();
+            });
+
+            // ✨ もういっかい！ボタン
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                resetGame();
+            });
+
+            // ⚙️ せっていモーダル開閉
+            const settingsModal = document.getElementById('settings-modal');
+            const openSettings = () => {
+                sound.playSparkleTick(0.5);
+                renderSettingsModalUI();
+                settingsModal.classList.remove('hidden');
+            };
+            const closeSettings = () => {
+                sound.playSparkleTick(0.8);
+                settingsModal.classList.add('hidden');
+            };
+
+            document.getElementById('settings-btn').addEventListener('click', openSettings);
+            document.getElementById('close-settings-btn').addEventListener('click', closeSettings);
+            document.getElementById('ok-settings-btn').addEventListener('click', closeSettings);
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === settingsModal) closeSettings();
+            });
+
+            // ライトの大きさトグル
+            document.getElementById('setting-lightsize-btn').addEventListener('click', () => {
+                wideLightMode = !wideLightMode;
+                applyLightSizeMode();
+                sound.playSparkleTick(0.7);
+                renderSettingsModalUI();
+            });
+
+            // おと ON/OFF トグル
+            document.getElementById('setting-sound-btn').addEventListener('click', () => {
+                sound.enabled = !sound.enabled;
+                if (sound.enabled) sound.playSparkleTick(0.7);
+                renderSettingsModalUI();
+            });
+
+            animate();
+        };
+    </script>
+</body>
+</html>

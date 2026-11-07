@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>3D ぷちレーサー＆ターボバギードライブ (リアルバギーGLB統合版)</title>
+    <meta name="game-icon" content="🚜">
+    <meta name="game-tag" content="大人気">
+    <meta name="game-category" content="vehicle">
+    <meta name="game-age" content="2">
+    <meta name="description" content="分解シミュレーターの4WDターボバギーやネットの高精細リアルバギー、レーサーを自由に選んで爆走ドライブ！">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+        body {
+            background: #1e293b;
+            overflow: hidden;
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            touch-action: none;
+            width: 100vw;
+            height: 100vh;
+        }
+        #canvas-box { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+
+        /* HUD Overlay */
+        .hud-layer {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: calc(10px + var(--safe-top)) 14px calc(12px + var(--safe-bottom));
+        }
+
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            pointer-events: auto;
+            gap: 10px;
+        }
+
+        .back-btn {
+            background: rgba(15, 23, 42, 0.75);
+            color: #ffffff;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 14px;
+            border-radius: 999px;
+            font-weight: 900;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: none;
+            backdrop-filter: blur(4px);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .score-pill {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #ffffff;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 1.1rem;
+            font-weight: 900;
+            box-shadow: 0 4px 12px rgba(217, 119, 6, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border: 2px solid #fef3c7;
+            white-space: nowrap;
+        }
+
+        .vehicle-switcher {
+            display: flex;
+            gap: 6px;
+            pointer-events: auto;
+            background: rgba(15, 23, 42, 0.75);
+            padding: 5px 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(4px);
+            overflow-x: auto;
+            max-width: 65vw;
+            scrollbar-width: none;
+        }
+        .vehicle-switcher::-webkit-scrollbar { display: none; }
+
+        .v-chip {
+            background: transparent;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 999px;
+            color: #94a3b8;
+            font-weight: 900;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .v-chip.active {
+            background: #3b82f6;
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);
+            transform: scale(1.05);
+        }
+
+        /* Controls Bottom */
+        .hud-bottom {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: auto;
+            align-items: center;
+        }
+
+        .action-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .btn-steer {
+            flex: 1;
+            height: 64px;
+            border-radius: 20px;
+            border: 3px solid #67e8f9;
+            background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+            color: #ffffff;
+            font-size: 1.25rem;
+            font-weight: 900;
+            box-shadow: 0 6px 14px rgba(3, 105, 161, 0.4);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .btn-steer:active { transform: scale(0.94); }
+
+        .btn-special {
+            height: 64px;
+            padding: 0 20px;
+            border-radius: 20px;
+            border: 3px solid #fef08a;
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: 900;
+            cursor: pointer;
+            transition: transform 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        .btn-turbo {
+            background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
+            box-shadow: 0 6px 14px rgba(185, 28, 28, 0.4);
+        }
+        .btn-horn {
+            background: linear-gradient(180deg, #10b981 0%, #047857 100%);
+            box-shadow: 0 6px 14px rgba(4, 120, 87, 0.4);
+        }
+        .btn-special:active { transform: scale(0.94); }
+
+        /* Speed Effect Overlay */
+        #turbo-fx {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            opacity: 0;
+            transition: opacity 0.2s;
+            background: radial-gradient(circle, transparent 40%, rgba(239, 68, 68, 0.28) 100%);
+        }
+        #turbo-fx.active { opacity: 1; }
+
+        /* Debug Panel */
+        #debug-panel {
+            position: fixed;
+            bottom: 4px; right: 4px;
+            background: rgba(15, 23, 42, 0.9);
+            color: #38bdf8;
+            font-size: 0.72rem;
+            padding: 6px 10px;
+            border-radius: 6px;
+            z-index: 100;
+            pointer-events: auto;
+            max-width: 320px;
+            max-height: 140px;
+            overflow-y: auto;
+            display: none;
+        }
+        #btn-debug {
+            position: fixed;
+            bottom: 6px; right: 6px;
+            background: rgba(15, 23, 42, 0.5);
+            color: #94a3b8;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            z-index: 101;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-box"></div>
+    <div id="turbo-fx"></div>
+
+    <div class="hud-layer">
+        <div class="hud-top">
+            <a href="javascript:history.back()" class="back-btn">◀ もどる</a>
+            
+            <!-- 車種切り替えチップ -->
+            <div class="vehicle-switcher">
+                <button class="v-chip active" data-v="buggy_sim">🚜 ターボバギー</button>
+                <button class="v-chip" data-v="buggy_real">🏎️ リアルバギーGLB</button>
+                <button class="v-chip" data-v="truck_real">🚚 リアル4WDトラック</button>
+                <button class="v-chip" data-v="racer">🏎️ ぷちレーサー</button>
+                <button class="v-chip" data-v="police">🚓 パトカー</button>
+            </div>
+
+            <div class="score-pill">
+                <span>⭐</span>
+                <span id="score-text">0</span>
+            </div>
+        </div>
+
+        <div class="hud-bottom">
+            <div class="action-row">
+                <button class="btn-steer" id="btn-left">◀ ひだり</button>
+                <button class="btn-special btn-horn" id="btn-horn">🎺 プップー</button>
+                <button class="btn-special btn-turbo" id="btn-turbo">⚡ ターボ！</button>
+                <button class="btn-steer" id="btn-right">みぎ ▶</button>
+            </div>
+        </div>
+    </div>
+
+    <button id="btn-debug" onclick="toggleDebug()">⚙️ 診断</button>
+    <div id="debug-panel"></div>
+
+    <script>
+        const diagLogs = [];
+        function logDiag(msg) {
+            const time = new Date().toLocaleTimeString();
+            diagLogs.unshift(`[${time}] ${msg}`);
+            if (diagLogs.length > 25) diagLogs.pop();
+            const panel = document.getElementById('debug-panel');
+            if (panel) panel.innerHTML = diagLogs.join('<br>');
+            console.log(msg);
+        }
+        function toggleDebug() {
+            const p = document.getElementById('debug-panel');
+            p.style.display = p.style.display === 'block' ? 'none' : 'block';
+        }
+
+        // --- Sound Engine (Web Audio) ---
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) audioCtx = new AudioContext();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+        document.addEventListener('pointerdown', initAudio, { once: true });
+
+        function playBeep(freq, type, duration, gainVal = 0.1) {
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                logDiag('Audio err: ' + e.message);
+            }
+        }
+
+        function playCoinSound() {
+            initAudio();
+            playBeep(987.77, 'sine', 0.12, 0.15); // B5
+            setTimeout(() => playBeep(1318.51, 'sine', 0.25, 0.18), 80); // E6
+        }
+
+        function playHornSound() {
+            initAudio();
+            playBeep(440, 'triangle', 0.25, 0.25);
+            playBeep(554.37, 'triangle', 0.25, 0.25);
+        }
+
+        function playTurboSound() {
+            initAudio();
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.5);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.5);
+            } catch (e) {}
+        }
+
+        // --- Three.js Setup ---
+        const container = document.getElementById('canvas-box');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x38bdf8); // 青空
+        scene.fog = new THREE.Fog(0x38bdf8, 25, 55);
+
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 4.2, 9.0);
+        camera.lookAt(0, 0.8, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        // Lighting
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.85);
+        hemiLight.position.set(0, 20, 0);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0xfffaed, 1.3);
+        dirLight.position.set(8, 16, 10);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 40;
+        dirLight.shadow.camera.left = -6;
+        dirLight.shadow.camera.right = 6;
+        dirLight.shadow.camera.top = 15;
+        dirLight.shadow.camera.bottom = -15;
+        scene.add(dirLight);
+
+        // Ground & Road
+        const groundGeo = new THREE.PlaneGeometry(100, 100);
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0x86efac, roughness: 0.9 });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -0.05;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        const roadGeo = new THREE.BoxGeometry(6.4, 0.2, 80);
+        const roadMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 });
+        const road = new THREE.Mesh(roadGeo, roadMat);
+        road.position.set(0, 0, 0);
+        road.receiveShadow = true;
+        scene.add(road);
+
+        // Road Lines (Moving)
+        const lineGroup = new THREE.Group();
+        const lineGeo = new THREE.BoxGeometry(0.25, 0.05, 2.8);
+        const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const lines = [];
+        for (let i = -36; i <= 36; i += 5.5) {
+            const line = new THREE.Mesh(lineGeo, lineMat);
+            line.position.set(0, 0.12, i);
+            lineGroup.add(line);
+            lines.push(line);
+        }
+        scene.add(lineGroup);
+
+        // Roadside Trees
+        const treeGroup = new THREE.Group();
+        const trunkGeo = new THREE.CylinderGeometry(0.18, 0.22, 1.2, 8);
+        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 });
+        const leafGeo = new THREE.ConeGeometry(1.0, 2.0, 8);
+        const leafMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.6 });
+
+        for (let i = -36; i <= 36; i += 6) {
+            [-4.5, 4.5].forEach(x => {
+                const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+                trunk.position.set(x, 0.6, i);
+                trunk.castShadow = true;
+                const leaf = new THREE.Mesh(leafGeo, leafMat);
+                leaf.position.set(x, 2.0, i);
+                leaf.castShadow = true;
+                treeGroup.add(trunk);
+                treeGroup.add(leaf);
+            });
+        }
+        scene.add(treeGroup);
+
+        // --- GLTF Loader Setup ---
+        const gltfLoader = new THREE.GLTFLoader();
+        const glbCache = {};
+
+        function loadGLBModel(path, onLoad, onError) {
+            if (glbCache[path]) {
+                onLoad(glbCache[path].clone(true));
+                return;
+            }
+            gltfLoader.load(
+                path,
+                (gltf) => {
+                    const model = gltf.scene;
+                    model.traverse(node => {
+                        if (node.isMesh) {
+                            node.castShadow = true;
+                            node.receiveShadow = true;
+                        }
+                    });
+                    glbCache[path] = model;
+                    logDiag('Loaded GLB: ' + path);
+                    onLoad(model.clone(true));
+                },
+                undefined,
+                (err) => {
+                    logDiag('GLB fetch fallback (CORS or local): using high-poly mesh');
+                    if (onError) onError(err);
+                }
+            );
+        }
+
+        // --- Vehicle Generators ---
+
+        // 1. CARTOON TURBO BUGGY 4WD (分解シミュレーターの迫力バギー)
+        function createTurboBuggyModel() {
+            const buggy = new THREE.Group();
+            const mats = {
+                bodyYellow: new THREE.MeshStandardMaterial({ color: 0xffcc00, metalness: 0.25, roughness: 0.35 }),
+                chassisDark: new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.5, roughness: 0.6 }),
+                rollCageBlack: new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.6, roughness: 0.3 }),
+                tireRubber: new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.95 }),
+                wheelGold: new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.7, roughness: 0.2 }),
+                chrome: new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9, roughness: 0.1 })
+            };
+
+            const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.4, 2.8), mats.chassisDark);
+            chassis.position.y = 0.45;
+            chassis.castShadow = true;
+            buggy.add(chassis);
+
+            const cowl = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 2.2), mats.bodyYellow);
+            cowl.position.set(0, 0.75, 0.1);
+            cowl.castShadow = true;
+            buggy.add(cowl);
+
+            const nose = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.35, 0.8), mats.bodyYellow);
+            nose.position.set(0, 0.6, -1.2);
+            nose.rotation.x = 0.2;
+            nose.castShadow = true;
+            buggy.add(nose);
+
+            // ロールケージフレーム
+            const barGeo = new THREE.CylinderGeometry(0.06, 0.06, 1.4);
+            [[-0.6, 0.9, -0.4], [0.6, 0.9, -0.4], [-0.6, 0.9, 0.7], [0.6, 0.9, 0.7]].forEach(pos => {
+                const bar = new THREE.Mesh(barGeo, mats.rollCageBlack);
+                bar.position.set(...pos);
+                buggy.add(bar);
+            });
+            const topBar = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.08, 1.2), mats.rollCageBlack);
+            topBar.position.set(0, 1.6, 0.15);
+            buggy.add(topBar);
+
+            // リアウィング
+            const wing = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 0.5), mats.bodyYellow);
+            wing.position.set(0, 1.35, 1.3);
+            buggy.add(wing);
+
+            // ツインマフラー
+            const pipeGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.6);
+            pipeGeo.rotateX(Math.PI / 2);
+            [-0.35, 0.35].forEach(x => {
+                const pipe = new THREE.Mesh(pipeGeo, mats.chrome);
+                pipe.position.set(x, 0.5, 1.45);
+                buggy.add(pipe);
+            });
+
+            // 4輪ブロックタイヤ
+            const wheels = [];
+            const wheelTireGeo = new THREE.CylinderGeometry(0.52, 0.52, 0.45, 20);
+            wheelTireGeo.rotateZ(Math.PI / 2);
+            const wheelRimGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.47, 16);
+            wheelRimGeo.rotateZ(Math.PI / 2);
+
+            [
+                [-1.0, 0.52, -0.9],
+                [1.0, 0.52, -0.9],
+                [-1.05, 0.56, 0.9],
+                [1.05, 0.56, 0.9]
+            ].forEach(pos => {
+                const wGroup = new THREE.Group();
+                const tire = new THREE.Mesh(wheelTireGeo, mats.tireRubber);
+                tire.castShadow = true;
+                wGroup.add(tire);
+                const rim = new THREE.Mesh(wheelRimGeo, mats.wheelGold);
+                wGroup.add(rim);
+                wGroup.position.set(...pos);
+                buggy.add(wGroup);
+                wheels.push(wGroup);
+            });
+
+            buggy.wheels = wheels;
+            buggy.scale.set(0.9, 0.9, 0.9);
+            return buggy;
+        }
+
+        // 2. 高精細リアルオフロード・バギー (プロシージャル＆GLBデュアル対応)
+        function createFallbackRealBuggy() {
+            const group = new THREE.Group();
+            const mats = {
+                frame: new THREE.MeshStandardMaterial({ color: 0x22c55e, metalness: 0.6, roughness: 0.2 }),
+                metalDark: new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.3 }),
+                tire: new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.9 }),
+                rim: new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.7, roughness: 0.2 }),
+                led: new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: 0xfef08a, emissiveIntensity: 0.9 }),
+                spring: new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.8, roughness: 0.2 })
+            };
+
+            // パイプフレーム・コックピット
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 2.4), mats.metalDark);
+            body.position.y = 0.5;
+            body.castShadow = true;
+            group.add(body);
+
+            // ロールケージ（パイプ構造）
+            const barGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.2, 8);
+            [[-0.55, 0.9, -0.6], [0.55, 0.9, -0.6], [-0.55, 0.9, 0.5], [0.55, 0.9, 0.5]].forEach(p => {
+                const b = new THREE.Mesh(barGeo, mats.frame);
+                b.position.set(...p);
+                group.add(b);
+            });
+            const roof = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.06, 1.1), mats.frame);
+            roof.position.set(0, 1.5, -0.05);
+            group.add(roof);
+
+            // ルーフLEDライトバー（4連）
+            for (let i = -0.4; i <= 0.4; i += 0.25) {
+                const light = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.12), mats.led);
+                light.position.set(i, 1.6, -0.55);
+                group.add(light);
+            }
+
+            // サスペンションスプリング＆大径タイヤ
+            const wheels = [];
+            const tireGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.42, 24);
+            tireGeo.rotateZ(Math.PI / 2);
+            const rimGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.44, 16);
+            rimGeo.rotateZ(Math.PI / 2);
+
+            [
+                [-1.05, 0.55, -0.95],
+                [1.05, 0.55, -0.95],
+                [-1.1, 0.6, 0.95],
+                [1.1, 0.6, 0.95]
+            ].forEach(p => {
+                const w = new THREE.Group();
+                const t = new THREE.Mesh(tireGeo, mats.tire);
+                t.castShadow = true;
+                w.add(t);
+                const r = new THREE.Mesh(rimGeo, mats.rim);
+                w.add(r);
+                w.position.set(...p);
+                group.add(w);
+                wheels.push(w);
+
+                // スプリングダンパー
+                const spring = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6, 8), mats.spring);
+                spring.position.set(p[0] * 0.7, 0.7, p[2]);
+                spring.rotation.z = p[0] > 0 ? -0.3 : 0.3;
+                group.add(spring);
+            });
+
+            group.wheels = wheels;
+            return group;
+        }
+
+        // 3. リアル4WDトラック（プロシージャル・フォールバック）
+        function createFallbackRealTruck() {
+            const group = new THREE.Group();
+            const mats = {
+                body: new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3, metalness: 0.4 }),
+                cabin: new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.2 }),
+                tire: new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.9 }),
+                silver: new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9, roughness: 0.1 })
+            };
+
+            const bed = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 2.8), mats.body);
+            bed.position.y = 0.55;
+            bed.castShadow = true;
+            group.add(bed);
+
+            const cab = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.7, 1.4), mats.body);
+            cab.position.set(0, 1.05, -0.6);
+            cab.castShadow = true;
+            group.add(cab);
+
+            const win = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.45, 0.8), mats.cabin);
+            win.position.set(0, 1.15, -0.6);
+            group.add(win);
+
+            const wheels = [];
+            const wGeo = new THREE.CylinderGeometry(0.48, 0.48, 0.38, 20);
+            wGeo.rotateZ(Math.PI / 2);
+            [[-0.95, 0.48, -0.9], [0.95, 0.48, -0.9], [-0.95, 0.48, 0.9], [0.95, 0.48, 0.9]].forEach(p => {
+                const w = new THREE.Mesh(wGeo, mats.tire);
+                w.position.set(...p);
+                w.castShadow = true;
+                group.add(w);
+                wheels.push(w);
+            });
+            group.wheels = wheels;
+            return group;
+        }
+
+        // 4. クラシック・レッドレーサー
+        function createRacerModel() {
+            const racer = new THREE.Group();
+            const mats = {
+                red: new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.3, roughness: 0.3 }),
+                white: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 }),
+                tire: new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.9 })
+            };
+
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.6, 2.6), mats.red);
+            body.position.y = 0.55;
+            body.castShadow = true;
+            racer.add(body);
+
+            const cockpit = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.45, 1.3), mats.white);
+            cockpit.position.set(0, 0.95, -0.1);
+            cockpit.castShadow = true;
+            racer.add(cockpit);
+
+            const wing = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 0.4), mats.red);
+            wing.position.set(0, 1.0, 1.2);
+            racer.add(wing);
+
+            const wheels = [];
+            const wGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.3, 16);
+            wGeo.rotateZ(Math.PI / 2);
+            [[-0.85, 0.38, -0.8], [0.85, 0.38, -0.8], [-0.85, 0.38, 0.8], [0.85, 0.38, 0.8]].forEach(pos => {
+                const w = new THREE.Mesh(wGeo, mats.tire);
+                w.position.set(...pos);
+                w.castShadow = true;
+                racer.add(w);
+                wheels.push(w);
+            });
+            racer.wheels = wheels;
+            return racer;
+        }
+
+        // 5. キッズパトカー
+        function createPoliceModel() {
+            const police = new THREE.Group();
+            const mats = {
+                black: new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.5 }),
+                white: new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 }),
+                sirenRed: new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xef4444, emissiveIntensity: 0.6 }),
+                sirenBlue: new THREE.MeshStandardMaterial({ color: 0x3b82f6, emissive: 0x3b82f6, emissiveIntensity: 0.6 }),
+                tire: new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.9 })
+            };
+
+            const lower = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 2.5), mats.black);
+            lower.position.y = 0.5;
+            lower.castShadow = true;
+            police.add(lower);
+
+            const upper = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.45, 1.4), mats.white);
+            upper.position.set(0, 0.85, 0.1);
+            police.add(upper);
+
+            const sirenRed = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.12, 0.18), mats.sirenRed);
+            sirenRed.position.set(-0.25, 1.15, 0.1);
+            police.add(sirenRed);
+            const sirenBlue = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.12, 0.18), mats.sirenBlue);
+            sirenBlue.position.set(0.25, 1.15, 0.1);
+            police.add(sirenBlue);
+            police.sirens = [sirenRed, sirenBlue];
+
+            const wheels = [];
+            const wGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.35, 16);
+            wGeo.rotateZ(Math.PI / 2);
+            [[-0.85, 0.4, -0.8], [0.85, 0.4, -0.8], [-0.85, 0.4, 0.8], [0.85, 0.4, 0.8]].forEach(pos => {
+                const w = new THREE.Mesh(wGeo, mats.tire);
+                w.position.set(...pos);
+                w.castShadow = true;
+                police.add(w);
+                wheels.push(w);
+            });
+            police.wheels = wheels;
+            return police;
+        }
+
+        // オープンソース高精細GLBモデル統合ローダー（フォールバック付）
+        function createGLBWrapper(path, fallbackFactory, targetScale = 1.0, rotY = 0) {
+            const container = new THREE.Group();
+            const fallbackMesh = fallbackFactory();
+            container.add(fallbackMesh);
+            container.wheels = fallbackMesh.wheels;
+
+            loadGLBModel(path, (loadedModel) => {
+                container.remove(fallbackMesh);
+                const box = new THREE.Box3().setFromObject(loadedModel);
+                const size = new THREE.Vector3();
+                box.getSize(size);
+                const center = new THREE.Vector3();
+                box.getCenter(center);
+
+                loadedModel.position.x = -center.x;
+                loadedModel.position.y = -box.min.y;
+                loadedModel.position.z = -center.z;
+
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const scale = (3.0 / maxDim) * targetScale;
+                loadedModel.scale.set(scale, scale, scale);
+                loadedModel.rotation.y = rotY;
+
+                container.add(loadedModel);
+                logDiag(`GLB replaced fallback successfully!`);
+            });
+            return container;
+        }
+
+        // プレイヤーコンテナ
+        const playerCar = new THREE.Group();
+        playerCar.position.set(0, 0, 3.5);
+        scene.add(playerCar);
+
+        let currentVehicleType = 'buggy_sim';
+        let currentVehicleMesh = null;
+
+        function setVehicle(type) {
+            if (currentVehicleMesh) {
+                playerCar.remove(currentVehicleMesh);
+            }
+            currentVehicleType = type;
+            if (type === 'buggy_sim') {
+                currentVehicleMesh = createTurboBuggyModel();
+            } else if (type === 'buggy_real') {
+                currentVehicleMesh = createGLBWrapper('../assets/models/vehicles/Buggy.glb', createFallbackRealBuggy, 1.05, 0);
+            } else if (type === 'truck_real') {
+                currentVehicleMesh = createGLBWrapper('../assets/models/vehicles/truck-yellow.glb', createFallbackRealTruck, 1.1, Math.PI);
+            } else if (type === 'racer') {
+                currentVehicleMesh = createRacerModel();
+            } else if (type === 'police') {
+                currentVehicleMesh = createPoliceModel();
+            }
+            playerCar.add(currentVehicleMesh);
+            logDiag('Vehicle active: ' + type);
+
+            document.querySelectorAll('.v-chip').forEach(c => {
+                c.classList.toggle('active', c.dataset.v === type);
+            });
+        }
+
+        // 初期設定：ターボバギー
+        setVehicle('buggy_sim');
+
+        document.querySelectorAll('.v-chip').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                initAudio();
+                setVehicle(btn.dataset.v);
+            });
+        });
+
+        // --- Collectibles & Obstacles ---
+        const items = [];
+        const coinGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16);
+        coinGeo.rotateX(Math.PI / 2);
+        const coinMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.8, roughness: 0.2 });
+
+        const obstacleGeo = new THREE.ConeGeometry(0.35, 0.8, 12);
+        const obstacleMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.4 });
+
+        function spawnItem(z = -35) {
+            const laneX = [-2.0, 0, 2.0][Math.floor(Math.random() * 3)];
+            const isCoin = Math.random() > 0.35;
+            let mesh;
+            if (isCoin) {
+                mesh = new THREE.Mesh(coinGeo, coinMat);
+                mesh.position.set(laneX, 0.6, z);
+                mesh.isCoin = true;
+            } else {
+                mesh = new THREE.Mesh(obstacleGeo, obstacleMat);
+                mesh.position.set(laneX, 0.4, z);
+                mesh.isCoin = false;
+            }
+            mesh.castShadow = true;
+            scene.add(mesh);
+            items.push(mesh);
+        }
+
+        for (let i = 0; i < 6; i++) {
+            spawnItem(-10 - i * 5);
+        }
+
+        // --- Controls & Mechanics ---
+        let currentLane = 0;
+        const lanePositions = [-2.0, 0, 2.0];
+        let targetX = 0;
+        let isTurbo = false;
+        let turboTimer = null;
+        let score = 0;
+
+        function steerLeft() {
+            initAudio();
+            if (currentLane > -1) currentLane--;
+            targetX = lanePositions[currentLane + 1];
+            playBeep(320, 'sine', 0.08, 0.08);
+        }
+
+        function steerRight() {
+            initAudio();
+            if (currentLane < 1) currentLane++;
+            targetX = lanePositions[currentLane + 1];
+            playBeep(320, 'sine', 0.08, 0.08);
+        }
+
+        function triggerTurbo() {
+            initAudio();
+            if (isTurbo) return;
+            isTurbo = true;
+            playTurboSound();
+            document.getElementById('turbo-fx').classList.add('active');
+            if (turboTimer) clearTimeout(turboTimer);
+            turboTimer = setTimeout(() => {
+                isTurbo = false;
+                document.getElementById('turbo-fx').classList.remove('active');
+            }, 3000);
+        }
+
+        document.getElementById('btn-left').addEventListener('pointerdown', (e) => { e.preventDefault(); steerLeft(); });
+        document.getElementById('btn-right').addEventListener('pointerdown', (e) => { e.preventDefault(); steerRight(); });
+        document.getElementById('btn-turbo').addEventListener('pointerdown', (e) => { e.preventDefault(); triggerTurbo(); });
+        document.getElementById('btn-horn').addEventListener('pointerdown', (e) => { e.preventDefault(); playHornSound(); });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') steerLeft();
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') steerRight();
+            if (e.key === ' ' || e.key === 'Shift') triggerTurbo();
+            if (e.key === 'h' || e.key === 'H') playHornSound();
+        });
+
+        // Swipe & Tap Controls
+        let touchStartX = 0;
+        window.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+        }, { passive: true });
+        window.addEventListener('touchend', (e) => {
+            const diffX = e.changedTouches[0].clientX - touchStartX;
+            if (Math.abs(diffX) > 40) {
+                if (diffX < 0) steerLeft();
+                else steerRight();
+            }
+        }, { passive: true });
+
+        // --- Main Game Loop ---
+        let baseSpeed = 0.35;
+        let clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            const speed = isTurbo ? baseSpeed * 2.2 : baseSpeed;
+
+            lines.forEach(l => {
+                l.position.z += speed;
+                if (l.position.z > 36) l.position.z -= 72;
+            });
+
+            for (let i = items.length - 1; i >= 0; i--) {
+                const item = items[i];
+                item.position.z += speed;
+                if (item.isCoin) item.rotation.z += 0.05;
+
+                const distZ = Math.abs(item.position.z - playerCar.position.z);
+                const distX = Math.abs(item.position.x - playerCar.position.x);
+
+                if (distZ < 1.2 && distX < 0.9) {
+                    if (item.isCoin) {
+                        score += 10;
+                        document.getElementById('score-text').textContent = score;
+                        playCoinSound();
+                    } else {
+                        playBeep(120, 'sawtooth', 0.2, 0.3);
+                        playerCar.position.y = 0.5;
+                        setTimeout(() => playerCar.position.y = 0, 150);
+                    }
+                    scene.remove(item);
+                    items.splice(i, 1);
+                    spawnItem(-40);
+                    continue;
+                }
+
+                if (item.position.z > 12) {
+                    scene.remove(item);
+                    items.splice(i, 1);
+                    spawnItem(-40);
+                }
+            }
+
+            // Smooth Steer
+            playerCar.position.x += (targetX - playerCar.position.x) * 0.15;
+            playerCar.rotation.z = (playerCar.position.x - targetX) * 0.1;
+
+            // Wheels
+            if (currentVehicleMesh && currentVehicleMesh.wheels) {
+                currentVehicleMesh.wheels.forEach(w => {
+                    w.rotation.x += speed * 0.8;
+                });
+            }
+
+            // Siren
+            if (currentVehicleType === 'police' && currentVehicleMesh && currentVehicleMesh.sirens) {
+                const t = Date.now() * 0.008;
+                currentVehicleMesh.sirens[0].material.emissiveIntensity = Math.sin(t) > 0 ? 0.9 : 0.1;
+                currentVehicleMesh.sirens[1].material.emissiveIntensity = Math.sin(t) <= 0 ? 0.9 : 0.1;
+            }
+
+            camera.position.x = playerCar.position.x * 0.4;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        logDiag('Game Ready: Dual GLB & Procedural Vehicles Initialized');
+    </script>
+</body>
+</html>
