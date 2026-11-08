@@ -221,5 +221,18 @@ window.KIDS_GAMES_REGISTRY = [
         file: "games/17_3Dチクタク出発進行！とけいタウンの新幹線ステーション.html",
         isHero: false,
         tag: "とけい"
+    },
+    {
+        id: "game-3Dスポッと！かたちブロック・おもちゃばこ",
+        title: "3Dスポッと！かたちブロック・おもちゃばこ",
+        desc: "まる・さんかく・しかく・ほし・ハートなどのカラフルな3Dかたちブロックを同じ形の穴にスポッとはめよう！音声読み上げと3D図鑑で楽しく図形が身につく幼児〜低学年向け知育パズルゲーム。",
+        icon: "🔺",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "puzzle",
+        categoryLabel: "かたち・ずけい",
+        file: "games/18_3Dスポッと！かたちブロック・おもちゃばこ.html",
+        isHero: false,
+        tag: "かたち"
     }
 ];

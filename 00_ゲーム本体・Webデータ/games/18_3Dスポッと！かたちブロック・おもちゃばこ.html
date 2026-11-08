@@ -1,0 +1,1895 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>3Dスポッと！かたちブロック・おもちゃばこ</title>
+<meta name="description" content="まる・さんかく・しかく・ほし・ハートなどのカラフルな3Dかたちブロックを同じ形の穴にスポッとはめよう！音声読み上げと3D図鑑で楽しく図形が身につく幼児〜低学年向け知育パズルゲーム。" />
+<meta name="game-icon" content="🔺" />
+<meta name="game-category" content="puzzle" />
+<meta name="game-age" content="baby" />
+<meta name="game-tag" content="かたち" />
+<style>
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    margin: 0;
+    padding: 0;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: linear-gradient(180deg, #6366f1 0%, #a855f7 42%, #fbcfe8 100%);
+    font-family: "Hiragino Maru Gothic ProN", "Rounded Mplus 1c", "BIZ UDPGothic", "Meiryo", sans-serif;
+    touch-action: none;
+  }
+  #canvas-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+  canvas:active {
+    cursor: grabbing;
+  }
+
+  /* 左上：現在レベル＆かたちずかんボタン */
+  #top-left-hud {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .hud-pill {
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.45);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+    cursor: pointer;
+    transition: transform 0.12s, background 0.2s;
+  }
+  .hud-pill:active {
+    transform: scale(0.94);
+  }
+  #level-badge-btn {
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.92), rgba(234, 88, 12, 0.92));
+    border-color: #fde047;
+  }
+  #dex-open-btn {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.92), rgba(139, 92, 246, 0.92));
+    border-color: #fbcfe8;
+  }
+
+  /* 右上：視点・設定メニュー・音・UI最小化 */
+  #top-right-hud {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tr-btn {
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.42);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+    transition: transform 0.12s, background 0.2s;
+  }
+  .tr-btn:active {
+    transform: scale(0.94);
+  }
+  .tr-btn.icon-only {
+    padding: 6px 9px;
+    font-size: 13px;
+  }
+  .tr-btn.active-toggle {
+    background: rgba(37, 99, 235, 0.88);
+    border-color: #93c5fd;
+  }
+
+  /* 右上：コンパクト収納設定ドロワー */
+  #settings-drawer {
+    position: fixed;
+    top: 48px;
+    right: 10px;
+    z-index: 35;
+    width: 288px;
+    max-height: 82vh;
+    overflow-y: auto;
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    border-radius: 18px;
+    padding: 12px;
+    color: #fff;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+    display: none;
+    animation: popIn 0.16s ease-out;
+  }
+  #settings-drawer.open {
+    display: block;
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .drawer-section {
+    margin-bottom: 10px;
+  }
+  .drawer-section:last-child {
+    margin-bottom: 0;
+  }
+  .drawer-title {
+    font-size: 11px;
+    color: #fde047;
+    font-weight: 800;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+  }
+  .menu-chip {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #f8fafc;
+    border-radius: 10px;
+    padding: 7px 6px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .menu-chip:active {
+    transform: scale(0.95);
+  }
+  .menu-chip.selected {
+    background: linear-gradient(135deg, #ec4899, #f97316);
+    border-color: #fde047;
+    box-shadow: 0 0 10px rgba(236, 72, 153, 0.45);
+  }
+  .menu-chip.full-btn {
+    width: 100%;
+    padding: 8px;
+  }
+
+  /* 上部中央：お題＆ガイドバナーカード */
+  #guide-card {
+    position: fixed;
+    top: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 18;
+    background: rgba(255, 255, 255, 0.93);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 3px solid #f59e0b;
+    border-radius: 22px;
+    padding: 6px 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+    cursor: pointer;
+    transition: transform 0.15s, opacity 0.25s;
+    width: min(94vw, 450px);
+  }
+  #guide-card:active {
+    transform: translateX(-50%) scale(0.97);
+  }
+  #guide-shape-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 13px;
+    background: linear-gradient(135deg, #fef08a, #fde047);
+    border: 2px solid #f59e0b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+    box-shadow: inset 0 2px 4px rgba(255,255,255,0.8);
+  }
+  .guide-texts {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    flex: 1;
+    overflow: hidden;
+  }
+  #guide-main-text {
+    font-size: 13.5px;
+    font-weight: 900;
+    color: #1e293b;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #guide-sub-text {
+    font-size: 11px;
+    font-weight: 800;
+    color: #ea580c;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 中央トースト（やさしい声かけ表示） */
+  #gentle-toast {
+    position: fixed;
+    top: 110px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    z-index: 22;
+    background: rgba(15, 23, 42, 0.88);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: 2px solid #fde047;
+    font-size: 13px;
+    font-weight: 900;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    white-space: nowrap;
+    max-width: 94vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #gentle-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* 最下部：スリム半透明操作バー（視界を遮らないグラスモーフィズム） */
+  #bottom-slim-bar {
+    position: fixed;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    padding: 5px 8px;
+    border-radius: 999px;
+    border: 1.5px solid rgba(255, 255, 255, 0.48);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+    max-width: 96vw;
+    overflow-x: auto;
+    scrollbar-width: none;
+    transition: all 0.25s ease;
+  }
+  #bottom-slim-bar::-webkit-scrollbar {
+    display: none;
+  }
+  .ctrl-btn {
+    background: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+    border: 1.5px solid rgba(255, 255, 255, 0.55);
+    border-radius: 999px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 900;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+    cursor: pointer;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: transform 0.1s, background 0.15s;
+  }
+  .ctrl-btn:active {
+    transform: scale(0.93);
+  }
+  .ctrl-btn.voice-btn {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.75), rgba(37, 99, 235, 0.75));
+    border-color: #bfdbfe;
+  }
+  .ctrl-btn.shuffle-btn {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.75), rgba(5, 150, 105, 0.75));
+    border-color: #a7f3d0;
+  }
+  .ctrl-btn.hint-btn {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.8), rgba(217, 119, 6, 0.8));
+    border-color: #fde68a;
+  }
+  .ctrl-btn.auto-fit-btn {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.8), rgba(244, 63, 94, 0.8));
+    border-color: #fbcfe8;
+  }
+
+  /* UI最小化モード（👁️ ON時） */
+  body.ui-minimized #top-left-hud {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-10px);
+  }
+  body.ui-minimized #guide-card {
+    transform: translateX(-50%) scale(0.86);
+    top: 10px;
+  }
+  body.ui-minimized #bottom-slim-bar .btn-label {
+    display: none;
+  }
+  body.ui-minimized #bottom-slim-bar {
+    padding: 4px 6px;
+    gap: 4px;
+    background: rgba(15, 23, 42, 0.35);
+  }
+
+  /* =========================================================
+     モーダル：🏆 かたちブロックずかん（全10種・360°回転）
+     ========================================================= */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(15, 23, 42, 0.84);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    color: #fff;
+  }
+  .modal-overlay.active {
+    display: flex;
+  }
+  .dex-card {
+    width: min(95vw, 520px);
+    max-height: 88vh;
+    background: linear-gradient(180deg, #1e1b4b 0%, #0f172a 100%);
+    border: 2.5px solid #fde047;
+    border-radius: 24px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+    overflow: hidden;
+  }
+  .dex-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .dex-header h2 {
+    font-size: 16px;
+    color: #fde047;
+    font-weight: 900;
+  }
+  #dex-preview-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.09);
+    border: 1.5px solid rgba(255, 255, 255, 0.22);
+    border-radius: 16px;
+    padding: 8px 12px;
+  }
+  #dex-3d-stage {
+    width: 110px;
+    height: 110px;
+    border-radius: 14px;
+    background: radial-gradient(circle, #6366f1 0%, #1e1b4b 100%);
+    flex-shrink: 0;
+    cursor: grab;
+  }
+  .dex-info {
+    flex: 1;
+  }
+  #dex-shape-title {
+    font-size: 19px;
+    font-weight: 900;
+    color: #fde047;
+  }
+  #dex-shape-desc {
+    font-size: 12.5px;
+    font-weight: 800;
+    color: #f8fafc;
+    margin-top: 4px;
+    line-height: 1.35;
+  }
+  .dex-speak-btn {
+    margin-top: 6px;
+    background: linear-gradient(135deg, #ec4899, #f97316);
+    border: none;
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+  .dex-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    overflow-y: auto;
+    padding: 2px;
+  }
+  .dex-cell {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1.5px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    padding: 6px 3px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 800;
+    color: #cbd5e1;
+    transition: transform 0.1s, border-color 0.15s;
+  }
+  .dex-cell:active {
+    transform: scale(0.94);
+  }
+  .dex-cell.unlocked {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(236, 72, 153, 0.35));
+    border-color: #f9a8d4;
+    color: #fff;
+  }
+  .dex-cell.active-cell {
+    border-color: #fde047;
+    box-shadow: 0 0 10px rgba(253, 224, 71, 0.65);
+  }
+  .dex-cell .s-emo {
+    font-size: 20px;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  @media (max-width: 420px) {
+    .dex-grid {
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+    }
+    #guide-main-text {
+      font-size: 12px;
+    }
+    .ctrl-btn {
+      padding: 6px 10px;
+      font-size: 11px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<!-- 左上：現在レベル＆かたちずかんボタン -->
+<div id="top-left-hud">
+  <button class="hud-pill" id="level-badge-btn" title="タップで次のレベルへ切り替え">
+    🔺 <span id="current-level-label">Lv.1 きほんの3つ</span>
+  </button>
+  <button class="hud-pill" id="dex-open-btn" title="集めた「かたちずかん」を見る">
+    🏆 かたちずかん <span id="collected-count-label">0/10</span>
+  </button>
+</div>
+
+<!-- 右上：カメラ視点・設定メニュー・音・UI最小化 -->
+<div id="top-right-hud">
+  <button class="tr-btn" id="quick-cam-btn" title="カメラ視点を切り替え">
+    🎥 <span id="cam-label">ななめ</span>
+  </button>
+  <button class="tr-btn" id="open-settings-btn">
+    ⚙️ 設定 ▾
+  </button>
+  <button class="tr-btn icon-only" id="sound-toggle-btn" title="音声・効果音ON/OFF">🔊</button>
+  <button class="tr-btn icon-only" id="ui-min-btn" title="すっきり表示（UI最小化）">👁️</button>
+</div>
+
+<!-- 右上：収納設定ドロワー -->
+<div id="settings-drawer">
+  <div class="drawer-section">
+    <div class="drawer-title">
+      <span>🔺 レベル選択（かたちステップ）</span>
+      <span style="cursor:pointer;color:#cbd5e1;font-size:14px;" id="close-drawer-btn">✕</span>
+    </div>
+    <div class="grid-2" id="level-select-grid">
+      <button class="menu-chip selected" data-lv="1">Lv.1 きほんの3つ</button>
+      <button class="menu-chip" data-lv="2">Lv.2 にんきの4つ</button>
+      <button class="menu-chip" data-lv="3">Lv.3 かわいい4つ</button>
+      <button class="menu-chip" data-lv="4">Lv.4 かどがある5つ</button>
+      <button class="menu-chip" data-lv="5" style="grid-column: span 2;">Lv.5 ぜんぶミックス(6こ)</button>
+    </div>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-title"><span>🎥 カメラ視点（空白スワイプで微調整OK）</span></div>
+    <div class="grid-3" id="cam-select-grid">
+      <button class="menu-chip selected" data-cam="angle">📐 ななめ</button>
+      <button class="menu-chip" data-cam="top">🔍 真上</button>
+      <button class="menu-chip" data-cam="front">👀 正面</button>
+    </div>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-title"><span>✨ お子様向けおたすけ設定</span></div>
+    <button class="menu-chip full-btn selected" id="guide-line-toggle-btn">
+      🌈 ドラッグ中の光るガイド線：ON
+    </button>
+  </div>
+</div>
+
+<!-- 上部中央：お題＆ガイドカード（タップで音声読み上げリピート） -->
+<div id="guide-card" title="タップすると形のお題を音声で読み上げます">
+  <div id="guide-shape-icon">🔴</div>
+  <div class="guide-texts">
+    <div id="guide-main-text">おなじ「かたち」の穴に スポッとはめよう！</div>
+    <div id="guide-sub-text">👆 ブロックを動かすか、タッチして穴を選ぼう♪</div>
+  </div>
+</div>
+
+<!-- やさしい声かけトースト -->
+<div id="gentle-toast">✨ スポッ！ぴったりハマったね！</div>
+
+<!-- 最下部：スリム半透明操作バー -->
+<div id="bottom-slim-bar">
+  <button class="ctrl-btn voice-btn" id="speak-guide-btn" title="残っている形を音声で読み上げる">
+    🗣️<span class="btn-label">かたちをきく</span>
+  </button>
+  <button class="ctrl-btn shuffle-btn" id="rearrange-btn" title="手前のブロックをきれいに並べ直す">
+    🌪️<span class="btn-label">ならべなおす</span>
+  </button>
+  <button class="ctrl-btn hint-btn" id="sparkle-hint-btn" title="同じ形のブロックと穴をキラキラ光線でつなぐ">
+    💡<span class="btn-label">キラキラヒント</span>
+  </button>
+  <button class="ctrl-btn auto-fit-btn" id="one-fit-btn" title="ブロックを1つ自動でスポッとはめる">
+    🧲<span class="btn-label">1こスポッ！</span>
+  </button>
+</div>
+
+<!-- モーダル：🏆 かたちブロックずかん -->
+<div class="modal-overlay" id="dex-modal">
+  <div class="dex-card">
+    <div class="dex-header">
+      <h2>🏆 3Dかたちブロックずかん（ドラッグで回転）</h2>
+      <button class="tr-btn" id="close-dex-btn">✕ とじる</button>
+    </div>
+
+    <div id="dex-preview-bar">
+      <div id="dex-3d-stage" title="ドラッグで360度回転できます"></div>
+      <div class="dex-info">
+        <div id="dex-shape-title">🔴 まる</div>
+        <div id="dex-shape-desc">かどが なくて コロコロ 転がる かたち。ボールや おせんべいと おなじだね！</div>
+        <button class="dex-speak-btn" id="dex-speak-btn">🔊 せつめいをきく</button>
+      </div>
+    </div>
+
+    <div class="dex-grid" id="dex-grid"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+<script>
+(() => {
+  // ==========================================
+  // 1. 全10種「3Dかたちブロック」マスターデータ＆レベル構成
+  // ==========================================
+  const SHAPES_CATALOG = [
+    {
+      id: 'circle', name: 'まる', emoji: '🔴', color: 0xef4444,
+      desc: 'かどが なくて コロコロ 転がる かたち。ボールや とけい、おせんべいと おなじ「まる」だね！'
+    },
+    {
+      id: 'triangle', name: 'さんかく', emoji: '🔺', color: 0xf59e0b,
+      desc: 'とんがった かどが 3つ ある かたち。おにぎりや お山と おなじ「さんかく」だね！'
+    },
+    {
+      id: 'square', name: 'しかく', emoji: '🟦', color: 0x3b82f6,
+      desc: 'まっすぐな 辺と かどが 4つ ある かたち。おうちの 窓や 絵本と おなじ「しかく」だね！'
+    },
+    {
+      id: 'star', name: 'ほし', emoji: '⭐', color: 0xfacc15,
+      desc: 'とんがりが 5つ キラキラ 広がった かたち。夜のお空に 光る「ほし」のかたちだね！'
+    },
+    {
+      id: 'heart', name: 'ハート', emoji: '🩷', color: 0xec4899,
+      desc: '上が ぷっくり ふくらんで 下が とんがった、だいすきな 気持ちの「ハート」だね！'
+    },
+    {
+      id: 'diamond', name: 'ひしがた', emoji: '🔶', color: 0xf97316,
+      desc: '上下と 左右が とんがった 4つの かどの かたち。ダイヤとも 呼ばれる「ひしがた」だね！'
+    },
+    {
+      id: 'hexagon', name: 'ろっかくけい', emoji: '🟣', color: 0xa855f7,
+      desc: 'かどが 6つ ある かたち。ミツバチさんの おうちの 巣と おなじ「ろっかくけい」だね！'
+    },
+    {
+      id: 'crescent', name: 'おつきさま', emoji: '🌙', color: 0x38bdf8,
+      desc: 'バナナみたいに ぐーんと まがった 三日月の かたち。夜に 浮かぶ「おつきさま」だね！'
+    },
+    {
+      id: 'flower', name: 'おはな', emoji: '🌸', color: 0xf43f5e,
+      desc: 'まるい 花びらが まわりに 5つ 並んだ、かわいく 咲いた「おはな」のかたちだね！'
+    },
+    {
+      id: 'cross', name: 'じゅうじ', emoji: '➕', color: 0x10b981,
+      desc: 'たてと よこが まんなかで 交わった プラスの かたち。救急車の マークの「じゅうじ」だね！'
+    }
+  ];
+
+  const SHAPE_MAP = {};
+  SHAPES_CATALOG.forEach(s => { SHAPE_MAP[s.id] = s; });
+
+  const LEVEL_DEFS = {
+    1: { label: 'Lv.1 きほんの3つ', shapeIds: ['circle', 'triangle', 'square'] },
+    2: { label: 'Lv.2 にんきの4つ', shapeIds: ['circle', 'triangle', 'square', 'star'] },
+    3: { label: 'Lv.3 かわいい4つ', shapeIds: ['heart', 'star', 'flower', 'crescent'] },
+    4: { label: 'Lv.4 かどがある5つ', shapeIds: ['triangle', 'square', 'diamond', 'hexagon', 'cross'] },
+    5: { label: 'Lv.5 ぜんぶミックス', shapeIds: null, count: 6 }
+  };
+
+  // ローカルストレージ保存管理
+  const STORAGE_KEY = 'shape_puzzle_toybox_v1';
+  let fitCounts = {};
+  try {
+    fitCounts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  } catch (e) {
+    fitCounts = {};
+  }
+
+  function saveProgress() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(fitCounts));
+    } catch (e) {}
+    updateDexBadge();
+  }
+
+  function updateDexBadge() {
+    const unlocked = SHAPES_CATALOG.filter(s => (fitCounts[s.id] || 0) > 0).length;
+    document.getElementById('collected-count-label').textContent = `${unlocked}/${SHAPES_CATALOG.length}`;
+  }
+  updateDexBadge();
+
+  // ==========================================
+  // 2. Web Speech API（読み上げ）＆ Web Audio API（効果音）
+  // ==========================================
+  class SoundEngine {
+    constructor() {
+      this.ctx = null;
+      this.enabled = true;
+    }
+    init() {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) this.ctx = new AudioCtx();
+      }
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+    }
+    speak(text, rate = 0.98, pitch = 1.15) {
+      if (!this.enabled || !('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'ja-JP';
+        u.rate = rate;
+        u.pitch = pitch;
+        window.speechSynthesis.speak(u);
+      } catch (e) {}
+    }
+    playTone(freq, dur = 0.14, type = 'sine', vol = 0.15) {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, now);
+      g.gain.setValueAtTime(vol, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      o.connect(g).connect(this.ctx.destination);
+      o.start(now);
+      o.stop(now + dur);
+    }
+    playPickup() {
+      this.playTone(520, 0.09, 'triangle', 0.14);
+    }
+    playSnapFit() {
+      // 穴に「スポッ！」とハマる気持ちいい2段木琴サウンド
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      [587.33, 880.0].forEach((f, idx) => {
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(f, now + idx * 0.075);
+        g.gain.setValueAtTime(0.2, now + idx * 0.075);
+        g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.075 + 0.22);
+        o.connect(g).connect(this.ctx.destination);
+        o.start(now + idx * 0.075);
+        o.stop(now + idx * 0.075 + 0.23);
+      });
+    }
+    playGentleBounce() {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(300, now);
+      o.frequency.exponentialRampToValueAtTime(460, now + 0.16);
+      g.gain.setValueAtTime(0.14, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      o.connect(g).connect(this.ctx.destination);
+      o.start(now);
+      o.stop(now + 0.19);
+    }
+    playFanfare() {
+      const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5];
+      notes.forEach((f, i) => {
+        setTimeout(() => this.playTone(f, 0.28, 'triangle', 0.18), i * 95);
+      });
+    }
+  }
+  const sound = new SoundEngine();
+
+  // ==========================================
+  // 3. 2Dパス生成＆3D押し出し成形（THREE.Shape + ExtrudeGeometry）
+  // ==========================================
+  // 全10種の図形輪郭（半径約 1.05 スケール）を正確な数学曲線・頂点で定義
+  function create2DShapePath(shapeId, scale = 1.0) {
+    const s = new THREE.Shape();
+    const r = 1.05 * scale;
+
+    if (shapeId === 'circle') {
+      s.absarc(0, 0, r, 0, Math.PI * 2, false);
+    } else if (shapeId === 'triangle') {
+      const pts = [];
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI * 2 + Math.PI / 2;
+        pts.push(new THREE.Vector2(Math.cos(a) * r * 1.15, Math.sin(a) * r * 1.15 - 0.12 * scale));
+      }
+      s.setFromPoints(pts);
+      s.closePath();
+    } else if (shapeId === 'square') {
+      const hs = r * 0.86;
+      s.moveTo(-hs, -hs);
+      s.lineTo(hs, -hs);
+      s.lineTo(hs, hs);
+      s.lineTo(-hs, hs);
+      s.closePath();
+    } else if (shapeId === 'star') {
+      const pts = [];
+      const outer = r * 1.16;
+      const inner = r * 0.52;
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2 + Math.PI / 2;
+        const rad = i % 2 === 0 ? outer : inner;
+        pts.push(new THREE.Vector2(Math.cos(a) * rad, Math.sin(a) * rad));
+      }
+      s.setFromPoints(pts);
+      s.closePath();
+    } else if (shapeId === 'heart') {
+      const pts = [];
+      const steps = 48;
+      for (let i = 0; i <= steps; i++) {
+        const t = (i / steps) * Math.PI * 2;
+        const hx = 16 * Math.pow(Math.sin(t), 3);
+        const hy = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+        pts.push(new THREE.Vector2(hx * 0.066 * scale, (hy + 1.5) * 0.066 * scale));
+      }
+      s.setFromPoints(pts);
+      s.closePath();
+    } else if (shapeId === 'diamond') {
+      s.moveTo(0, r * 1.18);
+      s.lineTo(r * 0.85, 0);
+      s.lineTo(0, -r * 1.18);
+      s.lineTo(-r * 0.85, 0);
+      s.closePath();
+    } else if (shapeId === 'hexagon') {
+      const pts = [];
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+        pts.push(new THREE.Vector2(Math.cos(a) * r * 1.04, Math.sin(a) * r * 1.04));
+      }
+      s.setFromPoints(pts);
+      s.closePath();
+    } else if (shapeId === 'crescent') {
+      // 三日月シルエット
+      const pts = [];
+      const steps = 32;
+      for (let i = 0; i <= steps; i++) {
+        const a = -Math.PI * 0.72 + (i / steps) * Math.PI * 1.44;
+        pts.push(new THREE.Vector2(Math.cos(a) * r * 1.05 - 0.1 * scale, Math.sin(a) * r * 1.05));
+      }
+      for (let i = steps; i >= 0; i--) {
+        const a = -Math.PI * 0.56 + (i / steps) * Math.PI * 1.12;
+        pts.push(new THREE.Vector2(Math.cos(a) * r * 0.65 + 0.36 * scale, Math.sin(a) * r * 0.82));
+      }
+      s.setFromPoints(pts);
+      s.closePath();
+    } else if (shapeId === 'flower') {
+      const pts = [];
+      const steps = 75;
+      for (let i = 0; i <= steps; i++) {
+        const a = (i / steps) * Math.PI * 2;
+        const rad = r * (0.78 + 0.28 * Math.cos(5 * a));
+        pts.push(new THREE.Vector2(Math.cos(a) * rad, Math.sin(a) * rad));
+      }
+      s.setFromPoints(pts);
+      s.closePath();
+    } else if (shapeId === 'cross') {
+      const w = r * 0.38;
+      const l = r * 1.02;
+      s.moveTo(-w, l);
+      s.lineTo(w, l);
+      s.lineTo(w, w);
+      s.lineTo(l, w);
+      s.lineTo(l, -w);
+      s.lineTo(w, -w);
+      s.lineTo(w, -l);
+      s.lineTo(-w, -l);
+      s.lineTo(-w, -w);
+      s.lineTo(-l, -w);
+      s.lineTo(-l, w);
+      s.lineTo(-w, w);
+      s.closePath();
+    }
+    return s;
+  }
+
+  // かわいい顔付きの3Dかたちブロック生成
+  function create3DShapeBlock(spec, withFace = true) {
+    const group = new THREE.Group();
+    const shape2D = create2DShapePath(spec.id, 1.0);
+
+    const extrudeSettings = {
+      depth: 0.62,
+      bevelEnabled: true,
+      bevelSegments: 4,
+      steps: 1,
+      bevelSize: 0.11,
+      bevelThickness: 0.11
+    };
+
+    const geo = new THREE.ExtrudeGeometry(shape2D, extrudeSettings);
+    geo.center();
+    // 水平面（XZ平面）に寝かせる
+    geo.rotateX(-Math.PI / 2);
+
+    const mat = new THREE.MeshPhysicalMaterial({
+      color: spec.color,
+      roughness: 0.22,
+      metalness: 0.05,
+      clearcoat: 0.75
+    });
+
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    group.add(mesh);
+
+    // ブロック上面にかわいい目とほっぺを追加
+    if (withFace) {
+      const faceGroup = new THREE.Group();
+      const faceXOffset = spec.id === 'crescent' ? -0.35 : 0;
+      faceGroup.position.set(faceXOffset, 0.43, 0);
+
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111827 });
+      const shineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const cheekMat = new THREE.MeshBasicMaterial({ color: 0xfda4af });
+
+      [-0.24, 0.24].forEach(ex => {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 10), eyeMat);
+        eye.scale.set(1, 0.4, 1);
+        eye.position.set(ex, 0, -0.06);
+
+        const shine = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 6), shineMat);
+        shine.position.set(ex + 0.03, 0.03, -0.09);
+
+        const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), cheekMat);
+        cheek.scale.set(1.2, 0.3, 0.8);
+        cheek.position.set(ex * 1.45, 0, 0.12);
+
+        faceGroup.add(eye, shine, cheek);
+      });
+      group.add(faceGroup);
+    }
+
+    return group;
+  }
+
+  // 木製パズルボード上の「かたちの穴（くぼみシルエット＋光る縁取り）」生成
+  function createBoardHoleMesh(spec) {
+    const holeGroup = new THREE.Group();
+
+    // 1) 外側の色付きガイド枠（どの形かわかりやすい優しい縁取り）
+    const rimShape = create2DShapePath(spec.id, 1.14);
+    const rimGeo = new THREE.ExtrudeGeometry(rimShape, {
+      depth: 0.08,
+      bevelEnabled: false
+    });
+    rimGeo.center();
+    rimGeo.rotateX(-Math.PI / 2);
+    const rimMat = new THREE.MeshStandardMaterial({
+      color: spec.color,
+      roughness: 0.4,
+      transparent: true,
+      opacity: 0.82
+    });
+    const rimMesh = new THREE.Mesh(rimGeo, rimMat);
+    rimMesh.position.y = 0.02;
+    holeGroup.add(rimMesh);
+
+    // 2) 内側の暗いくぼみ影シルエット（穴に見える部分）
+    const innerShape = create2DShapePath(spec.id, 1.02);
+    const innerGeo = new THREE.ExtrudeGeometry(innerShape, {
+      depth: 0.1,
+      bevelEnabled: false
+    });
+    innerGeo.center();
+    innerGeo.rotateX(-Math.PI / 2);
+    const innerMat = new THREE.MeshStandardMaterial({
+      color: 0x3b2314,
+      roughness: 0.9
+    });
+    const innerMesh = new THREE.Mesh(innerGeo, innerMat);
+    innerMesh.position.y = 0.05;
+    holeGroup.add(innerMesh);
+
+    // 3) ヒント・近づいたときに光るハイライトリング
+    const glowRing = new THREE.Mesh(
+      new THREE.RingGeometry(1.22, 1.5, 32),
+      new THREE.MeshBasicMaterial({ color: 0xfde047, side: THREE.DoubleSide, transparent: true, opacity: 0.0 })
+    );
+    glowRing.rotation.x = -Math.PI / 2;
+    glowRing.position.y = 0.08;
+    holeGroup.add(glowRing);
+
+    holeGroup.userData = { spec, glowRing, innerMat };
+    return holeGroup;
+  }
+
+  // ==========================================
+  // 4. Three.js + Cannon.js メイン3Dおもちゃ箱ステージ構築
+  // ==========================================
+  const container = document.getElementById('canvas-container');
+  const scene = new THREE.Scene();
+
+  const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 160);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  container.appendChild(renderer.domElement);
+
+  // 照明
+  scene.add(new THREE.AmbientLight(0xfffbeb, 0.86));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.95);
+  dirLight.position.set(8, 26, 14);
+  dirLight.castShadow = true;
+  dirLight.shadow.mapSize.width = 1024;
+  dirLight.shadow.mapSize.height = 1024;
+  scene.add(dirLight);
+
+  // Cannon.js 物理ワールド（手前トレイのブロックの転がり・バウンス用）
+  const world = new CANNON.World();
+  world.gravity.set(0, -25, 0);
+  const blockPhysMat = new CANNON.Material('block');
+  const floorPhysMat = new CANNON.Material('floor');
+  world.addContactMaterial(new CANNON.ContactMaterial(blockPhysMat, floorPhysMat, {
+    friction: 0.5,
+    restitution: 0.3
+  }));
+
+  const trayFloorBody = new CANNON.Body({ mass: 0, material: floorPhysMat });
+  trayFloorBody.addShape(new CANNON.Box(new CANNON.Vec3(14, 0.5, 14)));
+  trayFloorBody.position.set(0, -0.5, 0);
+  world.addBody(trayFloorBody);
+
+  // おもちゃ部屋＆木製パズルボックス構築
+  const envGroup = new THREE.Group();
+  scene.add(envGroup);
+
+  // パステルドットのプレイマット床
+  const playMat = new THREE.Mesh(
+    new THREE.CylinderGeometry(28, 28, 0.8, 40),
+    new THREE.MeshStandardMaterial({ color: 0xfef9c3, roughness: 0.7 })
+  );
+  playMat.position.y = -1.2;
+  playMat.receiveShadow = true;
+  envGroup.add(playMat);
+
+  // 奥側：木製パズルボード（穴が並ぶおもちゃ箱の上面: z = -2.2）
+  const toyboxGroup = new THREE.Group();
+  toyboxGroup.position.set(0, 0, -2.2);
+  envGroup.add(toyboxGroup);
+
+  const boxBase = new THREE.Mesh(
+    new THREE.BoxGeometry(13.2, 1.2, 6.6),
+    new THREE.MeshStandardMaterial({ color: 0xfde68a, roughness: 0.4 })
+  );
+  boxBase.position.y = -0.2;
+  boxBase.receiveShadow = true;
+  boxBase.castShadow = true;
+  toyboxGroup.add(boxBase);
+
+  // カラフルな木製フレーム縁取り
+  const frameColors = [0xf43f5e, 0x3b82f6, 0x10b981, 0xf59e0b];
+  const borderTop = new THREE.Mesh(new THREE.BoxGeometry(13.6, 1.35, 0.45), new THREE.MeshStandardMaterial({ color: frameColors[0] }));
+  borderTop.position.set(0, -0.15, -3.35);
+  const borderBot = new THREE.Mesh(new THREE.BoxGeometry(13.6, 1.35, 0.45), new THREE.MeshStandardMaterial({ color: frameColors[1] }));
+  borderBot.position.set(0, -0.15, 3.35);
+  const borderL = new THREE.Mesh(new THREE.BoxGeometry(0.45, 1.35, 7.1), new THREE.MeshStandardMaterial({ color: frameColors[2] }));
+  borderL.position.set(-6.65, -0.15, 0);
+  const borderR = new THREE.Mesh(new THREE.BoxGeometry(0.45, 1.35, 7.1), new THREE.MeshStandardMaterial({ color: frameColors[3] }));
+  borderR.position.set(6.65, -0.15, 0);
+  toyboxGroup.add(borderTop, borderBot, borderL, borderR);
+
+  // 手前側：ブロックが並ぶ白いスターターマット（z = 3.6）
+  const trayMatMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(13.4, 0.25, 4.4),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35 })
+  );
+  trayMatMesh.position.set(0, -0.1, 3.6);
+  trayMatMesh.receiveShadow = true;
+  envGroup.add(trayMatMesh);
+
+  const trayRimMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(13.8, 0.18, 4.7),
+    new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.4 })
+  );
+  trayRimMesh.position.set(0, -0.16, 3.6);
+  envGroup.add(trayRimMesh);
+
+  // ドラッグ中におもちゃ箱とブロックをつなぐ虹色ガイドレーザー線
+  let showGuideLine = true;
+  const guideLineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+  const guideLineMat = new THREE.LineBasicMaterial({ color: 0xfde047, linewidth: 3, transparent: true, opacity: 0.85 });
+  const guideLineMesh = new THREE.Line(guideLineGeo, guideLineMat);
+  guideLineMesh.visible = false;
+  scene.add(guideLineMesh);
+
+  // ドラッグ操作用の水平透明プレーン
+  const dragPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(60, 60),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  dragPlane.rotation.x = -Math.PI / 2;
+  dragPlane.position.y = 0.8;
+  scene.add(dragPlane);
+
+  // 背景のふわふわ風船
+  const balloons = [];
+  const bCols = [0xf43f5e, 0xfacc15, 0x38bdf8, 0x4ade80, 0xc084fc];
+  for (let i = 0; i < 6; i++) {
+    const b = new THREE.Mesh(
+      new THREE.SphereGeometry(0.95, 14, 14),
+      new THREE.MeshStandardMaterial({ color: bCols[i % bCols.length], roughness: 0.2 })
+    );
+    b.scale.y = 1.2;
+    const bx = i < 3 ? -9.5 - i * 1.6 : 9.5 + (i - 3) * 1.6;
+    const by = 4.2 + (i % 3) * 1.4;
+    b.position.set(bx, by, -4.5);
+    envGroup.add(b);
+    balloons.push({ mesh: b, baseY: by, phase: i * 1.3 });
+  }
+
+  // ==========================================
+  // 5. パズル進行管理（穴・ブロック生成・吸着判定）
+  // ==========================================
+  let currentLevel = 1;
+  // { spec, holeMesh, holePos, filled }
+  const activeHoles = [];
+  // { spec, mesh, body, homePos, targetHole, fitted, fittingAnim, fitT, startPos, selected, hintTimer, initialRotY }
+  const activeBlocks = [];
+  const particles = [];
+
+  let selectedBlock = null;
+  let draggingBlock = null;
+  let stageClearLock = false;
+
+  function spawnConfetti(pos, count = 35) {
+    const cols = [0xf43f5e, 0xfacc15, 0x38bdf8, 0x4ade80, 0xc084fc, 0xf97316];
+    for (let i = 0; i < count; i++) {
+      const m = new THREE.Mesh(
+        new THREE.BoxGeometry(0.26, 0.26, 0.07),
+        new THREE.MeshBasicMaterial({ color: cols[i % cols.length] })
+      );
+      m.position.copy(pos).add(new THREE.Vector3(0, 0.8, 0));
+      scene.add(m);
+      particles.push({
+        mesh: m,
+        vel: new THREE.Vector3((Math.random() - 0.5) * 0.34, 0.2 + Math.random() * 0.28, (Math.random() - 0.5) * 0.34),
+        life: 65
+      });
+    }
+  }
+
+  function showToast(text) {
+    const el = document.getElementById('gentle-toast');
+    el.textContent = text;
+    el.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => el.classList.remove('show'), 2300);
+  }
+
+  function clearStageObjects() {
+    activeHoles.forEach(h => scene.remove(h.holeMesh));
+    activeHoles.length = 0;
+    activeBlocks.forEach(b => {
+      scene.remove(b.mesh);
+      if (b.body) world.removeBody(b.body);
+    });
+    activeBlocks.length = 0;
+    selectedBlock = null;
+    draggingBlock = null;
+    guideLineMesh.visible = false;
+  }
+
+  // 穴の数に応じたボード上の見やすい座標配列
+  function getHoleLayoutPositions(count) {
+    if (count === 3) {
+      return [
+        new THREE.Vector3(-3.8, 0.42, -2.2),
+        new THREE.Vector3(0.0,  0.42, -2.2),
+        new THREE.Vector3(3.8,  0.42, -2.2)
+      ];
+    } else if (count === 4) {
+      return [
+        new THREE.Vector3(-4.35, 0.42, -2.2),
+        new THREE.Vector3(-1.45, 0.42, -2.2),
+        new THREE.Vector3(1.45,  0.42, -2.2),
+        new THREE.Vector3(4.35,  0.42, -2.2)
+      ];
+    } else if (count === 5) {
+      return [
+        new THREE.Vector3(-3.8, 0.42, -3.55),
+        new THREE.Vector3(0.0,  0.42, -3.55),
+        new THREE.Vector3(3.8,  0.42, -3.55),
+        new THREE.Vector3(-2.1, 0.42, -0.85),
+        new THREE.Vector3(2.1,  0.42, -0.85)
+      ];
+    } else {
+      // 6個（上段3・下段3）
+      return [
+        new THREE.Vector3(-3.8, 0.42, -3.55),
+        new THREE.Vector3(0.0,  0.42, -3.55),
+        new THREE.Vector3(3.8,  0.42, -3.55),
+        new THREE.Vector3(-3.8, 0.42, -0.85),
+        new THREE.Vector3(0.0,  0.42, -0.85),
+        new THREE.Vector3(3.8,  0.42, -0.85)
+      ];
+    }
+  }
+
+  // 手前トレイ上のブロック初期位置配列
+  function getTrayPositions(count) {
+    if (count <= 4) {
+      const spacing = count === 3 ? 3.8 : 3.05;
+      return Array.from({ length: count }, (_, i) =>
+        new THREE.Vector3((i - (count - 1) / 2) * spacing, 0.5, 3.6)
+      );
+    } else {
+      const spacing = count === 5 ? 2.55 : 2.2;
+      return Array.from({ length: count }, (_, i) =>
+        new THREE.Vector3((i - (count - 1) / 2) * spacing, 0.5, 3.6 + (i % 2 === 0 ? -0.45 : 0.45))
+      );
+    }
+  }
+
+  function setupLevelStage(lv, speakNow = true) {
+    currentLevel = lv;
+    stageClearLock = false;
+    clearStageObjects();
+
+    const lvDef = LEVEL_DEFS[lv];
+    document.getElementById('current-level-label').textContent = lvDef.label;
+    document.querySelectorAll('#level-select-grid .menu-chip').forEach(btn => {
+      btn.classList.toggle('selected', Number(btn.dataset.lv) === lv);
+    });
+
+    // 今回のステージで使う図形リストを決定
+    let chosenSpecs = [];
+    if (lvDef.shapeIds) {
+      chosenSpecs = lvDef.shapeIds.map(id => SHAPE_MAP[id]);
+    } else {
+      const shuffled = [...SHAPES_CATALOG].sort(() => Math.random() - 0.5);
+      chosenSpecs = shuffled.slice(0, lvDef.count);
+    }
+
+    const holePositions = getHoleLayoutPositions(chosenSpecs.length);
+
+    // 1) おもちゃ箱ボード上の穴を生成
+    chosenSpecs.forEach((spec, idx) => {
+      const holeMesh = createBoardHoleMesh(spec);
+      holeMesh.position.copy(holePositions[idx]);
+      scene.add(holeMesh);
+      activeHoles.push({
+        spec,
+        holeMesh,
+        holePos: holePositions[idx].clone(),
+        filled: false,
+        hintEnergy: 0
+      });
+    });
+
+    // 2) 手前トレイのブロックをシャッフルした順番で生成
+    const trayPositions = getTrayPositions(chosenSpecs.length);
+    const shuffledIndices = [...Array(chosenSpecs.length).keys()].sort(() => Math.random() - 0.5);
+
+    shuffledIndices.forEach((specIdx, trayIdx) => {
+      const spec = chosenSpecs[specIdx];
+      const targetHole = activeHoles[specIdx];
+      const homePos = trayPositions[trayIdx];
+
+      const mesh = create3DShapeBlock(spec, true);
+      scene.add(mesh);
+
+      const body = new CANNON.Body({
+        mass: 1.0,
+        material: blockPhysMat,
+        linearDamping: 0.5,
+        angularDamping: 0.8
+      });
+      body.addShape(new CANNON.Sphere(0.7));
+      body.position.set(homePos.x, 2.5 + trayIdx * 0.4, homePos.z);
+      world.addBody(body);
+
+      // Lv.4〜5では少し斜めに傾けて置いて「向きが揃ってハマる」気持ちよさを演出
+      const initialRotY = currentLevel >= 4 ? (Math.random() - 0.5) * 0.9 : 0;
+
+      activeBlocks.push({
+        spec,
+        mesh,
+        body,
+        homePos: homePos.clone(),
+        targetHole,
+        fitted: false,
+        fittingAnim: false,
+        fitT: 0,
+        startPos: new THREE.Vector3(),
+        hintEnergy: 0,
+        initialRotY
+      });
+    });
+
+    updateGuideBanner();
+    if (speakNow) {
+      const names = chosenSpecs.map(s => s.name).join('、');
+      sound.speak(`${names}のブロックがあるよ！ おなじかたちの穴に、スポッとはめてみよう！`);
+    }
+  }
+
+  function updateGuideBanner(focusBlock = null) {
+    const iconEl = document.getElementById('guide-shape-icon');
+    const mainEl = document.getElementById('guide-main-text');
+    const subEl = document.getElementById('guide-sub-text');
+
+    const remaining = activeBlocks.filter(b => !b.fitted && !b.fittingAnim);
+    if (remaining.length === 0) {
+      iconEl.textContent = '🎉';
+      mainEl.textContent = 'ぜんぶ ピッタリ はまったね！ 大正解！！';
+      subEl.textContent = '✨ つぎのパズルが 出てくるよ♪';
+      return;
+    }
+
+    const target = focusBlock || selectedBlock || remaining[0];
+    iconEl.textContent = target.spec.emoji;
+    mainEl.textContent = `「${target.spec.name}」を おなじかたちの穴に はめよう！`;
+    subEl.textContent = `👆 ブロックを動かすか、タッチして穴を選ぼう（のこり ${remaining.length}こ）`;
+  }
+
+  // ブロックを正しい穴へ「スポッ！」と吸い込ませるアニメーション発動
+  function snapBlockIntoHole(block) {
+    if (block.fitted || block.fittingAnim) return;
+    block.fittingAnim = true;
+    block.fitT = 0;
+    block.startPos.copy(block.mesh.position);
+    block.targetHole.filled = true;
+    if (block.body) {
+      world.removeBody(block.body);
+      block.body = null;
+    }
+    if (selectedBlock === block) selectedBlock = null;
+    if (draggingBlock === block) draggingBlock = null;
+    guideLineMesh.visible = false;
+
+    sound.playSnapFit();
+    fitCounts[block.spec.id] = (fitCounts[block.spec.id] || 0) + 1;
+    saveProgress();
+
+    showToast(`✨ スポッ！「${block.spec.name}」が ピッタリ はまったよ！`);
+    sound.speak(`スポッ！ ${block.spec.name}！ ピッタリだね！`);
+  }
+
+  // 違う穴の上で離したときのやさしいバウンス＆ヒント誘導
+  function bounceBackWrongHole(block, wrongHole) {
+    sound.playGentleBounce();
+    block.targetHole.hintEnergy = 95;
+    block.hintEnergy = 95;
+
+    showToast(`😊 これは「${block.spec.name}」だよ！ 光っている「${block.spec.name}」の穴へ運んでみよう♪`);
+    sound.speak(`これは「${block.spec.name}」だね！ 光っている「${block.spec.name}」の穴に、入れてみよう！`);
+
+    if (block.body) {
+      block.body.position.set(block.homePos.x, 1.8, block.homePos.z);
+      block.body.velocity.set(0, 0, 0);
+    }
+  }
+
+  // 💡 キラキラヒント
+  function triggerSparkleHint(withVoice = true) {
+    const remaining = activeBlocks.filter(b => !b.fitted && !b.fittingAnim);
+    if (remaining.length === 0) return;
+
+    const target = selectedBlock || remaining[0];
+    target.hintEnergy = 110;
+    target.targetHole.hintEnergy = 110;
+    if (target.body) {
+      target.body.velocity.y = 7.5;
+    }
+    spawnConfetti(target.targetHole.holePos, 12);
+    sound.playPickup();
+
+    if (withVoice) {
+      showToast(`💡 ヒント！「${target.spec.name}」と 同じかたちの穴が キラキラ光ったよ！`);
+      sound.speak(`ヒントだよ！「${target.spec.name}」のブロックと、光っている穴を 合わせてみよう！`);
+    }
+  }
+
+  // 🧲 1こスポッ！（お子様向けアシストボタン）
+  function autoFitOneBlock() {
+    if (stageClearLock) return;
+    const remaining = activeBlocks.filter(b => !b.fitted && !b.fittingAnim);
+    if (remaining.length === 0) return;
+    const target = selectedBlock || remaining[0];
+    snapBlockIntoHole(target);
+  }
+
+  // 🌪️ ブロックをきれいに並べ直す
+  function rearrangeRemainingBlocks() {
+    sound.playGentleBounce();
+    activeBlocks.forEach(b => {
+      if (!b.fitted && !b.fittingAnim && b.body) {
+        b.body.position.set(b.homePos.x, 2.2, b.homePos.z);
+        b.body.velocity.set(0, 3, 0);
+      }
+    });
+    showToast('🌪️ ブロックを きれいに ならべなおしたよ！');
+  }
+
+  // ==========================================
+  // 6. カメラ制御（スワイプ微調整＆スマホ縦画面オートフレーミング）
+  // ==========================================
+  let camPreset = 'angle';
+  const camPresets = {
+    angle: { yaw: 0.0, pitch: 0.78, dist: 16.2, label: 'ななめ' },
+    top:   { yaw: 0.0, pitch: 1.32, dist: 17.5, label: '真上' },
+    front: { yaw: 0.0, pitch: 0.52, dist: 15.8, label: '正面' }
+  };
+
+  let yawOffset = 0, pitchOffset = 0, zoomScale = 1.0;
+  let curYaw = 0, curPitch = 0.78, curDist = 16.2;
+
+  function setCameraPreset(mode) {
+    camPreset = mode;
+    yawOffset = 0;
+    pitchOffset = 0;
+    zoomScale = 1.0;
+    document.getElementById('cam-label').textContent = camPresets[mode].label;
+    document.querySelectorAll('#cam-select-grid .menu-chip').forEach(b => {
+      b.classList.toggle('selected', b.dataset.cam === mode);
+    });
+  }
+
+  function updateCameraSmooth() {
+    const aspect = window.innerWidth / window.innerHeight;
+    const isPortrait = aspect < 0.95;
+    const portraitZoom = isPortrait ? Math.min(1.58, 0.92 / aspect) : 1.0;
+    const lookZOffset = isPortrait ? 0.65 : 0.4;
+
+    const base = camPresets[camPreset];
+    const targetYaw = base.yaw + yawOffset;
+    const targetPitch = Math.max(0.32, Math.min(1.45, base.pitch + pitchOffset));
+    const targetDist = base.dist * portraitZoom * zoomScale;
+
+    curYaw += (targetYaw - curYaw) * 0.14;
+    curPitch += (targetPitch - curPitch) * 0.14;
+    curDist += (targetDist - curDist) * 0.14;
+
+    const center = new THREE.Vector3(0, 0.2, lookZOffset);
+    camera.position.set(
+      center.x + Math.sin(curYaw) * Math.cos(curPitch) * curDist,
+      center.y + Math.sin(curPitch) * curDist,
+      center.z + Math.cos(curYaw) * Math.cos(curPitch) * curDist
+    );
+    camera.lookAt(center);
+  }
+
+  // ==========================================
+  // 7. 3Dドラッグ＆ドロップ ＋ かんたん2タッチ操作のハイブリッド実装
+  // ==========================================
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  let isCameraSwiping = false;
+  let pointerMovedDist = 0;
+  let prevPt = { x: 0, y: 0 };
+
+  function setPointerCoords(clientX, clientY) {
+    pointer.x = (clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+  }
+
+  function findHitBlock(clientX, clientY) {
+    setPointerCoords(clientX, clientY);
+    const available = activeBlocks.filter(b => !b.fitted && !b.fittingAnim);
+    const meshes = available.map(b => b.mesh);
+    const hits = raycaster.intersectObjects(meshes, true);
+    if (hits.length > 0) {
+      let obj = hits[0].object;
+      while (obj.parent && !meshes.includes(obj)) obj = obj.parent;
+      return available.find(b => b.mesh === obj) || null;
+    }
+    return null;
+  }
+
+  function findHitHole(clientX, clientY) {
+    setPointerCoords(clientX, clientY);
+    const available = activeHoles.filter(h => !h.filled);
+    const meshes = available.map(h => h.holeMesh);
+    const hits = raycaster.intersectObjects(meshes, true);
+    if (hits.length > 0) {
+      let obj = hits[0].object;
+      while (obj.parent && !meshes.includes(obj)) obj = obj.parent;
+      return available.find(h => h.holeMesh === obj) || null;
+    }
+    return null;
+  }
+
+  function getDragPlanePoint(clientX, clientY) {
+    setPointerCoords(clientX, clientY);
+    const hits = raycaster.intersectObject(dragPlane, false);
+    return hits.length > 0 ? hits[0].point : null;
+  }
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    prevPt = { x: e.clientX, y: e.clientY };
+    pointerMovedDist = 0;
+
+    const hitBlock = findHitBlock(e.clientX, e.clientY);
+    if (hitBlock) {
+      // ブロックをつかんだ！
+      draggingBlock = hitBlock;
+      selectedBlock = hitBlock;
+      sound.playPickup();
+      sound.speak(`${hitBlock.spec.name}！`);
+      updateGuideBanner(hitBlock);
+      return;
+    }
+
+    // すでにブロックを選択中に穴をタップした場合（かんたん2タッチ操作）
+    const hitHole = findHitHole(e.clientX, e.clientY);
+    if (hitHole && selectedBlock && !selectedBlock.fitted) {
+      if (hitHole === selectedBlock.targetHole) {
+        snapBlockIntoHole(selectedBlock);
+      } else {
+        bounceBackWrongHole(selectedBlock, hitHole);
+      }
+      return;
+    }
+
+    // 穴だけを直接タップした場合はその形の名前を優しく教える
+    if (hitHole) {
+      sound.playPickup();
+      hitHole.hintEnergy = 70;
+      showToast(`🔍 ここは「${hitHole.spec.name}」の穴だよ！`);
+      sound.speak(`ここは、${hitHole.spec.name}の穴だよ！`);
+      return;
+    }
+
+    isCameraSwiping = true;
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    const dx = e.clientX - prevPt.x;
+    const dy = e.clientY - prevPt.y;
+    pointerMovedDist += Math.hypot(dx, dy);
+    prevPt = { x: e.clientX, y: e.clientY };
+
+    if (draggingBlock && !draggingBlock.fitted) {
+      const pt = getDragPlanePoint(e.clientX, e.clientY);
+      if (pt && draggingBlock.body) {
+        const clampedX = Math.max(-6.2, Math.min(6.2, pt.x));
+        const clampedZ = Math.max(-5.2, Math.min(5.2, pt.z));
+        draggingBlock.body.position.set(clampedX, 1.35, clampedZ);
+        draggingBlock.body.velocity.set(0, 0, 0);
+
+        // 正しい穴へ近づいたら自動でマグネット吸着！
+        const holePos = draggingBlock.targetHole.holePos;
+        const distToTarget = Math.hypot(clampedX - holePos.x, clampedZ - holePos.z);
+
+        // おたすけ光るガイド線の更新
+        if (showGuideLine) {
+          guideLineMesh.visible = true;
+          const posAttr = guideLineGeo.attributes.position;
+          posAttr.setXYZ(0, clampedX, 1.1, clampedZ);
+          posAttr.setXYZ(1, holePos.x, 0.55, holePos.z);
+          posAttr.needsUpdate = true;
+          draggingBlock.targetHole.hintEnergy = 15;
+        }
+
+        if (distToTarget < 1.28) {
+          snapBlockIntoHole(draggingBlock);
+        }
+      }
+    } else if (isCameraSwiping) {
+      yawOffset = Math.max(-0.95, Math.min(0.95, yawOffset - dx * 0.0065));
+      pitchOffset = Math.max(-0.22, Math.min(0.42, pitchOffset + dy * 0.0055));
+    }
+  });
+
+  window.addEventListener('pointerup', () => {
+    guideLineMesh.visible = false;
+    if (draggingBlock && !draggingBlock.fitted && !draggingBlock.fittingAnim) {
+      const bPos = draggingBlock.mesh.position;
+      const holePos = draggingBlock.targetHole.holePos;
+      const distToCorrect = Math.hypot(bPos.x - holePos.x, bPos.z - holePos.z);
+
+      if (distToCorrect < 1.75) {
+        snapBlockIntoHole(draggingBlock);
+      } else if (pointerMovedDist > 18) {
+        // 他の穴の近くで離したかチェック
+        const nearWrongHole = activeHoles.find(
+          h => !h.filled && h !== draggingBlock.targetHole && Math.hypot(bPos.x - h.holePos.x, bPos.z - h.holePos.z) < 1.65
+        );
+        if (nearWrongHole) {
+          bounceBackWrongHole(draggingBlock, nearWrongHole);
+        } else if (draggingBlock.body) {
+          // ボードの上の何もない場所で離した場合はトレイへ戻す
+          draggingBlock.body.position.set(draggingBlock.homePos.x, 1.6, draggingBlock.homePos.z);
+          draggingBlock.body.velocity.set(0, 0, 0);
+        }
+      }
+    }
+    draggingBlock = null;
+    isCameraSwiping = false;
+  });
+
+  renderer.domElement.addEventListener('wheel', (e) => {
+    zoomScale = Math.max(0.75, Math.min(1.3, zoomScale + e.deltaY * 0.0008));
+  }, { passive: true });
+
+  // ==========================================
+  // 8. 🏆 かたちブロックずかん（3Dターンテーブル）
+  // ==========================================
+  const dexModal = document.getElementById('dex-modal');
+  const dexStage = document.getElementById('dex-3d-stage');
+  let dexScene, dexCam, dexRenderer, dexPreviewMesh;
+  let dexYaw = 0.4, dexPitch = 0.5;
+  let currentDexSpec = SHAPES_CATALOG[0];
+
+  function initDex3D() {
+    dexScene = new THREE.Scene();
+    dexCam = new THREE.PerspectiveCamera(40, 1, 0.1, 30);
+    dexCam.position.set(0, 1.8, 3.2);
+    dexCam.lookAt(0, 0, 0);
+
+    dexRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    dexRenderer.setSize(110, 110);
+    dexRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    dexStage.appendChild(dexRenderer.domElement);
+
+    dexScene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    const dl = new THREE.DirectionalLight(0xfffbeb, 0.9);
+    dl.position.set(3, 6, 4);
+    dexScene.add(dl);
+
+    let drag = false, px = 0, py = 0;
+    dexStage.addEventListener('pointerdown', e => { drag = true; px = e.clientX; py = e.clientY; });
+    window.addEventListener('pointermove', e => {
+      if (!drag) return;
+      dexYaw += (e.clientX - px) * 0.02;
+      dexPitch += (e.clientY - py) * 0.02;
+      px = e.clientX; py = e.clientY;
+    });
+    window.addEventListener('pointerup', () => { drag = false; });
+  }
+  initDex3D();
+
+  function selectDexShape(spec, speakIt = false) {
+    currentDexSpec = spec;
+    if (dexPreviewMesh) dexScene.remove(dexPreviewMesh);
+    dexPreviewMesh = create3DShapeBlock(spec, true);
+    dexScene.add(dexPreviewMesh);
+
+    const cnt = fitCounts[spec.id] || 0;
+    document.getElementById('dex-shape-title').textContent = `${spec.emoji} ${spec.name} （はめた回数: ${cnt}回）`;
+    document.getElementById('dex-shape-desc').textContent = spec.desc;
+    if (speakIt) {
+      sound.speak(`${spec.name}！ ${spec.desc}`);
+    }
+  }
+
+  function renderDexGrid() {
+    const grid = document.getElementById('dex-grid');
+    grid.innerHTML = '';
+    SHAPES_CATALOG.forEach((spec, idx) => {
+      const cnt = fitCounts[spec.id] || 0;
+      const cell = document.createElement('div');
+      cell.className = `dex-cell ${cnt > 0 ? 'unlocked' : ''} ${spec.id === currentDexSpec.id ? 'active-cell' : ''}`;
+      cell.innerHTML = `
+        <span class="s-emo">${spec.emoji}</span>
+        <div>${spec.name}</div>
+        <div style="color:#fde047;">✨×${cnt}</div>
+      `;
+      cell.addEventListener('click', () => {
+        document.querySelectorAll('.dex-cell').forEach(el => el.classList.remove('active-cell'));
+        cell.classList.add('active-cell');
+        selectDexShape(spec, true);
+      });
+      grid.appendChild(cell);
+    });
+    selectDexShape(currentDexSpec, false);
+  }
+
+  document.getElementById('dex-open-btn').addEventListener('click', () => {
+    renderDexGrid();
+    dexModal.classList.add('active');
+  });
+  document.getElementById('close-dex-btn').addEventListener('click', () => {
+    dexModal.classList.remove('active');
+  });
+  document.getElementById('dex-speak-btn').addEventListener('click', () => {
+    selectDexShape(currentDexSpec, true);
+  });
+
+  // ==========================================
+  // 9. UIボタン＆設定メニュー連携
+  // ==========================================
+  document.querySelectorAll('#level-select-grid .menu-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setupLevelStage(Number(btn.dataset.lv), true);
+      document.getElementById('settings-drawer').classList.remove('open');
+    });
+  });
+
+  document.getElementById('level-badge-btn').addEventListener('click', () => {
+    const nextLv = (currentLevel % 5) + 1;
+    setupLevelStage(nextLv, true);
+  });
+
+  const drawerEl = document.getElementById('settings-drawer');
+  const openSettingsBtn = document.getElementById('open-settings-btn');
+  openSettingsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    drawerEl.classList.toggle('open');
+  });
+  document.getElementById('close-drawer-btn').addEventListener('click', () => {
+    drawerEl.classList.remove('open');
+  });
+  window.addEventListener('pointerdown', (e) => {
+    if (!drawerEl.contains(e.target) && e.target !== openSettingsBtn && !openSettingsBtn.contains(e.target)) {
+      drawerEl.classList.remove('open');
+    }
+  });
+
+  document.querySelectorAll('#cam-select-grid .menu-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setCameraPreset(btn.dataset.cam);
+      drawerEl.classList.remove('open');
+    });
+  });
+  document.getElementById('quick-cam-btn').addEventListener('click', () => {
+    const order = ['angle', 'top', 'front'];
+    const next = order[(order.indexOf(camPreset) + 1) % order.length];
+    setCameraPreset(next);
+  });
+
+  const guideLineBtn = document.getElementById('guide-line-toggle-btn');
+  guideLineBtn.addEventListener('click', () => {
+    showGuideLine = !showGuideLine;
+    guideLineBtn.classList.toggle('selected', showGuideLine);
+    guideLineBtn.textContent = `🌈 ドラッグ中の光るガイド線：${showGuideLine ? 'ON' : 'OFF'}`;
+  });
+
+  const soundBtn = document.getElementById('sound-toggle-btn');
+  soundBtn.addEventListener('click', () => {
+    sound.enabled = !sound.enabled;
+    soundBtn.textContent = sound.enabled ? '🔊' : '🔇';
+  });
+
+  const uiMinBtn = document.getElementById('ui-min-btn');
+  uiMinBtn.addEventListener('click', () => {
+    document.body.classList.toggle('ui-minimized');
+    uiMinBtn.classList.toggle('active-toggle');
+  });
+
+  // 上部カード＆下部バーボタン
+  const speakRemainingGuide = () => {
+    const remaining = activeBlocks.filter(b => !b.fitted && !b.fittingAnim);
+    if (remaining.length === 0) return;
+    const target = selectedBlock || remaining[0];
+    sound.speak(`${target.spec.name}！ ${target.spec.desc}`);
+  };
+  document.getElementById('guide-card').addEventListener('click', speakRemainingGuide);
+  document.getElementById('speak-guide-btn').addEventListener('click', speakRemainingGuide);
+  document.getElementById('rearrange-btn').addEventListener('click', rearrangeRemainingBlocks);
+  document.getElementById('sparkle-hint-btn').addEventListener('click', () => triggerSparkleHint(true));
+  document.getElementById('one-fit-btn').addEventListener('click', autoFitOneBlock);
+
+  // ==========================================
+  // 10. メイン物理＆アニメーションループ
+  // ==========================================
+  const clock = new THREE.Clock();
+  setupLevelStage(1, false);
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.04);
+    const elapsed = clock.getElapsedTime();
+
+    world.step(1 / 60, dt, 3);
+
+    // 風船のふわふわアニメ
+    balloons.forEach(b => {
+      b.mesh.position.y = b.baseY + Math.sin(elapsed * 2.1 + b.phase) * 0.36;
+    });
+
+    // 穴のキラキラヒント発光更新
+    activeHoles.forEach(h => {
+      if (h.hintEnergy > 0) {
+        h.hintEnergy--;
+        h. holeMesh.userData.glowRing.material.opacity = 0.45 + Math.sin(elapsed * 12) * 0.35;
+        h.holeMesh.userData.glowRing.rotation.z = elapsed * 3.5;
+      } else {
+        h.holeMesh.userData.glowRing.material.opacity = 0.0;
+      }
+    });
+
+    // ブロックの物理追従・選択バウンス・スポッ！吸着アニメーション
+    activeBlocks.forEach(b => {
+      if (b.fittingAnim) {
+        b.fitT += 0.085;
+        if (b.fitT >= 1.0) {
+          b.fittingAnim = false;
+          b.fitted = true;
+          b.mesh.position.set(b.targetHole.holePos.x, 0.52, b.targetHole.holePos.z);
+          b.mesh.rotation.set(0, 0, 0);
+          spawnConfetti(b.targetHole.holePos, 22);
+          updateGuideBanner();
+
+          // 全ブロックがハマったらステージクリア演出！
+          const allDone = activeBlocks.every(blk => blk.fitted);
+          if (allDone && !stageClearLock) {
+            stageClearLock = true;
+            setTimeout(() => {
+              sound.playFanfare();
+              spawnConfetti(new THREE.Vector3(0, 1.5, -2.0), 55);
+              showToast('🎉 ぜんぶのかたちが ピッタリ はまったよ！ すごーい！！');
+              sound.speak('やったあ！ ぜんぶのかたちが ピッタリ はまったね！ すごい！');
+              setTimeout(() => setupLevelStage(currentLevel, true), 3100);
+            }, 350);
+          }
+        } else {
+          const t = b.fitT;
+          b.mesh.position.lerpVectors(b.startPos, new THREE.Vector3(b.targetHole.holePos.x, 0.52, b.targetHole.holePos.z), t);
+          b.mesh.position.y += Math.sin(t * Math.PI) * 1.8;
+          // 斜めだったブロックも穴に入る瞬間にクルッと正しい角度（0）へ揃う
+          b.mesh.rotation.y = THREE.MathUtils.lerp(b.initialRotY, 0, t);
+        }
+      } else if (!b.fitted && b.body) {
+        if (draggingBlock !== b) {
+          // 手前トレイのホーム位置へ緩やかに整列
+          b.body.position.x += (b.homePos.x - b.body.position.x) * 0.14;
+          b.body.position.z += (b.homePos.z - b.body.position.z) * 0.14;
+        }
+        const selectLift = (selectedBlock === b && draggingBlock !== b)
+          ? 0.45 + Math.sin(elapsed * 8) * 0.12
+          : 0;
+        b.mesh.position.set(
+          b.body.position.x,
+          Math.max(0.32, b.body.position.y - 0.25) + selectLift,
+          b.body.position.z
+        );
+        // ドラッグ中は穴の向きにスッと揃い、待機中は初期角度を保つ
+        const targetRot = draggingBlock === b ? 0 : b.initialRotY;
+        b.mesh.rotation.y += (targetRot - b.mesh.rotation.y) * 0.2;
+      }
+    });
+
+    // 紙吹雪パーティクル更新
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.mesh.position.add(p.vel);
+      p.vel.y -= 0.008;
+      p.mesh.rotation.x += 0.15;
+      p.mesh.rotation.y += 0.12;
+      p.life--;
+      if (p.life <= 0) {
+        scene.remove(p.mesh);
+        particles.splice(i, 1);
+      }
+    }
+
+    // ずかんモーダル内の3Dブロック回転
+    if (dexModal.classList.contains('active') && dexPreviewMesh) {
+      dexPreviewMesh.rotation.y = dexYaw + elapsed * 0.65;
+      dexPreviewMesh.rotation.x = Math.sin(dexPitch) * 0.4;
+      dexRenderer.render(dexScene, dexCam);
+    }
+
+    updateCameraSmooth();
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  animate();
+})();
+</script>
+</body>
+</html>

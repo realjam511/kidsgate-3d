@@ -702,6 +702,7 @@
             if (t.includes('ひらがな')) return 'ひらがなボール';
             if (t.includes('ランチタイム') || t.includes('くいしんぼう')) return '動物ランチタイム';
             if (t.includes('とけい') || t.includes('ステーション')) return 'とけい新幹線';
+            if (t.includes('かたちブロック') || t.includes('おもちゃばこ') || t.includes('スポッと')) return 'かたちブロック';
             return t.replace(/^★\s*|\s*★$/g, '').slice(0, 8);
         }
 
@@ -719,7 +720,8 @@
                 return 'vehicle';
             }
             if (t.includes('ひらがな') || t.includes('シャッフルカップ') || t.includes('暗記') ||
-                t.includes('まるばつ') || t.includes('しんけいすいじゃく') || t.includes('すごろく')) {
+                t.includes('まるばつ') || t.includes('しんけいすいじゃく') || t.includes('すごろく') ||
+                t.includes('かたちブロック') || t.includes('おもちゃばこ') || t.includes('スポッと')) {
                 return 'puzzle';
             }
             if (g.category === 'nature' || t.includes('ボウリング') || t.includes('オセロ') || 
