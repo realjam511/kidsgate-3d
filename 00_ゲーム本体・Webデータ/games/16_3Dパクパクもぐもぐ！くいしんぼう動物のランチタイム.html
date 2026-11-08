@@ -1,0 +1,1919 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>3Dパクパクもぐもぐ！くいしんぼう動物のランチタイム</title>
+<meta name="description" content="お皿のリンゴやドーナツをタッチしてウサギやパンダに食べさせよう！3Dアニメーションと音声読み上げで楽しく「ひきざん」の基礎が身につく幼児〜低学年向け知育ゲーム。" />
+<meta name="game-icon" content="🐰" />
+<meta name="game-category" content="math" />
+<meta name="game-age" content="baby" />
+<meta name="game-tag" content="ひきざん" />
+<style>
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    margin: 0;
+    padding: 0;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: linear-gradient(180deg, #38bdf8 0%, #bae6fd 38%, #dcfce7 100%);
+    font-family: "Hiragino Maru Gothic ProN", "Rounded Mplus 1c", "BIZ UDPGothic", "Meiryo", sans-serif;
+    touch-action: none;
+  }
+  #canvas-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+  canvas:active {
+    cursor: grabbing;
+  }
+
+  /* 左上：レベル＆ごちそうさま図鑑バッジ */
+  #top-left-hud {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .hud-pill {
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.45);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+    cursor: pointer;
+    transition: transform 0.12s, background 0.2s;
+  }
+  .hud-pill:active {
+    transform: scale(0.94);
+  }
+  #level-badge-btn {
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.92), rgba(234, 88, 12, 0.92));
+    border-color: #fde047;
+  }
+  #collection-open-btn {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.92), rgba(168, 85, 247, 0.92));
+    border-color: #fbcfe8;
+  }
+
+  /* 右上：視点・設定ドロワー・音量・UI最小化 */
+  #top-right-hud {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tr-btn {
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.42);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+    transition: transform 0.12s, background 0.2s;
+  }
+  .tr-btn:active {
+    transform: scale(0.94);
+  }
+  .tr-btn.icon-only {
+    padding: 6px 9px;
+    font-size: 13px;
+  }
+  .tr-btn.active-toggle {
+    background: rgba(37, 99, 235, 0.88);
+    border-color: #93c5fd;
+  }
+
+  /* 右上：コンパクト収納設定ドロワー */
+  #settings-drawer {
+    position: fixed;
+    top: 48px;
+    right: 10px;
+    z-index: 35;
+    width: 288px;
+    max-height: 82vh;
+    overflow-y: auto;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    border-radius: 18px;
+    padding: 12px;
+    color: #fff;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.52);
+    display: none;
+    animation: popIn 0.16s ease-out;
+  }
+  #settings-drawer.open {
+    display: block;
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .drawer-section {
+    margin-bottom: 10px;
+  }
+  .drawer-section:last-child {
+    margin-bottom: 0;
+  }
+  .drawer-title {
+    font-size: 11px;
+    color: #fde047;
+    font-weight: 800;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+  }
+  .grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+  }
+  .menu-chip {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #f8fafc;
+    border-radius: 10px;
+    padding: 7px 6px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .menu-chip:active {
+    transform: scale(0.95);
+  }
+  .menu-chip.selected {
+    background: linear-gradient(135deg, #ec4899, #f97316);
+    border-color: #fde047;
+    box-shadow: 0 0 10px rgba(236, 72, 153, 0.45);
+  }
+  .menu-chip.full-btn {
+    width: 100%;
+    padding: 8px;
+  }
+
+  /* 上部中央：ひきざんお題＆数式カード */
+  #question-card {
+    position: fixed;
+    top: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 18;
+    background: rgba(255, 255, 255, 0.93);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 3px solid #f97316;
+    border-radius: 22px;
+    padding: 7px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+    cursor: pointer;
+    transition: transform 0.15s, opacity 0.25s;
+    width: min(94vw, 450px);
+  }
+  #question-card:active {
+    transform: translateX(-50%) scale(0.97);
+  }
+  #formula-badge {
+    background: linear-gradient(135deg, #fef08a, #fde047);
+    border: 2.5px solid #f59e0b;
+    border-radius: 14px;
+    padding: 5px 10px;
+    font-size: 18px;
+    font-weight: 900;
+    color: #b91c1c;
+    white-space: nowrap;
+    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.8);
+    flex-shrink: 0;
+  }
+  .q-text-wrap {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    flex: 1;
+    overflow: hidden;
+  }
+  #q-main-text {
+    font-size: 13.5px;
+    font-weight: 900;
+    color: #1e293b;
+    line-height: 1.25;
+  }
+  #q-sub-text {
+    font-size: 11px;
+    font-weight: 800;
+    color: #ea580c;
+    margin-top: 2px;
+  }
+
+  /* 中央上部：カウント吹き出し＆声かけトースト */
+  #count-toast {
+    position: fixed;
+    top: 114px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    z-index: 22;
+    background: rgba(15, 23, 42, 0.88);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    padding: 6px 18px;
+    border-radius: 999px;
+    border: 2px solid #fde047;
+    font-size: 14px;
+    font-weight: 900;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    white-space: nowrap;
+    max-width: 94vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #count-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* =========================================================
+     最下部：背景パネル無し・半透明クリア操作エリア
+     ========================================================= */
+  #bottom-ui-area {
+    position: fixed;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    width: min(96vw, 460px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+  }
+
+  /* フェーズ2用：3択の大きな半透明数字ボタン */
+  #choice-row {
+    pointer-events: auto;
+    display: none;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 100%;
+    padding: 0 4px;
+  }
+  #choice-row.active {
+    display: grid;
+  }
+  .num-choice-btn {
+    height: 64px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.58), rgba(249, 115, 22, 0.58));
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 2.5px solid #fde047;
+    color: #ffffff;
+    font-size: 26px;
+    font-weight: 900;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28), inset 0 1px 3px rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: transform 0.1s, background 0.15s;
+  }
+  .num-choice-btn small {
+    font-size: 13px;
+    font-weight: 800;
+    opacity: 0.95;
+  }
+  .num-choice-btn:active {
+    transform: scale(0.93);
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.88), rgba(249, 115, 22, 0.88));
+    border-color: #ffffff;
+  }
+
+  /* 下部スリム操作バー（常時配置） */
+  #bottom-slim-bar {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(15, 23, 42, 0.48);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    padding: 5px 8px;
+    border-radius: 999px;
+    border: 1.5px solid rgba(255, 255, 255, 0.45);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    max-width: 96vw;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  #bottom-slim-bar::-webkit-scrollbar {
+    display: none;
+  }
+  .ctrl-btn {
+    background: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+    border: 1.5px solid rgba(255, 255, 255, 0.55);
+    border-radius: 999px;
+    padding: 7px 13px;
+    font-size: 12px;
+    font-weight: 900;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+    cursor: pointer;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: transform 0.1s, background 0.15s;
+  }
+  .ctrl-btn:active {
+    transform: scale(0.93);
+  }
+  .ctrl-btn:disabled {
+    opacity: 0.35;
+    pointer-events: none;
+  }
+  .ctrl-btn.feed-btn {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.82), rgba(249, 115, 22, 0.82));
+    border-color: #fde047;
+  }
+  .ctrl-btn.hint-btn {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.78), rgba(5, 150, 105, 0.78));
+    border-color: #a7f3d0;
+  }
+  .ctrl-btn.voice-btn {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.75), rgba(37, 99, 235, 0.75));
+    border-color: #bfdbfe;
+  }
+
+  /* UI最小化モード（👁️ ON時） */
+  body.ui-minimized #top-left-hud {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-10px);
+  }
+  body.ui-minimized #question-card {
+    transform: translateX(-50%) scale(0.86);
+    top: 10px;
+  }
+  body.ui-minimized #bottom-slim-bar .btn-label {
+    display: none;
+  }
+
+  /* =========================================================
+     モーダル：🏆 ごちそうさまコレクション（どうぶつ図鑑）
+     ========================================================= */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(15, 23, 42, 0.82);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    color: #fff;
+  }
+  .modal-overlay.active {
+    display: flex;
+  }
+  .collection-card {
+    width: min(95vw, 500px);
+    max-height: 88vh;
+    background: linear-gradient(180deg, #1e1b4b 0%, #0f172a 100%);
+    border: 2.5px solid #fde047;
+    border-radius: 24px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+    overflow: hidden;
+  }
+  .col-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .col-header h2 {
+    font-size: 16px;
+    color: #fde047;
+    font-weight: 900;
+  }
+  #col-preview-stage {
+    width: 100%;
+    height: 175px;
+    background: radial-gradient(circle, #38bdf8 0%, #1e3a8a 100%);
+    border-radius: 16px;
+    border: 1.5px solid rgba(255, 255, 255, 0.25);
+    position: relative;
+    cursor: grab;
+  }
+  #col-preview-caption {
+    position: absolute;
+    bottom: 6px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 12.5px;
+    font-weight: 900;
+    color: #fef08a;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+    pointer-events: none;
+  }
+  .animal-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    overflow-y: auto;
+    padding: 2px;
+  }
+  .animal-cell {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1.5px solid rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+    padding: 7px 4px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 800;
+    color: #cbd5e1;
+    transition: transform 0.1s, border-color 0.15s;
+  }
+  .animal-cell:active {
+    transform: scale(0.94);
+  }
+  .animal-cell.fed {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.32), rgba(249, 115, 22, 0.32));
+    border-color: #f9a8d4;
+    color: #fff;
+  }
+  .animal-cell.active-cell {
+    border-color: #fde047;
+    box-shadow: 0 0 10px rgba(253, 224, 71, 0.6);
+  }
+  .animal-cell .a-emo {
+    font-size: 22px;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  @media (max-width: 400px) {
+    #formula-badge {
+      font-size: 15.5px;
+      padding: 4px 8px;
+    }
+    #q-main-text {
+      font-size: 12px;
+    }
+    .num-choice-btn {
+      height: 56px;
+      font-size: 22px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<!-- 左上：現在レベル＆ごちそうさま図鑑ボタン -->
+<div id="top-left-hud">
+  <button class="hud-pill" id="level-badge-btn" title="タップでレベル切り替え">
+    🐰 <span id="current-level-label">Lv.1 5までの数①</span>
+  </button>
+  <button class="hud-pill" id="collection-open-btn" title="ごちそうさま図鑑を開く">
+    🏆 ごちそうさま図鑑 <span id="fed-count-label">0/8</span>
+  </button>
+</div>
+
+<!-- 右上：カメラ視点・設定メニュー・音・UI最小化 -->
+<div id="top-right-hud">
+  <button class="tr-btn" id="quick-cam-btn" title="カメラ視点を切り替え">
+    🎥 <span id="cam-label">正面</span>
+  </button>
+  <button class="tr-btn" id="open-settings-btn">
+    ⚙️ 設定 ▾
+  </button>
+  <button class="tr-btn icon-only" id="sound-toggle-btn" title="音声・効果音ON/OFF">🔊</button>
+  <button class="tr-btn icon-only" id="ui-min-btn" title="すっきり表示（UI最小化）">👁️</button>
+</div>
+
+<!-- 右上：収納設定ドロワー -->
+<div id="settings-drawer">
+  <div class="drawer-section">
+    <div class="drawer-title">
+      <span>⭐ レベル選択（ひきざんステップ）</span>
+      <span style="cursor:pointer;color:#cbd5e1;font-size:14px;" id="close-drawer-btn">✕</span>
+    </div>
+    <div class="grid-2" id="level-select-grid">
+      <button class="menu-chip selected" data-lv="1">Lv.1 5まで(引1〜2)</button>
+      <button class="menu-chip" data-lv="2">Lv.2 5まで(引1〜4)</button>
+      <button class="menu-chip" data-lv="3">Lv.3 8まで(引1〜3)</button>
+      <button class="menu-chip" data-lv="4">Lv.4 10まで(引2〜6)</button>
+      <button class="menu-chip" data-lv="5" style="grid-column: span 2;">Lv.5 ぜんぶ食べた「0」＆まとめ</button>
+    </div>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-title"><span>🐾 くいしんぼう動物をえらぶ</span></div>
+    <div class="grid-4" id="animal-select-grid"></div>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-title"><span>🎥 カメラ視点（スワイプで微調整OK）</span></div>
+    <div class="grid-3" id="cam-select-grid">
+      <button class="menu-chip selected" data-cam="front">🎥 正面</button>
+      <button class="menu-chip" data-cam="plate">🍽️ お皿アップ</button>
+      <button class="menu-chip" data-cam="angle">📐 ななめ</button>
+    </div>
+  </div>
+</div>
+
+<!-- 上部中央：お題＆数式カード（タップで音声読み上げリピート） -->
+<div id="question-card" title="タップすると問題をもう一度読み上げます">
+  <div id="formula-badge">🍎 5 - 2 = ？</div>
+  <div class="q-text-wrap">
+    <div id="q-main-text">ウサギさんに リンゴを 2こ 食べさせよう！</div>
+    <div id="q-sub-text">👆 お皿の食べ物をタッチしてね（あと 2こ）</div>
+  </div>
+</div>
+
+<!-- カウント＆やさしい声かけトースト -->
+<div id="count-toast">🍓 1こ パクッ！</div>
+
+<!-- 最下部：半透明クリア操作エリア -->
+<div id="bottom-ui-area">
+  <!-- フェーズ2（残りの数を答えるとき）に表示される半透明3択ボタン -->
+  <div id="choice-row">
+    <button class="num-choice-btn" data-choice="0">1<small>こ</small></button>
+    <button class="num-choice-btn" data-choice="1">2<small>こ</small></button>
+    <button class="num-choice-btn" data-choice="2">3<small>こ</small></button>
+  </div>
+
+  <!-- 常時表示のスリム操作バー -->
+  <div id="bottom-slim-bar">
+    <button class="ctrl-btn feed-btn" id="feed-one-btn" title="動物に食べ物を1こあげる">
+      🍴<span class="btn-label" id="feed-btn-label">1こ食べさせる</span>
+    </button>
+    <button class="ctrl-btn hint-btn" id="count-hint-btn" title="残りの食べ物を1つずつ光らせて一緒に数える">
+      💡<span class="btn-label">いっしょにかぞえる</span>
+    </button>
+    <button class="ctrl-btn voice-btn" id="speak-q-btn" title="問題を音声で読み上げる">
+      🗣️<span class="btn-label">もんだいをきく</span>
+    </button>
+  </div>
+</div>
+
+<!-- モーダル：🏆 ごちそうさまコレクション図鑑 -->
+<div class="modal-overlay" id="collection-modal">
+  <div class="collection-card">
+    <div class="col-header">
+      <h2>🏆 ごちそうさまコレクション（360°回転）</h2>
+      <button class="tr-btn" id="close-col-btn">✕ とじる</button>
+    </div>
+    <div id="col-preview-stage">
+      <div id="col-preview-caption">動物をえらぶと3Dで表示されます</div>
+    </div>
+    <div class="animal-grid" id="collection-grid"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+<script>
+(() => {
+  // ==========================================
+  // 1. 動物8種＆食べ物6種のマスターデータ
+  // ==========================================
+  const ANIMALS = [
+    { id: 'rabbit', name: 'ウサギさん', emoji: '🐰', color: 0xf9a8d4, subColor: 0xffffff, earType: 'long' },
+    { id: 'elephant', name: 'ゾウさん', emoji: '🐘', color: 0x60a5fa, subColor: 0xdbeafe, earType: 'wide' },
+    { id: 'panda', name: 'パンダさん', emoji: '🐼', color: 0xffffff, subColor: 0x1e293b, earType: 'roundBlack' },
+    { id: 'bear', name: 'クマさん', emoji: '🐻', color: 0xd97706, subColor: 0xfef3c7, earType: 'round' },
+    { id: 'lion', name: 'ライオンさん', emoji: '🦁', color: 0xf59e0b, subColor: 0xb45309, earType: 'mane' },
+    { id: 'penguin', name: 'ペンギンさん', emoji: '🐧', color: 0x0284c7, subColor: 0xffffff, earType: 'none' },
+    { id: 'koala', name: 'コアラさん', emoji: '🐨', color: 0x94a3b8, subColor: 0xf1f5f9, earType: 'fluffy' },
+    { id: 'hamster', name: 'ハムスターさん', emoji: '🐹', color: 0xfbbf24, subColor: 0xffffff, earType: 'small' }
+  ];
+
+  const FOODS = [
+    { id: 'apple', name: 'リンゴ', emoji: '🍎', unit: 'こ' },
+    { id: 'donut', name: 'ドーナツ', emoji: '🍩', unit: 'こ' },
+    { id: 'strawberry', name: 'イチゴ', emoji: '🍓', unit: 'こ' },
+    { id: 'onigiri', name: 'おにぎり', emoji: '🍙', unit: 'こ' },
+    { id: 'banana', name: 'バナナ', emoji: '🍌', unit: 'こ' },
+    { id: 'melonpan', name: 'メロンパン', emoji: '🍈', unit: 'こ' }
+  ];
+
+  const LEVEL_SPECS = {
+    1: { label: 'Lv.1 5までの数①', minTotal: 2, maxTotal: 5, minEat: 1, maxEat: 2, allowZero: false },
+    2: { label: 'Lv.2 5までの数②', minTotal: 3, maxTotal: 5, minEat: 1, maxEat: 4, allowZero: false },
+    3: { label: 'Lv.3 8までの数',   minTotal: 6, maxTotal: 8, minEat: 1, maxEat: 3, allowZero: false },
+    4: { label: 'Lv.4 10までの数',  minTotal: 7, maxTotal: 10, minEat: 2, maxEat: 6, allowZero: false },
+    5: { label: 'Lv.5 0とまとめ',   minTotal: 3, maxTotal: 8, minEat: 1, maxEat: 8, allowZero: true }
+  };
+
+  // ごちそうさま回数保存（localStorage）
+  const STORAGE_KEY = 'animal_lunch_subtraction_v1';
+  let fedRecords = {};
+  try {
+    fedRecords = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  } catch (e) {
+    fedRecords = {};
+  }
+
+  function saveFedProgress() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(fedRecords));
+    } catch (e) {}
+    updateFedBadge();
+  }
+
+  function updateFedBadge() {
+    const count = ANIMALS.filter(a => (fedRecords[a.id] || 0) > 0).length;
+    document.getElementById('fed-count-label').textContent = `${count}/${ANIMALS.length}`;
+  }
+  updateFedBadge();
+
+  // ==========================================
+  // 2. Web Speech API（読み上げ）＆ Web Audio API（効果音合成）
+  // ==========================================
+  class SoundSystem {
+    constructor() {
+      this.ctx = null;
+      this.enabled = true;
+    }
+    init() {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) this.ctx = new AudioCtx();
+      }
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+    }
+    speak(text, rate = 0.98, pitch = 1.15) {
+      if (!this.enabled || !('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'ja-JP';
+        u.rate = rate;
+        u.pitch = pitch;
+        window.speechSynthesis.speak(u);
+      } catch (e) {}
+    }
+    playTone(freq, dur = 0.14, type = 'sine', vol = 0.15) {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, now);
+      g.gain.setValueAtTime(vol, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      o.connect(g).connect(this.ctx.destination);
+      o.start(now);
+      o.stop(now + dur);
+    }
+    playMunch() {
+      // パクッ！もぐもぐ！の2段サウンド
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      [0, 0.14].forEach((delay, idx) => {
+        const now = this.ctx.currentTime + delay;
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(idx === 0 ? 320 : 420, now);
+        o.frequency.exponentialRampToValueAtTime(idx === 0 ? 580 : 680, now + 0.11);
+        g.gain.setValueAtTime(0.18, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        o.connect(g).connect(this.ctx.destination);
+        o.start(now);
+        o.stop(now + 0.13);
+      });
+    }
+    playCountPop(index) {
+      // 1, 2, 3... と数えるたびに音階が上がる心地よいマリンバ風音
+      const scale = [523.25, 587.33, 659.25, 698.46, 783.99, 880.0, 987.77, 1046.5, 1174.66, 1318.5];
+      const f = scale[index % scale.length];
+      this.playTone(f, 0.18, 'triangle', 0.18);
+    }
+    playFanfare() {
+      const notes = [523.25, 659.25, 783.99, 1046.5];
+      notes.forEach((f, i) => {
+        setTimeout(() => this.playTone(f, 0.26, 'triangle', 0.18), i * 95);
+      });
+    }
+    playGentleBoing() {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(280, now);
+      o.frequency.exponentialRampToValueAtTime(440, now + 0.18);
+      g.gain.setValueAtTime(0.14, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      o.connect(g).connect(this.ctx.destination);
+      o.start(now);
+      o.stop(now + 0.21);
+    }
+  }
+  const sound = new SoundSystem();
+
+  // ==========================================
+  // 3. Three.js + Cannon.js 3Dピクニックランチ空間構築
+  // ==========================================
+  const container = document.getElementById('canvas-container');
+  const scene = new THREE.Scene();
+
+  const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 160);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  container.appendChild(renderer.domElement);
+
+  // 明るいピクニック照明
+  scene.add(new THREE.AmbientLight(0xfffbeb, 0.86));
+  const sunLight = new THREE.DirectionalLight(0xffffff, 0.94);
+  sunLight.position.set(8, 24, 14);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.width = 1024;
+  sunLight.shadow.mapSize.height = 1024;
+  scene.add(sunLight);
+
+  // Cannon.js 物理ワールド（お皿に食べ物がコロンと落ちる演出用）
+  const world = new CANNON.World();
+  world.gravity.set(0, -24, 0);
+  const foodPhysMat = new CANNON.Material('food');
+  const platePhysMat = new CANNON.Material('plate');
+  world.addContactMaterial(new CANNON.ContactMaterial(foodPhysMat, platePhysMat, {
+    friction: 0.65,
+    restitution: 0.22
+  }));
+
+  const plateStaticBody = new CANNON.Body({ mass: 0, material: platePhysMat });
+  plateStaticBody.addShape(new CANNON.Box(new CANNON.Vec3(8, 0.4, 8)));
+  plateStaticBody.position.set(0, -0.1, 1.5);
+  world.addBody(plateStaticBody);
+
+  // 3Dピクニック環境グループ
+  const envGroup = new THREE.Group();
+  scene.add(envGroup);
+
+  // 緑の草原フィールド
+  const meadow = new THREE.Mesh(
+    new THREE.CylinderGeometry(36, 36, 1, 36),
+    new THREE.MeshStandardMaterial({ color: 0x86efac, roughness: 0.85 })
+  );
+  meadow.position.y = -3.6;
+  envGroup.add(meadow);
+
+  // ギンガムチェックのピクニックテーブルクロス生成
+  function createGinghamTexture() {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 256;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = 'rgba(244, 63, 94, 0.35)';
+    for (let i = 0; i < 4; i++) {
+      ctx.fillRect(i * 64, 0, 32, 256);
+      ctx.fillRect(0, i * 64, 256, 32);
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(5, 4);
+    return tex;
+  }
+
+  // ピクニックテーブル本体
+  const tableTop = new THREE.Mesh(
+    new THREE.CylinderGeometry(8.2, 8.5, 0.7, 36),
+    new THREE.MeshStandardMaterial({ map: createGinghamTexture(), roughness: 0.45 })
+  );
+  tableTop.scale.set(1.25, 1, 0.92);
+  tableTop.position.set(0, -0.55, 0.8);
+  tableTop.receiveShadow = true;
+  envGroup.add(tableTop);
+
+  const tableWoodRim = new THREE.Mesh(
+    new THREE.CylinderGeometry(8.45, 8.6, 0.55, 36),
+    new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 })
+  );
+  tableWoodRim.scale.set(1.26, 1, 0.93);
+  tableWoodRim.position.set(0, -0.65, 0.8);
+  envGroup.add(tableWoodRim);
+
+  // 食べ物が並ぶ大きな白いランチプレート（手前中央: z = 1.65）
+  const plateGroup = new THREE.Group();
+  plateGroup.position.set(0, -0.1, 1.65);
+  envGroup.add(plateGroup);
+
+  const plateBase = new THREE.Mesh(
+    new THREE.CylinderGeometry(5.6, 5.1, 0.25, 36),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 })
+  );
+  plateBase.scale.set(1.22, 1, 0.78);
+  plateBase.receiveShadow = true;
+  plateGroup.add(plateBase);
+
+  const plateRim = new THREE.Mesh(
+    new THREE.TorusGeometry(5.45, 0.22, 12, 36),
+    new THREE.MeshStandardMaterial({ color: 0xfde047, roughness: 0.25 })
+  );
+  plateRim.rotation.x = Math.PI / 2;
+  plateRim.scale.set(1.22, 0.78, 1);
+  plateRim.position.y = 0.12;
+  plateGroup.add(plateRim);
+
+  // 背景の木々とふわふわ風船
+  const balloons = [];
+  const bCols = [0xf43f5e, 0xfacc15, 0x38bdf8, 0xa855f7, 0x4ade80];
+  [[-10, -5], [10, -5], [-13, 0], [13, 0]].forEach(([tx, tz], idx) => {
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.45, 0.65, 3.2, 8),
+      new THREE.MeshStandardMaterial({ color: 0x78350f })
+    );
+    trunk.position.set(tx, -1.8, tz);
+    const leaves = new THREE.Mesh(
+      new THREE.SphereGeometry(2.4, 12, 12),
+      new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.7 })
+    );
+    leaves.position.set(tx, 0.8, tz);
+    envGroup.add(trunk, leaves);
+
+    const balloon = new THREE.Mesh(
+      new THREE.SphereGeometry(0.95, 14, 14),
+      new THREE.MeshStandardMaterial({ color: bCols[idx % bCols.length], roughness: 0.2 })
+    );
+    balloon.scale.y = 1.2;
+    balloon.position.set(tx * 0.85, 5.2 + (idx % 2) * 1.2, tz - 1);
+    envGroup.add(balloon);
+    balloons.push({ mesh: balloon, baseY: balloon.position.y, phase: idx * 1.4 });
+  });
+
+  // ==========================================
+  // 4. パクパク動く！3Dくいしんぼう動物モデル（全8種）と3Dフード（全6種）
+  // ==========================================
+  function createAnimal3D(spec) {
+    const root = new THREE.Group();
+    const mainMat = new THREE.MeshStandardMaterial({ color: spec.color, roughness: 0.35 });
+    const subMat = new THREE.MeshStandardMaterial({ color: spec.subColor, roughness: 0.4 });
+    const darkMat = new THREE.MeshBasicMaterial({ color: 0x111827 });
+    const cheekMat = new THREE.MeshBasicMaterial({ color: 0xfb7185 });
+
+    // ぽっちゃり胴体＋白いスタイ（よだれかけ）
+    const body = new THREE.Mesh(new THREE.SphereGeometry(1.15, 18, 16), mainMat);
+    body.scale.set(1.05, 0.96, 0.92);
+    body.position.y = 1.05;
+    body.castShadow = true;
+    root.add(body);
+
+    const belly = new THREE.Mesh(new THREE.SphereGeometry(0.86, 14, 14), subMat);
+    belly.scale.set(0.95, 0.88, 0.45);
+    belly.position.set(0, 1.0, 0.75);
+    root.add(belly);
+
+    // 頭部グループ
+    const headGroup = new THREE.Group();
+    headGroup.position.set(0, 2.55, 0.15);
+    root.add(headGroup);
+
+    const headMesh = new THREE.Mesh(new THREE.SphereGeometry(1.05, 18, 16), mainMat);
+    headMesh.scale.set(1.08, 0.96, 1.0);
+    headMesh.castShadow = true;
+    headGroup.add(headMesh);
+
+    // ライオンのたてがみ
+    if (spec.earType === 'mane') {
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 10), subMat);
+        tuft.position.set(Math.cos(a) * 1.02, Math.sin(a) * 0.95, -0.15);
+        headGroup.add(tuft);
+      }
+    }
+
+    // 瞳・ハイライト・ほっぺ
+    [-0.4, 0.4].forEach(ex => {
+      if (spec.id === 'panda') {
+        const patch = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 10), subMat);
+        patch.scale.set(1.1, 0.85, 0.4);
+        patch.position.set(ex, 0.15, 0.88);
+        headGroup.add(patch);
+      }
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 10), darkMat);
+      eye.position.set(ex, 0.16, 0.95);
+      const shine = new THREE.Mesh(new THREE.SphereGeometry(0.055, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      shine.position.set(ex + 0.05, 0.22, 1.08);
+      const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), cheekMat);
+      cheek.scale.set(1.25, 0.75, 0.5);
+      cheek.position.set(ex * 1.45, -0.08, 0.92);
+      headGroup.add(eye, shine, cheek);
+    });
+
+    // パクパク開閉する口（jawGroup）
+    const mouthBg = new THREE.Mesh(
+      new THREE.SphereGeometry(0.38, 12, 10),
+      new THREE.MeshBasicMaterial({ color: 0x991b1b })
+    );
+    mouthBg.scale.set(1.1, 0.8, 0.5);
+    mouthBg.position.set(0, -0.22, 0.92);
+    headGroup.add(mouthBg);
+
+    const jawGroup = new THREE.Group();
+    jawGroup.position.set(0, -0.22, 0.95);
+    const lowerLip = new THREE.Mesh(new THREE.SphereGeometry(0.36, 12, 10), subMat);
+    lowerLip.scale.set(1.15, 0.55, 0.7);
+    jawGroup.add(lowerLip);
+    headGroup.add(jawGroup);
+
+    // ゾウの長い鼻 または ペンギンのくちばし または 通常の鼻
+    if (spec.id === 'elephant') {
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.16, 0.95, 10), mainMat);
+      trunk.rotation.x = -0.55;
+      trunk.position.set(0, -0.1, 1.15);
+      headGroup.add(trunk);
+    } else if (spec.id === 'penguin') {
+      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.45, 8), new THREE.MeshStandardMaterial({ color: 0xfacc15 }));
+      beak.rotation.x = Math.PI / 2;
+      beak.position.set(0, -0.05, 1.15);
+      headGroup.add(beak);
+    } else {
+      const nose = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), darkMat);
+      nose.position.set(0, 0.02, 1.08);
+      headGroup.add(nose);
+    }
+
+    // 耳のバリエーション
+    const earMat = spec.earType === 'roundBlack' ? subMat : mainMat;
+    if (spec.earType === 'long') {
+      [-0.42, 0.42].forEach((ex, i) => {
+        const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, 1.25, 12), mainMat);
+        ear.position.set(ex, 1.25, 0);
+        ear.rotation.z = i === 0 ? 0.15 : -0.15;
+        headGroup.add(ear);
+      });
+    } else if (spec.earType === 'wide') {
+      [-1.05, 1.05].forEach(ex => {
+        const ear = new THREE.Mesh(new THREE.SphereGeometry(0.65, 12, 12), mainMat);
+        ear.scale.set(0.35, 1.1, 0.9);
+        ear.position.set(ex, 0.1, -0.1);
+        headGroup.add(ear);
+      });
+    } else if (spec.earType === 'fluffy') {
+      [-0.85, 0.85].forEach(ex => {
+        const ear = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 12), mainMat);
+        ear.position.set(ex, 0.55, 0);
+        headGroup.add(ear);
+      });
+    } else if (spec.earType !== 'none') {
+      [-0.68, 0.68].forEach(ex => {
+        const ear = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 10), earMat);
+        ear.position.set(ex, 0.82, 0);
+        headGroup.add(ear);
+      });
+    }
+
+    // 両手（喜ぶときにバンザイする）
+    const leftArm = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 10), spec.id === 'panda' ? subMat : mainMat);
+    leftArm.position.set(-1.12, 1.25, 0.35);
+    const rightArm = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 10), spec.id === 'panda' ? subMat : mainMat);
+    rightArm.position.set(1.12, 1.25, 0.35);
+    root.add(leftArm, rightArm);
+
+    root.userData = { headGroup, jawGroup, leftArm, rightArm, munchTimer: 0, happyTimer: 0 };
+    return root;
+  }
+
+  // 全6種の3Dフードメッシュ生成
+  function createFood3D(foodId) {
+    const g = new THREE.Group();
+    if (foodId === 'apple') {
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.52, 16, 14), new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.2 }));
+      body.position.y = 0.48;
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.25, 6), new THREE.MeshStandardMaterial({ color: 0x78350f }));
+      stem.position.y = 1.0;
+      const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), new THREE.MeshStandardMaterial({ color: 0x22c55e }));
+      leaf.scale.set(1.6, 0.4, 0.8);
+      leaf.position.set(0.16, 1.02, 0);
+      g.add(body, stem, leaf);
+    } else if (foodId === 'donut') {
+      const base = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.22, 12, 20), new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.35 }));
+      base.rotation.x = Math.PI / 2;
+      base.position.y = 0.24;
+      const choco = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.2, 12, 20), new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.25 }));
+      choco.rotation.x = Math.PI / 2;
+      choco.position.y = 0.29;
+      g.add(base, choco);
+    } else if (foodId === 'strawberry') {
+      const berry = new THREE.Mesh(new THREE.ConeGeometry(0.46, 0.82, 14), new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.25 }));
+      berry.rotation.x = Math.PI;
+      berry.position.y = 0.45;
+      const calyx = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.05, 0.12, 7), new THREE.MeshStandardMaterial({ color: 0x22c55e }));
+      calyx.position.y = 0.86;
+      g.add(berry, calyx);
+    } else if (foodId === 'onigiri') {
+      const rice = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.58, 0.38, 3), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 }));
+      rice.rotation.x = Math.PI / 2;
+      rice.rotation.y = Math.PI;
+      rice.position.y = 0.42;
+      const nori = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.42, 0.42), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+      nori.position.y = 0.25;
+      g.add(rice, nori);
+    } else if (foodId === 'banana') {
+      const arc = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.16, 10, 16, Math.PI * 0.85), new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.3 }));
+      arc.rotation.z = 0.35;
+      arc.position.y = 0.35;
+      g.add(arc);
+    } else {
+      // メロンパン
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(0.56, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.6), new THREE.MeshStandardMaterial({ color: 0xa3e635, roughness: 0.4 }));
+      dome.position.y = 0.12;
+      const grid = new THREE.Mesh(new THREE.SphereGeometry(0.57, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.58), new THREE.MeshBasicMaterial({ color: 0xfef08a, wireframe: true }));
+      grid.position.y = 0.12;
+      g.add(dome, grid);
+    }
+    return g;
+  }
+
+  // ==========================================
+  // 5. ゲーム進行管理（フェーズ1:食べさせる → フェーズ2:残りを数えて3択）
+  // ==========================================
+  let currentLevel = 1;
+  let currentAnimalIdx = 0;
+  let currentAnimalMesh = null;
+  let currentFoodSpec = FOODS[0];
+
+  let initialTotal = 5;   // 最初の数 A
+  let targetEatCount = 2; // 食べる数 B
+  let eatenSoFar = 0;     // いま食べた数
+  let gamePhase = 'FEEDING'; // 'FEEDING' | 'ANSWERING' | 'CELEBRATING'
+
+  // お皿の上の食べ物リスト
+  // { index, mesh, body, ghostRing, numberBadge, eaten, flying, flyT, startPos, bounceY }
+  const foodItems = [];
+  const particles = [];
+
+  function spawnParticles(pos, colorHex = 0xf43f5e, count = 24) {
+    const cols = [colorHex, 0xfacc15, 0x38bdf8, 0x4ade80, 0xf472b6];
+    for (let i = 0; i < count; i++) {
+      const m = new THREE.Mesh(
+        new THREE.SphereGeometry(0.14, 6, 6),
+        new THREE.MeshBasicMaterial({ color: cols[i % cols.length] })
+      );
+      m.position.copy(pos);
+      scene.add(m);
+      particles.push({
+        mesh: m,
+        vel: new THREE.Vector3((Math.random() - 0.5) * 0.28, 0.15 + Math.random() * 0.22, (Math.random() - 0.5) * 0.28),
+        life: 48
+      });
+    }
+  }
+
+  // 数えたときに食べ物の上に浮かぶ数字バッジスプライト生成
+  function createNumberBadgeSprite(numText) {
+    const c = document.createElement('canvas');
+    c.width = 128;
+    c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.beginPath();
+    ctx.arc(64, 64, 54, 0, Math.PI * 2);
+    ctx.fillStyle = '#f97316';
+    ctx.fill();
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = '#fde047';
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 68px "Hiragino Maru Gothic ProN", "Meiryo", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(numText), 64, 66);
+
+    const tex = new THREE.CanvasTexture(c);
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+    const sp = new THREE.Sprite(mat);
+    sp.scale.set(1.25, 1.25, 1);
+    return sp;
+  }
+
+  function showToast(text) {
+    const el = document.getElementById('count-toast');
+    el.textContent = text;
+    el.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => el.classList.remove('show'), 2200);
+  }
+
+  function clearFoodItems() {
+    foodItems.forEach(item => {
+      scene.remove(item.mesh);
+      scene.remove(item.ghostRing);
+      if (item.numberBadge) scene.remove(item.numberBadge);
+      if (item.body) world.removeBody(item.body);
+    });
+    foodItems.length = 0;
+  }
+
+  function setupAnimalCharacter(animalIdx) {
+    currentAnimalIdx = animalIdx;
+    if (currentAnimalMesh) scene.remove(currentAnimalMesh);
+    const spec = ANIMALS[currentAnimalIdx];
+    currentAnimalMesh = createAnimal3D(spec);
+    currentAnimalMesh.position.set(0, -0.2, -2.1);
+    scene.add(currentAnimalMesh);
+
+    document.querySelectorAll('#animal-select-grid .menu-chip').forEach((btn, idx) => {
+      btn.classList.toggle('selected', idx === currentAnimalIdx);
+    });
+  }
+
+  // お皿の上に綺麗で見やすい2列または円形で食べ物を配置する座標計算
+  function getPlateSlotPosition(idx, total) {
+    if (total <= 5) {
+      const spacing = 1.85;
+      const x = (idx - (total - 1) / 2) * spacing;
+      return new THREE.Vector3(x, 0.08, 1.65);
+    } else {
+      // 6〜10個は上段5個・下段残りの2列配置（10のまとまりが直感的にわかりやすい構成）
+      const topRowCount = 5;
+      const isTop = idx < topRowCount;
+      const rowIdx = isTop ? idx : idx - topRowCount;
+      const rowTotal = isTop ? topRowCount : (total - topRowCount);
+      const spacing = 1.72;
+      const x = (rowIdx - (rowTotal - 1) / 2) * spacing;
+      const z = isTop ? 0.85 : 2.45;
+      return new THREE.Vector3(x, 0.08, z);
+    }
+  }
+
+  function startNewQuestion(speakNow = true) {
+    clearFoodItems();
+    eatenSoFar = 0;
+    gamePhase = 'FEEDING';
+
+    const lvSpec = LEVEL_SPECS[currentLevel];
+    document.getElementById('level-badge-btn').innerHTML = `🐰 <span id="current-level-label">${lvSpec.label}</span>`;
+
+    // 最初の数 A と 食べる数 B を決定
+    initialTotal = lvSpec.minTotal + Math.floor(Math.random() * (lvSpec.maxTotal - lvSpec.minTotal + 1));
+
+    if (lvSpec.allowZero && Math.random() < 0.45) {
+      // Lv.5では高確率で「ぜんぶ食べちゃった（A - A = 0）」を出題
+      targetEatCount = initialTotal;
+    } else {
+      const maxPossibleEat = Math.min(lvSpec.maxEat, initialTotal - 1);
+      const minPossibleEat = Math.min(lvSpec.minEat, maxPossibleEat);
+      targetEatCount = minPossibleEat + Math.floor(Math.random() * (maxPossibleEat - minPossibleEat + 1));
+    }
+
+    currentFoodSpec = FOODS[Math.floor(Math.random() * FOODS.length)];
+    const animalSpec = ANIMALS[currentAnimalIdx];
+
+    // お皿の上に initialTotal 個の3Dフード＆食べたあとリングを生成
+    for (let i = 0; i < initialTotal; i++) {
+      const slotPos = getPlateSlotPosition(i, initialTotal);
+      const mesh = createFood3D(currentFoodSpec.id);
+      scene.add(mesh);
+
+      // 食べたあとに残る点線風シルエットリング（「もともとここにあった」が見える）
+      const ghostRing = new THREE.Mesh(
+        new THREE.RingGeometry(0.42, 0.58, 24),
+        new THREE.MeshBasicMaterial({ color: 0x94a3b8, side: THREE.DoubleSide, transparent: true, opacity: 0.0 })
+      );
+      ghostRing.rotation.x = -Math.PI / 2;
+      ghostRing.position.set(slotPos.x, 0.06, slotPos.z);
+      scene.add(ghostRing);
+
+      // 物理ボディ（上からコロンと落ちてお皿に着地）
+      const body = new CANNON.Body({
+        mass: 1.0,
+        material: foodPhysMat,
+        linearDamping: 0.5,
+        angularDamping: 0.8
+      });
+      body.addShape(new CANNON.Sphere(0.5));
+      body.position.set(slotPos.x, 2.2 + i * 0.35, slotPos.z);
+      world.addBody(body);
+
+      foodItems.push({
+        index: i,
+        slotPos,
+        mesh,
+        body,
+        ghostRing,
+        numberBadge: null,
+        eaten: false,
+        flying: false,
+        flyT: 0,
+        startPos: new THREE.Vector3(),
+        bounceY: 0
+      });
+    }
+
+    // UIをフェーズ1（食べさせる）に更新
+    document.getElementById('choice-row').classList.remove('active');
+    const feedBtn = document.getElementById('feed-one-btn');
+    feedBtn.disabled = false;
+    document.getElementById('feed-btn-label').textContent = `1こ食べさせる (あと${targetEatCount}こ)`;
+
+    updateQuestionBanner();
+
+    if (speakNow) {
+      sound.speak(
+        `さいしょは ${currentFoodSpec.name}が ${initialTotal}こ あるよ。` +
+        `${animalSpec.name}に、${targetEatCount}こ 食べさせてあげよう！`
+      );
+    }
+  }
+
+  function updateQuestionBanner() {
+    const animalSpec = ANIMALS[currentAnimalIdx];
+    const formulaEl = document.getElementById('formula-badge');
+    const mainEl = document.getElementById('q-main-text');
+    const subEl = document.getElementById('q-sub-text');
+
+    if (gamePhase === 'FEEDING') {
+      const remToEat = targetEatCount - eatenSoFar;
+      formulaEl.textContent = `${currentFoodSpec.emoji} ${initialTotal} - ${targetEatCount} = ？`;
+      mainEl.textContent = `${animalSpec.name}に ${currentFoodSpec.name}を ${targetEatCount}こ 食べさせよう！`;
+      subEl.textContent = `👆 お皿の${currentFoodSpec.name}をタッチしてね（あと ${remToEat}こ）`;
+    } else if (gamePhase === 'ANSWERING') {
+      formulaEl.textContent = `${currentFoodSpec.emoji} ${initialTotal} - ${targetEatCount} = ？`;
+      mainEl.textContent = `さいしょは ${initialTotal}こ。${targetEatCount}こ 食べたよ。のこりは いくつ？`;
+      subEl.textContent = `👆 お皿をタッチして数えるか、下の数字をえらぼう！`;
+    } else {
+      const ans = initialTotal - targetEatCount;
+      formulaEl.textContent = `${currentFoodSpec.emoji} ${initialTotal} - ${targetEatCount} = ${ans}`;
+      mainEl.textContent = `大正解！ ${initialTotal} ひく ${targetEatCount} は、${ans} だね！`;
+      subEl.textContent = `✨ ${animalSpec.name}「ごちそうさまでした♪」`;
+    }
+  }
+
+  // 食べ物を1つ動物の口へ飛ばして食べさせる処理
+  function feedFoodItem(item) {
+    if (gamePhase !== 'FEEDING' || item.eaten || item.flying) return;
+    if (eatenSoFar >= targetEatCount) return;
+
+    item.flying = true;
+    item.flyT = 0;
+    item.startPos.copy(item.mesh.position);
+    if (item.body) {
+      world.removeBody(item.body);
+      item.body = null;
+    }
+
+    eatenSoFar++;
+    const currentEatNum = eatenSoFar;
+    sound.playCountPop(currentEatNum - 1);
+
+    const remToEat = targetEatCount - eatenSoFar;
+    if (remToEat > 0) {
+      document.getElementById('feed-btn-label').textContent = `1こ食べさせる (あと${remToEat}こ)`;
+    } else {
+      document.getElementById('feed-one-btn').disabled = true;
+      document.getElementById('feed-btn-label').textContent = `もぐもぐ完了！`;
+    }
+    updateQuestionBanner();
+  }
+
+  // フェーズ2：残りの数を尋ねる＆3択ボタン生成
+  function transitionToAnsweringPhase() {
+    gamePhase = 'ANSWERING';
+    updateQuestionBanner();
+
+    const answer = initialTotal - targetEatCount;
+    // 3択の選択肢を作成（正解＋近い数字2つ）
+    const choicesSet = new Set([answer]);
+    const candidates = [answer - 1, answer + 1, answer + 2, answer - 2, 0, 1, 2, 3, 4, 5];
+    for (const c of candidates) {
+      if (c >= 0 && c <= 10 && choicesSet.size < 3) {
+        choicesSet.add(c);
+      }
+    }
+    const choices = Array.from(choicesSet).sort((a, b) => a - b);
+
+    const choiceBtns = document.querySelectorAll('#choice-row .num-choice-btn');
+    choices.forEach((val, idx) => {
+      const btn = choiceBtns[idx];
+      btn.dataset.val = val;
+      btn.innerHTML = `${val}<small>こ</small>`;
+    });
+    document.getElementById('choice-row').classList.add('active');
+
+    const animalSpec = ANIMALS[currentAnimalIdx];
+    showToast(`🤔 さいしょは ${initialTotal}こ、${targetEatCount}こ 食べたよ。のこりは いくつ？`);
+    sound.speak(
+      `${animalSpec.name}が、${targetEatCount}こ 食べたよ。` +
+      `さいしょは ${initialTotal}こ あったね。のこりは、いくつかな？`
+    );
+  }
+
+  // お皿に残っている食べ物を1つずつキラキラ光らせて一緒に数える演出
+  let countAssistRunning = false;
+  function countRemainingTogether() {
+    if (countAssistRunning) return;
+    const remainingItems = foodItems.filter(f => !f.eaten);
+
+    // 残り0個（全部食べた）の場合
+    if (remainingItems.length === 0) {
+      sound.playGentleBoing();
+      showToast('🍽️ お皿の上は からっぽ！ ぜんぶ食べちゃったから「0こ」だね！');
+      sound.speak('お皿の上は、からっぽだね！ぜんぶ食べちゃったから、のこりは、れいこ、ゼロだよ！');
+      return;
+    }
+
+    countAssistRunning = true;
+    // 既存の数字バッジを一旦クリア
+    remainingItems.forEach(item => {
+      if (item.numberBadge) {
+        scene.remove(item.numberBadge);
+        item.numberBadge = null;
+      }
+    });
+
+    remainingItems.forEach((item, idx) => {
+      setTimeout(() => {
+        const countNum = idx + 1;
+        sound.playCountPop(idx);
+        item.bounceY = 1.1;
+        spawnParticles(item.mesh.position, 0xfacc15, 10);
+
+        const badge = createNumberBadgeSprite(countNum);
+        badge.position.set(item.slotPos.x, 1.55, item.slotPos.z);
+        scene.add(badge);
+        item.numberBadge = badge;
+
+        showToast(`✨ のこりを数えよう：${countNum}こ！`);
+        sound.speak(`${countNum}`);
+
+        if (idx === remainingItems.length - 1) {
+          setTimeout(() => {
+            countAssistRunning = false;
+          }, 500);
+        }
+      }, idx * 620);
+    });
+  }
+
+  // 3択の数字ボタンを押したときの判定
+  function checkPlayerChoice(selectedVal) {
+    if (gamePhase !== 'ANSWERING') return;
+    const correctAns = initialTotal - targetEatCount;
+    const animalSpec = ANIMALS[currentAnimalIdx];
+
+    if (selectedVal === correctAns) {
+      // 🎉 大正解！
+      gamePhase = 'CELEBRATING';
+      document.getElementById('choice-row').classList.remove('active');
+      updateQuestionBanner();
+
+      fedRecords[animalSpec.id] = (fedRecords[animalSpec.id] || 0) + 1;
+      saveFedProgress();
+
+      sound.playFanfare();
+      if (currentAnimalMesh) {
+        currentAnimalMesh.userData.happyTimer = 110;
+        spawnParticles(currentAnimalMesh.position.clone().add(new THREE.Vector3(0, 2, 0)), 0xf43f5e, 45);
+      }
+
+      if (correctAns === 0) {
+        showToast(`🎉 大正解！！ ぜんぶ食べちゃったから のこりは 0こ！`);
+        sound.speak(`大正解！ ${initialTotal} ひく ${targetEatCount} は、ゼロ！ ぜんぶ食べて、お腹いっぱいだね！`);
+      } else {
+        showToast(`🎉 大正解！！ ${initialTotal} - ${targetEatCount} = ${correctAns} （のこりは ${correctAns}こ！）`);
+        sound.speak(`大正解！ ${initialTotal} ひく ${targetEatCount} は、${correctAns}！ のこりは ${correctAns}こ だね！すごい！`);
+      }
+
+      // 次の問題へ（動物も順番に交代して飽きさせない）
+      setTimeout(() => {
+        const nextAnimal = (currentAnimalIdx + 1) % ANIMALS.length;
+        setupAnimalCharacter(nextAnimal);
+        startNewQuestion(true);
+      }, 3100);
+    } else {
+      // 😊 間違えても怒られないやさしいヒント誘導
+      sound.playGentleBoing();
+      if (correctAns === 0) {
+        showToast('😊 お皿を見てみて！ぜんぶ食べちゃったから、からっぽ（0こ）だよ♪');
+        sound.speak('お皿を見てみてね。ぜんぶ食べちゃったから、のこりは、ゼロこだよ！');
+      } else {
+        showToast('😊 お皿に残っている食べ物を、いっしょに数えてみよう♪');
+        sound.speak('お皿にのこっている食べ物を、いっしょに数えてみよう！');
+        setTimeout(() => countRemainingTogether(), 900);
+      }
+    }
+  }
+
+  // ==========================================
+  // 6. スワイプ自由微調整カメラ＆スマホ縦画面オートフレーミング
+  // ==========================================
+  let camPreset = 'front';
+  const camPresets = {
+    front: { yaw: 0.0, pitch: 0.42, dist: 16.5, label: '正面' },
+    plate: { yaw: 0.0, pitch: 0.78, dist: 15.0, label: 'お皿アップ' },
+    angle: { yaw: 0.45, pitch: 0.48, dist: 17.2, label: 'ななめ' }
+  };
+
+  let yawOffset = 0, pitchOffset = 0, zoomScale = 1.0;
+  let curYaw = 0, curPitch = 0.42, curDist = 16.5;
+
+  function setCameraPreset(mode) {
+    camPreset = mode;
+    yawOffset = 0;
+    pitchOffset = 0;
+    zoomScale = 1.0;
+    document.getElementById('cam-label').textContent = camPresets[mode].label;
+    document.querySelectorAll('#cam-select-grid .menu-chip').forEach(b => {
+      b.classList.toggle('selected', b.dataset.cam === mode);
+    });
+  }
+
+  function updateCameraSmooth() {
+    const aspect = window.innerWidth / window.innerHeight;
+    const isPortrait = aspect < 0.95;
+    const portraitZoom = isPortrait ? Math.min(1.55, 0.92 / aspect) : 1.0;
+    const lookYOffset = isPortrait ? -0.65 : 0.4;
+
+    const base = camPresets[camPreset];
+    const targetYaw = base.yaw + yawOffset;
+    const targetPitch = Math.max(0.18, Math.min(1.25, base.pitch + pitchOffset));
+    const targetDist = base.dist * portraitZoom * zoomScale;
+
+    curYaw += (targetYaw - curYaw) * 0.14;
+    curPitch += (targetPitch - curPitch) * 0.14;
+    curDist += (targetDist - curDist) * 0.14;
+
+    const center = new THREE.Vector3(0, 0.9 + lookYOffset, 0.3);
+    camera.position.set(
+      center.x + Math.sin(curYaw) * Math.cos(curPitch) * curDist,
+      center.y + Math.sin(curPitch) * curDist,
+      center.z + Math.cos(curYaw) * Math.cos(curPitch) * curDist
+    );
+    camera.lookAt(center);
+  }
+
+  // ==========================================
+  // 7. 3Dお皿タッチ判定（食べる／数える）＆スワイプ回転
+  // ==========================================
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  let isDragging = false;
+  let dragDistance = 0;
+  let prevPt = { x: 0, y: 0 };
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    isDragging = true;
+    dragDistance = 0;
+    prevPt = { x: e.clientX, y: e.clientY };
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - prevPt.x;
+    const dy = e.clientY - prevPt.y;
+    dragDistance += Math.hypot(dx, dy);
+    prevPt = { x: e.clientX, y: e.clientY };
+
+    yawOffset = Math.max(-0.95, Math.min(0.95, yawOffset - dx * 0.0065));
+    pitchOffset = Math.max(-0.22, Math.min(0.45, pitchOffset + dy * 0.0055));
+  });
+
+  window.addEventListener('pointerup', (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    if (dragDistance > 12) return;
+
+    pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+
+    const activeFoodMeshes = foodItems.filter(f => !f.eaten && !f.flying).map(f => f.mesh);
+    const hits = raycaster.intersectObjects(activeFoodMeshes, true);
+
+    if (hits.length > 0) {
+      let hitRoot = hits[0].object;
+      while (hitRoot.parent && !activeFoodMeshes.includes(hitRoot)) {
+        hitRoot = hitRoot.parent;
+      }
+      const touchedItem = foodItems.find(f => f.mesh === hitRoot);
+      if (touchedItem) {
+        if (gamePhase === 'FEEDING') {
+          feedFoodItem(touchedItem);
+        } else if (gamePhase === 'ANSWERING') {
+          // 回答フェーズでお皿の食べ物をタッチしたら一緒に数える演出を発動
+          countRemainingTogether();
+        }
+      }
+    }
+  });
+
+  renderer.domElement.addEventListener('wheel', (e) => {
+    zoomScale = Math.max(0.75, Math.min(1.3, zoomScale + e.deltaY * 0.0008));
+  }, { passive: true });
+
+  // ==========================================
+  // 8. 🏆 ごちそうさまコレクション図鑑（3Dターンテーブル）
+  // ==========================================
+  const colModal = document.getElementById('collection-modal');
+  const colStage = document.getElementById('col-preview-stage');
+  let colScene, colCam, colRenderer, colPreviewMesh;
+  let colYaw = 0;
+
+  function initCollection3D() {
+    colScene = new THREE.Scene();
+    colCam = new THREE.PerspectiveCamera(40, 320 / 175, 0.1, 50);
+    colCam.position.set(0, 1.8, 6.2);
+    colCam.lookAt(0, 1.4, 0);
+
+    colRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    colRenderer.setSize(320, 175);
+    colRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    colStage.appendChild(colRenderer.domElement);
+
+    colScene.add(new THREE.AmbientLight(0xffffff, 0.88));
+    const dl = new THREE.DirectionalLight(0xfffbeb, 0.92);
+    dl.position.set(4, 8, 6);
+    colScene.add(dl);
+
+    let drag = false, px = 0;
+    colStage.addEventListener('pointerdown', e => { drag = true; px = e.clientX; });
+    window.addEventListener('pointermove', e => {
+      if (!drag) return;
+      colYaw += (e.clientX - px) * 0.015;
+      px = e.clientX;
+    });
+    window.addEventListener('pointerup', () => { drag = false; });
+  }
+  initCollection3D();
+
+  function showCollectionAnimal(spec, speakIt = false) {
+    if (colPreviewMesh) colScene.remove(colPreviewMesh);
+    colPreviewMesh = createAnimal3D(spec);
+    colScene.add(colPreviewMesh);
+    const cnt = fedRecords[spec.id] || 0;
+    document.getElementById('col-preview-caption').textContent =
+      `${spec.emoji} ${spec.name} — ごちそうさま回数: ${cnt}回`;
+    if (speakIt) {
+      sound.speak(`${spec.name}！いつもおいしいごはんを、ありがとう！`);
+    }
+  }
+
+  function renderCollectionGrid() {
+    const grid = document.getElementById('collection-grid');
+    grid.innerHTML = '';
+    ANIMALS.forEach((spec, idx) => {
+      const cnt = fedRecords[spec.id] || 0;
+      const cell = document.createElement('div');
+      cell.className = `animal-cell ${cnt > 0 ? 'fed' : ''} ${idx === currentAnimalIdx ? 'active-cell' : ''}`;
+      cell.innerHTML = `
+        <span class="a-emo">${spec.emoji}</span>
+        <div>${spec.name.replace('さん', '')}</div>
+        <div style="color:#fde047;">🍽️×${cnt}</div>
+      `;
+      cell.addEventListener('click', () => {
+        document.querySelectorAll('.animal-cell').forEach(el => el.classList.remove('active-cell'));
+        cell.classList.add('active-cell');
+        showCollectionAnimal(spec, true);
+      });
+      grid.appendChild(cell);
+    });
+    showCollectionAnimal(ANIMALS[currentAnimalIdx], false);
+  }
+
+  document.getElementById('collection-open-btn').addEventListener('click', () => {
+    renderCollectionGrid();
+    colModal.classList.add('active');
+  });
+  document.getElementById('close-col-btn').addEventListener('click', () => {
+    colModal.classList.remove('active');
+  });
+
+  // ==========================================
+  // 9. UIイベント＆設定メニュー連携
+  // ==========================================
+  // 設定内の動物指名ボタン生成
+  const animalSelectGrid = document.getElementById('animal-select-grid');
+  ANIMALS.forEach((spec, idx) => {
+    const btn = document.createElement('button');
+    btn.className = `menu-chip ${idx === 0 ? 'selected' : ''}`;
+    btn.textContent = `${spec.emoji}${spec.name.slice(0, 3)}`;
+    btn.addEventListener('click', () => {
+      setupAnimalCharacter(idx);
+      startNewQuestion(true);
+      document.getElementById('settings-drawer').classList.remove('open');
+    });
+    animalSelectGrid.appendChild(btn);
+  });
+
+  // レベル選択
+  document.querySelectorAll('#level-select-grid .menu-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#level-select-grid .menu-chip').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      currentLevel = Number(btn.dataset.lv);
+      startNewQuestion(true);
+      document.getElementById('settings-drawer').classList.remove('open');
+    });
+  });
+
+  // 左上レベルバッジタップで次のレベルへ
+  document.getElementById('level-badge-btn').addEventListener('click', () => {
+    currentLevel = (currentLevel % 5) + 1;
+    document.querySelectorAll('#level-select-grid .menu-chip').forEach(b => {
+      b.classList.toggle('selected', Number(b.dataset.lv) === currentLevel);
+    });
+    startNewQuestion(true);
+  });
+
+  // 右上ドロワー開閉
+  const drawerEl = document.getElementById('settings-drawer');
+  const openSettingsBtn = document.getElementById('open-settings-btn');
+  openSettingsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    drawerEl.classList.toggle('open');
+  });
+  document.getElementById('close-drawer-btn').addEventListener('click', () => {
+    drawerEl.classList.remove('open');
+  });
+  window.addEventListener('pointerdown', (e) => {
+    if (!drawerEl.contains(e.target) && e.target !== openSettingsBtn && !openSettingsBtn.contains(e.target)) {
+      drawerEl.classList.remove('open');
+    }
+  });
+
+  // カメラ切替
+  document.querySelectorAll('#cam-select-grid .menu-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setCameraPreset(btn.dataset.cam);
+      drawerEl.classList.remove('open');
+    });
+  });
+  document.getElementById('quick-cam-btn').addEventListener('click', () => {
+    const order = ['front', 'plate', 'angle'];
+    const next = order[(order.indexOf(camPreset) + 1) % order.length];
+    setCameraPreset(next);
+  });
+
+  // サウンド切替＆UI最小化
+  const soundBtn = document.getElementById('sound-toggle-btn');
+  soundBtn.addEventListener('click', () => {
+    sound.enabled = !sound.enabled;
+    soundBtn.textContent = sound.enabled ? '🔊' : '🔇';
+  });
+
+  const uiMinBtn = document.getElementById('ui-min-btn');
+  uiMinBtn.addEventListener('click', () => {
+    document.body.classList.toggle('ui-minimized');
+    uiMinBtn.classList.toggle('active-toggle');
+  });
+
+  // 下部バー：「🍴 1こ食べさせる」ボタン
+  document.getElementById('feed-one-btn').addEventListener('click', () => {
+    if (gamePhase !== 'FEEDING') return;
+    // 右端（後ろのインデックス）から順番に食べさせると残りが見やすい
+    const available = foodItems.filter(f => !f.eaten && !f.flying);
+    if (available.length > 0) {
+      feedFoodItem(available[available.length - 1]);
+    }
+  });
+
+  // 下部バー：「💡 いっしょにかぞえる」ヒントボタン
+  document.getElementById('count-hint-btn').addEventListener('click', () => {
+    if (gamePhase === 'FEEDING') {
+      const rem = targetEatCount - eatenSoFar;
+      showToast(`💡 お皿の${currentFoodSpec.name}を あと ${rem}こ タッチして食べさせよう！`);
+      sound.speak(`お皿の${currentFoodSpec.name}を、あと ${rem}こ タッチして食べさせてあげよう！`);
+    } else {
+      countRemainingTogether();
+    }
+  });
+
+  // 問題の音声読み上げリピート
+  const repeatQuestionSpeech = () => {
+    const animalSpec = ANIMALS[currentAnimalIdx];
+    if (gamePhase === 'FEEDING') {
+      const rem = targetEatCount - eatenSoFar;
+      sound.speak(`さいしょは ${initialTotal}こ あるよ。${animalSpec.name}に、あと ${rem}こ 食べさせてあげよう！`);
+    } else {
+      sound.speak(`さいしょは ${initialTotal}こ あったね。${targetEatCount}こ 食べたよ。のこりは いくつかな？`);
+    }
+  };
+  document.getElementById('question-card').addEventListener('click', repeatQuestionSpeech);
+  document.getElementById('speak-q-btn').addEventListener('click', repeatQuestionSpeech);
+
+  // 3択数字ボタンクリック
+  document.querySelectorAll('#choice-row .num-choice-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = Number(btn.dataset.val);
+      checkPlayerChoice(val);
+    });
+  });
+
+  // ==========================================
+  // 10. メイン物理＆アニメーションループ
+  // ==========================================
+  const clock = new THREE.Clock();
+  setupAnimalCharacter(0);
+  startNewQuestion(false);
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.04);
+    const elapsed = clock.getElapsedTime();
+
+    world.step(1 / 60, dt, 3);
+
+    // 風船のふわふわ移動
+    balloons.forEach(b => {
+      b.mesh.position.y = b.baseY + Math.sin(elapsed * 2.1 + b.phase) * 0.35;
+    });
+
+    // 動物の待機呼吸・もぐもぐパクパク・大喜びジャンプアニメーション
+    if (currentAnimalMesh) {
+      const ud = currentAnimalMesh.userData;
+      if (ud.munchTimer > 0) {
+        ud.munchTimer--;
+        // 口をパクパク開閉し、頭を少し前後に揺らす
+        ud.jawGroup.position.y = -0.26 - Math.abs(Math.sin(elapsed * 22)) * 0.22;
+        ud.headGroup.rotation.x = Math.sin(elapsed * 22) * 0.12;
+        ud.leftArm.position.y = 1.35 + Math.sin(elapsed * 18) * 0.15;
+        ud.rightArm.position.y = 1.35 + Math.cos(elapsed * 18) * 0.15;
+      } else if (ud.happyTimer > 0) {
+        ud.happyTimer--;
+        // 正解時の大喜びジャンプ＆バンザイ
+        currentAnimalMesh.position.y = -0.2 + Math.abs(Math.sin(elapsed * 10)) * 0.85;
+        ud.leftArm.position.y = 1.75;
+        ud.rightArm.position.y = 1.75;
+        ud.jawGroup.position.y = -0.35;
+      } else {
+        currentAnimalMesh.position.y = -0.2 + Math.sin(elapsed * 2.5) * 0.05;
+        ud.jawGroup.position.y = -0.22;
+        ud.headGroup.rotation.x = Math.sin(elapsed * 1.5) * 0.04;
+        ud.leftArm.position.y = 1.25;
+        ud.rightArm.position.y = 1.25;
+      }
+    }
+
+    // 食べ物の物理追従＆動物の口へ飛んでいく放物線アニメーション
+    const mouthTargetPos = new THREE.Vector3(0, 2.25, -1.0);
+    foodItems.forEach(item => {
+      if (item.flying) {
+        item.flyT += 0.065;
+        if (item.flyT >= 1.0) {
+          // 動物の口に到着 → パクッ！もぐもぐ！
+          item.flying = false;
+          item.eaten = true;
+          item.mesh.visible = false;
+          item.ghostRing.material.opacity = 0.55; // 食べたあとシルエットを表示
+
+          sound.playMunch();
+          if (currentAnimalMesh) {
+            currentAnimalMesh.userData.munchTimer = 38;
+          }
+          spawnParticles(mouthTargetPos, 0xfbbf24, 16);
+
+          showToast(`${currentFoodSpec.emoji} ${eatenSoFar}こ パクッ！もぐもぐ♪`);
+          sound.speak(`${eatenSoFar}こ！`);
+
+          // 指定した食べる数 B 個すべて食べ終えたらフェーズ2（残りを数える）へ移行
+          const allTargetEaten = foodItems.filter(f => f.eaten).length >= targetEatCount;
+          if (allTargetEaten && gamePhase === 'FEEDING') {
+            setTimeout(() => transitionToAnsweringPhase(), 750);
+          }
+        } else {
+          const t = item.flyT;
+          item.mesh.position.lerpVectors(item.startPos, mouthTargetPos, t);
+          item.mesh.position.y += Math.sin(t * Math.PI) * 2.6;
+          const sc = 1.0 - t * 0.35;
+          item.mesh.scale.set(sc, sc, sc);
+          item.mesh.rotation.y += 0.2;
+        }
+      } else if (!item.eaten && item.body) {
+        // お皿の所定位置へ緩やかに整列しつつ物理バウンス
+        item.body.position.x += (item.slotPos.x - item.body.position.x) * 0.15;
+        item.body.position.z += (item.slotPos.z - item.body.position.z) * 0.15;
+
+        if (item.bounceY > 0.02) {
+          item.bounceY *= 0.86;
+        } else {
+          item.bounceY = 0;
+        }
+        item.mesh.position.set(
+          item.body.position.x,
+          item.body.position.y - 0.35 + item.bounceY,
+          item.body.position.z
+        );
+      }
+    });
+
+    // パーティクル更新
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.mesh.position.add(p.vel);
+      p.vel.y -= 0.008;
+      p.life--;
+      if (p.life <= 0) {
+        scene.remove(p.mesh);
+        particles.splice(i, 1);
+      }
+    }
+
+    // コレクション図鑑モーダル内の3D回転
+    if (colModal.classList.contains('active') && colPreviewMesh) {
+      colPreviewMesh.rotation.y = colYaw + elapsed * 0.7;
+      colRenderer.render(colScene, colCam);
+    }
+
+    updateCameraSmooth();
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  animate();
+})();
+</script>
+</body>
+</html>

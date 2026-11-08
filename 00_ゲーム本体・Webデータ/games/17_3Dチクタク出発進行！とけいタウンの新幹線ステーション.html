@@ -1,0 +1,1793 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>3Dチクタク出発進行！とけいタウンの新幹線ステーション</title>
+<meta name="description" content="大きな3D時計塔の針を合わせて新幹線や特急列車を出発させよう！デジタル表示と音声読み上げで「○時ちょうど」「○時半」「5分きざみ」まで楽しく時計の読み方が身につく知育3Dゲーム。" />
+<meta name="game-icon" content="🕐" />
+<meta name="game-category" content="puzzle" />
+<meta name="game-age" content="baby" />
+<meta name="game-tag" content="とけい" />
+<style>
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    margin: 0;
+    padding: 0;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: linear-gradient(180deg, #0284c7 0%, #7dd3fc 48%, #fef9c3 100%);
+    font-family: "Hiragino Maru Gothic ProN", "Rounded Mplus 1c", "BIZ UDPGothic", "Meiryo", sans-serif;
+    touch-action: none;
+  }
+  #canvas-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+  canvas:active {
+    cursor: grabbing;
+  }
+
+  /* 左上：レベル＆出発コレクションバッジ */
+  #top-left-hud {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .hud-pill {
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.45);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+    cursor: pointer;
+    transition: transform 0.12s, background 0.2s;
+  }
+  .hud-pill:active {
+    transform: scale(0.94);
+  }
+  #level-badge-btn {
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.92), rgba(234, 88, 12, 0.92));
+    border-color: #fde047;
+  }
+  #collection-open-btn {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.92), rgba(5, 150, 105, 0.92));
+    border-color: #a7f3d0;
+  }
+
+  /* 右上：視点・設定ドロワー・音量・UI最小化 */
+  #top-right-hud {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tr-btn {
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.42);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+    transition: transform 0.12s, background 0.2s;
+  }
+  .tr-btn:active {
+    transform: scale(0.94);
+  }
+  .tr-btn.icon-only {
+    padding: 6px 9px;
+    font-size: 13px;
+  }
+  .tr-btn.active-toggle {
+    background: rgba(37, 99, 235, 0.88);
+    border-color: #93c5fd;
+  }
+
+  /* 右上：コンパクト収納設定ドロワー */
+  #settings-drawer {
+    position: fixed;
+    top: 48px;
+    right: 10px;
+    z-index: 35;
+    width: 292px;
+    max-height: 82vh;
+    overflow-y: auto;
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    border-radius: 18px;
+    padding: 12px;
+    color: #fff;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+    display: none;
+    animation: popIn 0.16s ease-out;
+  }
+  #settings-drawer.open {
+    display: block;
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .drawer-section {
+    margin-bottom: 10px;
+  }
+  .drawer-section:last-child {
+    margin-bottom: 0;
+  }
+  .drawer-title {
+    font-size: 11px;
+    color: #fde047;
+    font-weight: 800;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+  }
+  .grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+  }
+  .menu-chip {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #f8fafc;
+    border-radius: 10px;
+    padding: 7px 6px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .menu-chip:active {
+    transform: scale(0.95);
+  }
+  .menu-chip.selected {
+    background: linear-gradient(135deg, #ec4899, #f97316);
+    border-color: #fde047;
+    box-shadow: 0 0 10px rgba(236, 72, 153, 0.45);
+  }
+  .menu-chip.full-btn {
+    width: 100%;
+    padding: 8px;
+  }
+
+  /* 上部中央：駅の電光発車標＆お題カード */
+  #station-board-card {
+    position: fixed;
+    top: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 18;
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 2.5px solid #fde047;
+    border-radius: 20px;
+    padding: 6px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: transform 0.15s, opacity 0.25s;
+    width: min(95vw, 460px);
+  }
+  #station-board-card:active {
+    transform: translateX(-50%) scale(0.97);
+  }
+  #digital-clock-box {
+    background: #090d16;
+    border: 2px solid #38bdf8;
+    border-radius: 12px;
+    padding: 4px 10px;
+    font-family: "Courier New", "BIZ UDPGothic", monospace;
+    font-size: 23px;
+    font-weight: 900;
+    color: #4ade80;
+    letter-spacing: 1px;
+    text-shadow: 0 0 8px rgba(74, 222, 128, 0.65);
+    flex-shrink: 0;
+  }
+  .board-texts {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    flex: 1;
+    overflow: hidden;
+  }
+  #board-main-text {
+    font-size: 13.5px;
+    font-weight: 900;
+    color: #fef08a;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #board-sub-text {
+    font-size: 11px;
+    font-weight: 800;
+    color: #f8fafc;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 中央トースト（やさしい声かけ＆現在時刻ガイド） */
+  #status-toast {
+    position: fixed;
+    top: 112px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    z-index: 22;
+    background: rgba(15, 23, 42, 0.88);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: 2px solid #38bdf8;
+    font-size: 12.5px;
+    font-weight: 900;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    white-space: nowrap;
+    max-width: 94vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #status-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* =========================================================
+     最下部：背景パネル無し・半透明クリア操作エリア
+     ========================================================= */
+  #bottom-ui-area {
+    position: fixed;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    width: min(96vw, 470px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+  }
+
+  /* 短針（赤）＆長針（青）の半透明クリア調整ボタン行 */
+  #hand-adjust-row {
+    pointer-events: auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    width: 100%;
+    padding: 0 2px;
+  }
+  .hand-btn {
+    height: 48px;
+    border-radius: 15px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: #ffffff;
+    font-size: 12.5px;
+    font-weight: 900;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.1;
+    transition: transform 0.08s, background 0.15s;
+  }
+  .hand-btn small {
+    font-size: 9.5px;
+    font-weight: 800;
+    opacity: 0.92;
+    margin-top: 2px;
+  }
+  .hand-btn:active {
+    transform: scale(0.93);
+  }
+  .hand-btn.hour-btn {
+    background: rgba(239, 68, 68, 0.52);
+    border: 2px solid rgba(254, 202, 202, 0.85);
+  }
+  .hand-btn.hour-btn:active {
+    background: rgba(239, 68, 68, 0.82);
+  }
+  .hand-btn.min-btn {
+    background: rgba(37, 99, 235, 0.52);
+    border: 2px solid rgba(191, 219, 254, 0.85);
+  }
+  .hand-btn.min-btn:active {
+    background: rgba(37, 99, 235, 0.82);
+  }
+
+  /* 下部スリムアクションバー（ヒント・読み上げ・出発進行！） */
+  #bottom-slim-bar {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+    padding: 0 2px;
+  }
+  .ctrl-btn {
+    height: 50px;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.52);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: #ffffff;
+    border: 1.5px solid rgba(255, 255, 255, 0.55);
+    padding: 0 13px;
+    font-size: 12.5px;
+    font-weight: 900;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+    cursor: pointer;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.28);
+    transition: transform 0.1s, background 0.15s;
+  }
+  .ctrl-btn:active {
+    transform: scale(0.94);
+  }
+  .ctrl-btn.hint-btn {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.65), rgba(217, 119, 6, 0.65));
+    border-color: #fde68a;
+  }
+  .ctrl-btn.voice-btn {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.65), rgba(37, 99, 235, 0.65));
+    border-color: #bfdbfe;
+  }
+  .ctrl-btn.depart-btn {
+    flex: 1;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.78), rgba(5, 150, 105, 0.78));
+    border: 2.5px solid #fde047;
+    font-size: 15.5px;
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45), inset 0 1px 3px rgba(255, 255, 255, 0.45);
+  }
+  .ctrl-btn.depart-btn:active {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+  }
+
+  /* UI最小化モード（👁️ ON時） */
+  body.ui-minimized #top-left-hud {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-10px);
+  }
+  body.ui-minimized #station-board-card {
+    transform: translateX(-50%) scale(0.86);
+    top: 10px;
+  }
+  body.ui-minimized #bottom-slim-bar .btn-label {
+    display: none;
+  }
+
+  /* =========================================================
+     モーダル：🏆 出発コレクション（列車ずかん＆時刻表）
+     ========================================================= */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(15, 23, 42, 0.84);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    color: #fff;
+  }
+  .modal-overlay.active {
+    display: flex;
+  }
+  .collection-card {
+    width: min(95vw, 510px);
+    max-height: 88vh;
+    background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%);
+    border: 2.5px solid #fde047;
+    border-radius: 24px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+    overflow: hidden;
+  }
+  .col-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .col-header h2 {
+    font-size: 16px;
+    color: #fde047;
+    font-weight: 900;
+  }
+  #col-preview-stage {
+    width: 100%;
+    height: 170px;
+    background: radial-gradient(circle, #0284c7 0%, #0f172a 100%);
+    border-radius: 16px;
+    border: 1.5px solid rgba(255, 255, 255, 0.25);
+    position: relative;
+    cursor: grab;
+  }
+  #col-preview-caption {
+    position: absolute;
+    bottom: 6px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 12.5px;
+    font-weight: 900;
+    color: #fef08a;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+  }
+  .train-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    overflow-y: auto;
+    padding: 2px;
+  }
+  .train-cell {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1.5px solid rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+    padding: 7px 4px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 10.5px;
+    font-weight: 800;
+    color: #cbd5e1;
+    transition: transform 0.1s, border-color 0.15s;
+  }
+  .train-cell:active {
+    transform: scale(0.94);
+  }
+  .train-cell.unlocked {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.32), rgba(2, 132, 199, 0.32));
+    border-color: #6ee7b7;
+    color: #fff;
+  }
+  .train-cell.active-cell {
+    border-color: #fde047;
+    box-shadow: 0 0 10px rgba(253, 224, 71, 0.6);
+  }
+  .train-cell .t-emo {
+    font-size: 21px;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  @media (max-width: 400px) {
+    #digital-clock-box {
+      font-size: 19px;
+      padding: 4px 8px;
+    }
+    #board-main-text {
+      font-size: 12px;
+    }
+    .hand-btn {
+      height: 44px;
+      font-size: 11.5px;
+    }
+    .ctrl-btn {
+      height: 46px;
+      font-size: 11.5px;
+    }
+    .ctrl-btn.depart-btn {
+      font-size: 14px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<!-- 左上：現在レベル＆列車ずかんボタン -->
+<div id="top-left-hud">
+  <button class="hud-pill" id="level-badge-btn" title="タップでレベル切り替え">
+    🕐 <span id="current-level-label">Lv.1 ○じちょうど</span>
+  </button>
+  <button class="hud-pill" id="collection-open-btn" title="出発コレクション図鑑を開く">
+    🏆 列車ずかん <span id="unlocked-count-label">0/8</span>
+  </button>
+</div>
+
+<!-- 右上：カメラ視点・設定メニュー・音・UI最小化 -->
+<div id="top-right-hud">
+  <button class="tr-btn" id="quick-cam-btn" title="カメラ視点を切り替え">
+    🎥 <span id="cam-label">正面</span>
+  </button>
+  <button class="tr-btn" id="open-settings-btn">
+    ⚙️ 設定 ▾
+  </button>
+  <button class="tr-btn icon-only" id="sound-toggle-btn" title="音声・効果音ON/OFF">🔊</button>
+  <button class="tr-btn icon-only" id="ui-min-btn" title="すっきり表示（UI最小化）">👁️</button>
+</div>
+
+<!-- 右上：収納設定ドロワー -->
+<div id="settings-drawer">
+  <div class="drawer-section">
+    <div class="drawer-title">
+      <span>🕐 レベル選択（時計ステップ）</span>
+      <span style="cursor:pointer;color:#cbd5e1;font-size:14px;" id="close-drawer-btn">✕</span>
+    </div>
+    <div class="grid-2" id="level-select-grid">
+      <button class="menu-chip selected" data-lv="1">Lv.1 ○じちょうど</button>
+      <button class="menu-chip" data-lv="2">Lv.2 ○じはん(30分)</button>
+      <button class="menu-chip" data-lv="3">Lv.3 15分・45分</button>
+      <button class="menu-chip" data-lv="4">Lv.4 10分きざみ</button>
+      <button class="menu-chip" data-lv="5" style="grid-column: span 2;">Lv.5 5分きざみマスター</button>
+    </div>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-title"><span>🚄 出発する列車をえらぶ</span></div>
+    <div class="grid-4" id="train-select-grid"></div>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-title"><span>🔢 文字盤の「分」おたすけ数字</span></div>
+    <button class="menu-chip full-btn selected" id="toggle-min-numbers-btn">
+      🔢 外周の「5・10・15…」表示：ON
+    </button>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-title"><span>🎥 カメラ視点（空白スワイプで微調整OK）</span></div>
+    <div class="grid-3" id="cam-select-grid">
+      <button class="menu-chip selected" data-cam="front">🎥 正面</button>
+      <button class="menu-chip" data-cam="clock">🕐 時計アップ</button>
+      <button class="menu-chip" data-cam="angle">📐 ななめ駅</button>
+    </div>
+  </div>
+</div>
+
+<!-- 上部中央：駅の電光発車標＆お題カード（タップで音声読み上げリピート） -->
+<div id="station-board-card" title="タップすると発車時刻をもう一度読み上げます">
+  <div id="digital-clock-box">03:00</div>
+  <div class="board-texts">
+    <div id="board-main-text">🚄 はやぶさ号「3じ ちょうど」出発！</div>
+    <div id="board-sub-text">👆 時計の針をドラッグするか下のボタンで合わせよう</div>
+  </div>
+</div>
+
+<!-- 中央トースト（やさしい声かけ＆現在時刻表示） -->
+<div id="status-toast">🕐 いまの時計：12じ 00ぷん</div>
+
+<!-- 最下部：半透明クリア操作エリア -->
+<div id="bottom-ui-area">
+  <!-- 短針（赤）＆長針（青）のワンタッチ調整ボタン -->
+  <div id="hand-adjust-row">
+    <button class="hand-btn hour-btn" id="btn-hour-minus">
+      🔴 -1じかん<small>みじかい針 ◀</small>
+    </button>
+    <button class="hand-btn hour-btn" id="btn-hour-plus">
+      🔴 +1じかん<small>みじかい針 ▶</small>
+    </button>
+    <button class="hand-btn min-btn" id="btn-min-minus">
+      🔵 <span id="min-minus-label">-5ふん</span><small>ながい針 ◀</small>
+    </button>
+    <button class="hand-btn min-btn" id="btn-min-plus">
+      🔵 <span id="min-plus-label">+5ふん</span><small>ながい針 ▶</small>
+    </button>
+  </div>
+
+  <!-- ヒント・読み上げ・出発進行ボタン -->
+  <div id="bottom-slim-bar">
+    <button class="ctrl-btn hint-btn" id="ghost-hint-btn" title="正解の針の位置をうっすら光らせる">
+      💡<span class="btn-label">ヒント</span>
+    </button>
+    <button class="ctrl-btn voice-btn" id="speak-time-btn" title="お題と今の時計を音声で読み上げる">
+      🗣️<span class="btn-label">よみあげ</span>
+    </button>
+    <button class="ctrl-btn depart-btn" id="depart-check-btn">
+      🚄 出発進行！（けってい）
+    </button>
+  </div>
+</div>
+
+<!-- モーダル：🏆 出発コレクション（列車ずかん） -->
+<div class="modal-overlay" id="collection-modal">
+  <div class="collection-card">
+    <div class="col-header">
+      <h2>🏆 とけいタウン列車ずかん（360°回転）</h2>
+      <button class="tr-btn" id="close-col-btn">✕ とじる</button>
+    </div>
+    <div id="col-preview-stage">
+      <div id="col-preview-caption">列車をえらぶと3Dで表示されます</div>
+    </div>
+    <div class="train-grid" id="collection-grid"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+<script>
+(() => {
+  // ==========================================
+  // 1. 列車8種マスターデータ＆レベル設定
+  // ==========================================
+  const TRAINS = [
+    { id: 'hayabusa', name: 'はやぶさ号', emoji: '🚄', bodyColor: 0x10b981, stripeColor: 0xf43f5e, noseType: 'aero' },
+    { id: 'komachi',  name: 'こまち号',   emoji: '🚅', bodyColor: 0xef4444, stripeColor: 0xffffff, noseType: 'aero' },
+    { id: 'yellow',   name: 'ドクターイエロー', emoji: '💛', bodyColor: 0xfacc15, stripeColor: 0x1d4ed8, noseType: 'aero' },
+    { id: 'kagayaki', name: 'かがやき号', emoji: '💙', bodyColor: 0xf8fafc, stripeColor: 0x2563eb, noseType: 'aero' },
+    { id: 'sl',       name: 'もくもくSL号', emoji: '🚂', bodyColor: 0x1e293b, stripeColor: 0xdc2626, noseType: 'steam' },
+    { id: 'panda',    name: 'パンダくろしお号', emoji: '🐼', bodyColor: 0xffffff, stripeColor: 0x0f172a, noseType: 'panda' },
+    { id: 'rainbow',  name: 'レインボー特急', emoji: '🌈', bodyColor: 0xa855f7, stripeColor: 0xfde047, noseType: 'aero' },
+    { id: 'galaxy',   name: 'ギャラクシー号', emoji: '🌌', bodyColor: 0x1e3a8a, stripeColor: 0x38bdf8, noseType: 'aero' }
+  ];
+
+  const LEVEL_CONFIG = {
+    1: { label: 'Lv.1 ○じちょうど', allowedMins: [0], stepMin: 60 },
+    2: { label: 'Lv.2 ○じはん(30分)', allowedMins: [0, 30], stepMin: 30 },
+    3: { label: 'Lv.3 15分・45分', allowedMins: [0, 15, 30, 45], stepMin: 15 },
+    4: { label: 'Lv.4 10分きざみ', allowedMins: [0, 10, 20, 30, 40, 50], stepMin: 10 },
+    5: { label: 'Lv.5 5分きざみ', allowedMins: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55], stepMin: 5 }
+  };
+
+  // ローカルストレージ保存管理
+  const STORAGE_KEY = 'clock_town_station_v1';
+  let departRecords = {};
+  try {
+    departRecords = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  } catch (e) {
+    departRecords = {};
+  }
+
+  function saveProgress() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(departRecords));
+    } catch (e) {}
+    updateCollectionBadge();
+  }
+
+  function updateCollectionBadge() {
+    const count = TRAINS.filter(t => (departRecords[t.id] || 0) > 0).length;
+    document.getElementById('unlocked-count-label').textContent = `${count}/${TRAINS.length}`;
+  }
+  updateCollectionBadge();
+
+  // ==========================================
+  // 2. 日本語の自然な時刻読み上げテキスト生成＆サウンドシステム
+  // ==========================================
+  const HOUR_READINGS = {
+    1: 'いちじ', 2: 'にじ', 3: 'さんじ', 4: 'よじ', 5: 'ごじ', 6: 'ろくじ',
+    7: 'しちじ', 8: 'はちじ', 9: 'くじ', 10: 'じゅうじ', 11: 'じゅういちじ', 12: 'じゅうにじ'
+  };
+  const MIN_READINGS = {
+    0: 'ちょうど', 5: 'ごふん', 10: 'じゅっぷん', 15: 'じゅうごふん', 20: 'にじゅっぷん',
+    25: 'にじゅうごふん', 30: 'はん、さんじゅっぷん', 35: 'さんじゅうごふん',
+    40: 'よんじゅっぷん', 45: 'よんじゅうごふん', 50: 'ごじゅっぷん', 55: 'ごじゅうごふん'
+  };
+
+  function formatTimeDisplay(h, m) {
+    if (m === 0) return `${h}じ ちょうど`;
+    if (m === 30) return `${h}じ はん（30ぷん）`;
+    return `${h}じ ${m}ふん`;
+  }
+
+  function formatTimeSpeech(h, m) {
+    const hr = HOUR_READINGS[h] || `${h}じ`;
+    const mr = MIN_READINGS[m] || `${m}ふん`;
+    return `${hr} ${mr}`;
+  }
+
+  function formatDigitalClock(h, m) {
+    const hh = String(h).padStart(2, '0');
+    const mm = String(m).padStart(2, '0');
+    return `${hh}:${mm}`;
+  }
+
+  class StationAudio {
+    constructor() {
+      this.ctx = null;
+      this.enabled = true;
+    }
+    init() {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) this.ctx = new AudioCtx();
+      }
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+    }
+    speak(text, rate = 0.98, pitch = 1.12) {
+      if (!this.enabled || !('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'ja-JP';
+        u.rate = rate;
+        u.pitch = pitch;
+        window.speechSynthesis.speak(u);
+      } catch (e) {}
+    }
+    playTick(isHigh = false) {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(isHigh ? 780 : 560, now);
+      g.gain.setValueAtTime(0.11, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
+      o.connect(g).connect(this.ctx.destination);
+      o.start(now);
+      o.stop(now + 0.06);
+    }
+    playDepartureMelody() {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      // 駅の発車ベル風キラキラメロディ＋警笛
+      const notes = [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5];
+      notes.forEach((f, i) => {
+        setTimeout(() => {
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const o = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          o.type = 'triangle';
+          o.frequency.setValueAtTime(f, now);
+          g.gain.setValueAtTime(0.16, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+          o.connect(g).connect(this.ctx.destination);
+          o.start(now);
+          o.stop(now + 0.23);
+        }, i * 105);
+      });
+    }
+    playGentleHintTone() {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      [440, 554.37, 659.25].forEach((f, i) => {
+        setTimeout(() => {
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const o = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          o.type = 'sine';
+          o.frequency.setValueAtTime(f, now);
+          g.gain.setValueAtTime(0.13, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+          o.connect(g).connect(this.ctx.destination);
+          o.start(now);
+          o.stop(now + 0.19);
+        }, i * 80);
+      });
+    }
+  }
+  const sound = new StationAudio();
+
+  // ==========================================
+  // 3. Three.js + Cannon.js 3Dとけいタウン駅＆時計塔の構築
+  // ==========================================
+  const container = document.getElementById('canvas-container');
+  const scene = new THREE.Scene();
+
+  const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 200);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  container.appendChild(renderer.domElement);
+
+  // 照明
+  const ambientLight = new THREE.AmbientLight(0xfffbeb, 0.86);
+  scene.add(ambientLight);
+  const sunLight = new THREE.DirectionalLight(0xffffff, 0.95);
+  sunLight.position.set(10, 26, 16);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.width = 1024;
+  sunLight.shadow.mapSize.height = 1024;
+  scene.add(sunLight);
+
+  // Cannon.js 物理ワールド（出発時の3Dスター＆お祝いブロックの跳躍用）
+  const world = new CANNON.World();
+  world.gravity.set(0, -22, 0);
+  const physMat = new CANNON.Material('std');
+  world.addContactMaterial(new CANNON.ContactMaterial(physMat, physMat, {
+    friction: 0.3,
+    restitution: 0.65
+  }));
+
+  const groundBody = new CANNON.Body({ mass: 0, material: physMat });
+  groundBody.addShape(new CANNON.Box(new CANNON.Vec3(25, 0.5, 25)));
+  groundBody.position.set(0, -3.5, 0);
+  world.addBody(groundBody);
+
+  // とけいタウン環境グループ
+  const townGroup = new THREE.Group();
+  scene.add(townGroup);
+
+  // 駅前広場＆芝生大地
+  const groundMesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(38, 38, 1.0, 36),
+    new THREE.MeshStandardMaterial({ color: 0x86efac, roughness: 0.85 })
+  );
+  groundMesh.position.y = -3.8;
+  groundMesh.receiveShadow = true;
+  townGroup.add(groundMesh);
+
+  // 駅ホーム＆線路（z = 1.65 付近を東西に走る）
+  const platformMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(24, 1.1, 3.6),
+    new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 })
+  );
+  platformMesh.position.set(0, -2.75, -0.4);
+  platformMesh.receiveShadow = true;
+  townGroup.add(platformMesh);
+
+  const yellowSafetyLine = new THREE.Mesh(
+    new THREE.BoxGeometry(23.8, 1.12, 0.25),
+    new THREE.MeshStandardMaterial({ color: 0xfacc15 })
+  );
+  yellowSafetyLine.position.set(0, -2.74, 1.1);
+  townGroup.add(yellowSafetyLine);
+
+  // 線路バラスト＆枕木＆レール
+  const trackBed = new THREE.Mesh(
+    new THREE.BoxGeometry(48, 0.3, 2.8),
+    new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.9 })
+  );
+  trackBed.position.set(0, -3.2, 2.5);
+  townGroup.add(trackBed);
+
+  for (let x = -22; x <= 22; x += 1.1) {
+    const tie = new THREE.Mesh(
+      new THREE.BoxGeometry(0.35, 0.15, 2.2),
+      new THREE.MeshStandardMaterial({ color: 0x5c4033 })
+    );
+    tie.position.set(x, -3.0, 2.5);
+    townGroup.add(tie);
+  }
+  [1.85, 3.15].forEach(rz => {
+    const rail = new THREE.Mesh(
+      new THREE.BoxGeometry(48, 0.18, 0.14),
+      new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.7, roughness: 0.3 })
+    );
+    rail.position.set(0, -2.9, rz);
+    townGroup.add(rail);
+  });
+
+  // 踏切遮断機（右手前に配置して出発時にカンカン降りる）
+  const crossingPivot = new THREE.Group();
+  crossingPivot.position.set(6.8, -1.8, 3.6);
+  const crossingPost = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.16, 0.16, 2.4, 10),
+    new THREE.MeshStandardMaterial({ color: 0xfacc15 })
+  );
+  crossingPost.position.set(6.8, -2.2, 3.6);
+  townGroup.add(crossingPost);
+
+  const crossingBar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.08, 0.08, 3.6, 8),
+    new THREE.MeshStandardMaterial({ color: 0xfacc15 })
+  );
+  crossingBar.rotation.z = Math.PI / 2;
+  crossingBar.position.x = -1.8;
+  crossingPivot.add(crossingBar);
+  crossingPivot.rotation.z = 1.1; // 待機時は上がっている
+  townGroup.add(crossingPivot);
+
+  // ==========================================
+  // 4. 巨大で読みやすい！3Dアナログ時計塔の構築
+  // ==========================================
+  // 時計の中心座標: (0, 2.75, -1.6) 半径 4.1
+  const CLOCK_CENTER = new THREE.Vector3(0, 2.75, -1.6);
+  const CLOCK_RADIUS = 4.1;
+  let showMinuteHelperNumbers = true;
+
+  const clockTowerGroup = new THREE.Group();
+  clockTowerGroup.position.copy(CLOCK_CENTER);
+  scene.add(clockTowerGroup);
+
+  // 時計塔の屋根と柱フレーム
+  const towerPillar = new THREE.Mesh(
+    new THREE.BoxGeometry(5.6, 5.5, 1.6),
+    new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.5 })
+  );
+  towerPillar.position.set(0, -3.2, -0.95);
+  clockTowerGroup.add(towerPillar);
+
+  const clockOuterBezel = new THREE.Mesh(
+    new THREE.TorusGeometry(CLOCK_RADIUS + 0.28, 0.38, 16, 48),
+    new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.35, roughness: 0.25 })
+  );
+  clockTowerGroup.add(clockOuterBezel);
+
+  // 高解像度CanvasTextureによる文字盤（1〜12の大きな数字＋外周の5分きざみ補助数字）
+  const clockFaceCanvas = document.createElement('canvas');
+  clockFaceCanvas.width = 1024;
+  clockFaceCanvas.height = 1024;
+  const clockFaceTex = new THREE.CanvasTexture(clockFaceCanvas);
+
+  function redrawClockFaceTexture() {
+    const ctx = clockFaceCanvas.getContext('2d');
+    const cx = 512, cy = 512;
+    ctx.clearRect(0, 0, 1024, 1024);
+
+    // 文字盤ベース（優しいクリームホワイト）
+    ctx.beginPath();
+    ctx.arc(cx, cy, 500, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+
+    // 外周の分目盛りリング帯
+    ctx.beginPath();
+    ctx.arc(cx, cy, 468, 0, Math.PI * 2);
+    ctx.strokeStyle = '#e0f2fe';
+    ctx.lineWidth = 48;
+    ctx.stroke();
+
+    // 60分の目盛り線
+    for (let m = 0; m < 60; m++) {
+      const angle = (m / 60) * Math.PI * 2 - Math.PI / 2;
+      const isFive = m % 5 === 0;
+      const rIn = isFive ? 416 : 432;
+      const rOut = 446;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(angle) * rIn, cy + Math.sin(angle) * rIn);
+      ctx.lineTo(cx + Math.cos(angle) * rOut, cy + Math.sin(angle) * rOut);
+      ctx.strokeStyle = isFive ? '#2563eb' : '#94a3b8';
+      ctx.lineWidth = isFive ? 10 : 4;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // 外周の「00, 5, 10, 15...」補助数字（青色）
+      if (isFive && showMinuteHelperNumbers) {
+        const rNum = 472;
+        const tx = cx + Math.cos(angle) * rNum;
+        const ty = cy + Math.sin(angle) * rNum;
+        ctx.fillStyle = '#1d4ed8';
+        ctx.font = '900 32px "Hiragino Maru Gothic ProN", "Rounded Mplus 1c", "Meiryo", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(m === 0 ? '00' : String(m), tx, ty);
+      }
+    }
+
+    // 1〜12の大きな時間数字（短針と同じ赤〜濃紺で見やすく）
+    for (let h = 1; h <= 12; h++) {
+      const angle = (h / 12) * Math.PI * 2 - Math.PI / 2;
+      const rHour = 335;
+      const hx = cx + Math.cos(angle) * rHour;
+      const hy = cy + Math.sin(angle) * rHour;
+
+      // 数字の背景サークル
+      ctx.beginPath();
+      ctx.arc(hx, hy, 50, 0, Math.PI * 2);
+      ctx.fillStyle = h % 3 === 0 ? '#fef3c7' : '#fff1f2';
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#fda4af';
+      ctx.stroke();
+
+      ctx.fillStyle = '#be123c';
+      ctx.font = '900 72px "Hiragino Maru Gothic ProN", "Rounded Mplus 1c", "Meiryo", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(h), hx, hy + 4);
+    }
+
+    clockFaceTex.needsUpdate = true;
+  }
+  redrawClockFaceTexture();
+
+  const clockFaceMesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(CLOCK_RADIUS, CLOCK_RADIUS, 0.35, 48),
+    new THREE.MeshStandardMaterial({ map: clockFaceTex, roughness: 0.25 })
+  );
+  clockFaceMesh.rotation.x = Math.PI / 2;
+  clockFaceMesh.rotation.y = Math.PI / 2;
+  clockTowerGroup.add(clockFaceMesh);
+
+  // タッチ検出用の透明ディスク
+  const clockTouchPlane = new THREE.Mesh(
+    new THREE.CircleGeometry(CLOCK_RADIUS + 0.6, 36),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  clockTouchPlane.position.z = 0.35;
+  clockTowerGroup.add(clockTouchPlane);
+
+  // 針の生成関数（短針・長針・ヒント用ゴースト針）
+  function createClockHand(length, width, colorHex, zOffset, isGhost = false) {
+    const pivot = new THREE.Group();
+    pivot.position.z = zOffset;
+
+    const mat = new THREE.MeshStandardMaterial({
+      color: colorHex,
+      emissive: isGhost ? colorHex : 0x000000,
+      emissiveIntensity: isGhost ? 0.55 : 0.0,
+      roughness: 0.25,
+      transparent: isGhost,
+      opacity: isGhost ? 0.48 : 1.0
+    });
+
+    const shaft = new THREE.Mesh(new THREE.BoxGeometry(width, length, 0.14), mat);
+    shaft.position.y = length / 2;
+    pivot.add(shaft);
+
+    const arrowHead = new THREE.Mesh(new THREE.ConeGeometry(width * 1.45, width * 2.2, 12), mat);
+    arrowHead.position.y = length + width * 0.8;
+    pivot.add(arrowHead);
+
+    return pivot;
+  }
+
+  // 💡 おたすけゴースト針（正解位置にうっすら光る）
+  const ghostHourHand = createClockHand(1.95, 0.34, 0xfacc15, 0.24, true);
+  const ghostMinuteHand = createClockHand(2.95, 0.24, 0x38bdf8, 0.26, true);
+  ghostHourHand.visible = false;
+  ghostMinuteHand.visible = false;
+  clockTowerGroup.add(ghostHourHand, ghostMinuteHand);
+
+  // 🔴 短い針（時間・あか色）＆ 🔵 長い針（分・あお色）
+  const hourHandPivot = createClockHand(1.95, 0.32, 0xef4444, 0.32, false);
+  const minuteHandPivot = createClockHand(2.95, 0.22, 0x2563eb, 0.42, false);
+  clockTowerGroup.add(hourHandPivot, minuteHandPivot);
+
+  // 中央のゴールドキャップピン
+  const centerPin = new THREE.Mesh(
+    new THREE.SphereGeometry(0.38, 16, 16),
+    new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.6, roughness: 0.2 })
+  );
+  centerPin.position.z = 0.5;
+  clockTowerGroup.add(centerPin);
+
+  // ==========================================
+  // 5. 3D新幹線＆特急列車モデル生成（全8種）
+  // ==========================================
+  function createTrain3D(spec) {
+    const trainGroup = new THREE.Group();
+    const bodyMat = new THREE.MeshStandardMaterial({ color: spec.bodyColor, roughness: 0.25 });
+    const stripeMat = new THREE.MeshStandardMaterial({ color: spec.stripeColor, roughness: 0.3 });
+    const winMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+
+    // 2両編成（先頭車＋後尾車）
+    for (let c = 0; c < 2; c++) {
+      const car = new THREE.Group();
+      car.position.x = c === 0 ? 2.4 : -2.6;
+
+      if (spec.noseType === 'steam' && c === 0) {
+        // SL蒸気機関車
+        const boiler = new THREE.Mesh(new THREE.CylinderGeometry(0.78, 0.78, 3.4, 16), bodyMat);
+        boiler.rotation.z = Math.PI / 2;
+        boiler.position.set(0.3, 0.95, 0);
+        const cab = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.8, 1.6), stripeMat);
+        cab.position.set(-1.3, 1.15, 0);
+        const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.2, 1.0, 10), bodyMat);
+        chimney.position.set(1.3, 1.75, 0);
+        car.add(boiler, cab, chimney);
+      } else {
+        // 新幹線・特急ボディ
+        const hull = new THREE.Mesh(new THREE.BoxGeometry(4.0, 1.45, 1.65), bodyMat);
+        hull.position.y = 0.95;
+        hull.castShadow = true;
+        car.add(hull);
+
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(4.04, 0.34, 1.68), stripeMat);
+        stripe.position.y = 0.85;
+        car.add(stripe);
+
+        // 窓
+        for (let wx = -1.2; wx <= 1.2; wx += 0.8) {
+          const w = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.35, 1.7), winMat);
+          w.position.set(wx, 1.2, 0);
+          car.add(w);
+        }
+
+        // 先頭ノーズ
+        if (c === 0) {
+          const nose = new THREE.Mesh(new THREE.ConeGeometry(0.82, 2.0, 16), bodyMat);
+          nose.rotation.z = -Math.PI / 2;
+          nose.position.set(2.9, 0.82, 0);
+          car.add(nose);
+
+          // パンダくろしお風の顔パーツ
+          if (spec.noseType === 'panda') {
+            [-0.45, 0.45].forEach(pz => {
+              const eye = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), stripeMat);
+              eye.position.set(2.4, 1.15, pz);
+              const ear = new THREE.Mesh(new THREE.SphereGeometry(0.24, 8, 8), stripeMat);
+              ear.position.set(1.7, 1.75, pz);
+              car.add(eye, ear);
+            });
+          }
+        }
+      }
+      trainGroup.add(car);
+    }
+    return trainGroup;
+  }
+
+  let currentTrainIdx = 0;
+  let activeTrainMesh = null;
+  let trainState = 'WAITING'; // 'WAITING' | 'DEPARTING' | 'ARRIVING'
+  let trainX = 0;
+
+  function setupStationTrain(idx) {
+    currentTrainIdx = idx;
+    if (activeTrainMesh) scene.remove(activeTrainMesh);
+    activeTrainMesh = createTrain3D(TRAINS[currentTrainIdx]);
+    trainX = -0.5;
+    activeTrainMesh.position.set(trainX, -2.85, 2.5);
+    scene.add(activeTrainMesh);
+
+    document.querySelectorAll('#train-select-grid .menu-chip').forEach((btn, i) => {
+      btn.classList.toggle('selected', i === currentTrainIdx);
+    });
+  }
+
+  // ==========================================
+  // 6. 時計の針の角度計算＆ゲーム進行ロジック
+  // ==========================================
+  let currentLevel = 1;
+  let targetHour = 3;
+  let targetMinute = 0;
+
+  // プレイヤーが操作する現在の時計時刻（総分数 0〜719 で管理すると短針・長針の連動が自然）
+  let currentTotalMinutes = 12 * 60; // 12:00 スタート
+  let ghostVisible = false;
+  let isChecking = false;
+
+  // お祝い物理スター＆紙吹雪
+  const physicsStars = [];
+  const confettiParticles = [];
+
+  function spawnCelebrationPhysics() {
+    const colors = [0xfacc15, 0xf43f5e, 0x38bdf8, 0x4ade80, 0xc084fc];
+    for (let i = 0; i < 10; i++) {
+      const mesh = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.45, 0),
+        new THREE.MeshStandardMaterial({ color: colors[i % colors.length], metalness: 0.4, roughness: 0.2 })
+      );
+      scene.add(mesh);
+
+      const body = new CANNON.Body({ mass: 1.0, material: physMat });
+      body.addShape(new CANNON.Sphere(0.45));
+      body.position.set((Math.random() - 0.5) * 6, 4 + Math.random() * 3, 1.5 + (Math.random() - 0.5) * 2);
+      body.velocity.set((Math.random() - 0.5) * 8, 8 + Math.random() * 6, (Math.random() - 0.5) * 6);
+      world.addBody(body);
+      physicsStars.push({ mesh, body, life: 130 });
+    }
+
+    for (let i = 0; i < 40; i++) {
+      const m = new THREE.Mesh(
+        new THREE.BoxGeometry(0.25, 0.25, 0.06),
+        new THREE.MeshBasicMaterial({ color: colors[i % colors.length] })
+      );
+      m.position.set(0, 3.5, 1.0);
+      scene.add(m);
+      confettiParticles.push({
+        mesh: m,
+        vel: new THREE.Vector3((Math.random() - 0.5) * 0.35, 0.2 + Math.random() * 0.28, (Math.random() - 0.5) * 0.35),
+        life: 75
+      });
+    }
+  }
+
+  function getClockHourAndMinute(totalMins) {
+    const norm = ((Math.round(totalMins) % 720) + 720) % 720;
+    let h = Math.floor(norm / 60);
+    if (h === 0) h = 12;
+    const m = norm % 60;
+    return { h, m };
+  }
+
+  function updateClockHandsTransform() {
+    const { h, m } = getClockHourAndMinute(currentTotalMinutes);
+    // 長針（分）：60分で1周（-2π）
+    const minAngle = -(m / 60) * Math.PI * 2;
+    // 短針（時）：12時間で1周、さらに分に応じて滑らかに進む
+    const hourAngle = -(((h % 12) + m / 60) / 12) * Math.PI * 2;
+
+    minuteHandPivot.rotation.z = minAngle;
+    hourHandPivot.rotation.z = hourAngle;
+
+    // ゴースト針の角度設定
+    const gMinAngle = -(targetMinute / 60) * Math.PI * 2;
+    const gHourAngle = -(((targetHour % 12) + targetMinute / 60) / 12) * Math.PI * 2;
+    ghostMinuteHand.rotation.z = gMinAngle;
+    ghostHourHand.rotation.z = gHourAngle;
+  }
+
+  function showToast(text) {
+    const el = document.getElementById('status-toast');
+    el.textContent = text;
+    el.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => el.classList.remove('show'), 2300);
+  }
+
+  function updateLevelUIButtons() {
+    const cfg = LEVEL_CONFIG[currentLevel];
+    document.getElementById('current-level-label').textContent = cfg.label;
+    const step = cfg.stepMin === 60 ? 15 : cfg.stepMin;
+    document.getElementById('min-minus-label').textContent = `-${step}ふん`;
+    document.getElementById('min-plus-label').textContent = `+${step}ふん`;
+  }
+
+  function startNewQuestion(speakNow = true) {
+    isChecking = false;
+    ghostVisible = false;
+    ghostHourHand.visible = false;
+    ghostMinuteHand.visible = false;
+
+    const cfg = LEVEL_CONFIG[currentLevel];
+    updateLevelUIButtons();
+
+    // 現在の時計と重ならない新しい目標時刻をランダム生成
+    const cur = getClockHourAndMinute(currentTotalMinutes);
+    let nh = cur.h;
+    let nm = cur.m;
+    for (let tries = 0; tries < 20; tries++) {
+      nh = 1 + Math.floor(Math.random() * 12);
+      nm = cfg.allowedMins[Math.floor(Math.random() * cfg.allowedMins.length)];
+      if (nh !== cur.h || nm !== cur.m) break;
+    }
+    targetHour = nh;
+    targetMinute = nm;
+
+    updateClockHandsTransform();
+    updateStationBoardUI();
+
+    if (speakNow) {
+      const trainName = TRAINS[currentTrainIdx].name;
+      const timeSpeech = formatTimeSpeech(targetHour, targetMinute);
+      sound.speak(`つぎの ${trainName}は、${timeSpeech} に出発するよ！ 時計の針を 合わせてね！`);
+    }
+  }
+
+  function updateStationBoardUI() {
+    const trainSpec = TRAINS[currentTrainIdx];
+    document.getElementById('digital-clock-box').textContent = formatDigitalClock(targetHour, targetMinute);
+    document.getElementById('board-main-text').textContent =
+      `${trainSpec.emoji} ${trainSpec.name}「${formatTimeDisplay(targetHour, targetMinute)}」出発！`;
+    document.getElementById('board-sub-text').textContent =
+      `👆 時計の針をドラッグするか下のボタンで合わせよう`;
+  }
+
+  function adjustClockByMinutes(deltaMins) {
+    if (isChecking) return;
+    currentTotalMinutes = ((currentTotalMinutes + deltaMins) % 720 + 720) % 720;
+    updateClockHandsTransform();
+    const { h, m } = getClockHourAndMinute(currentTotalMinutes);
+    sound.playTick(m === 0);
+    showToast(`🕐 いまの時計：${formatTimeDisplay(h, m)} （${formatDigitalClock(h, m)}）`);
+  }
+
+  // 💡 ヒント（ゴースト針の表示）
+  function triggerGhostHint(withSpeech = true) {
+    ghostVisible = true;
+    ghostHourHand.visible = true;
+    ghostMinuteHand.visible = true;
+    sound.playGentleHintTone();
+    if (withSpeech) {
+      showToast(`💡 ヒント！ 光っている針の場所に 重ねてみよう♪`);
+      sound.speak(`ヒントだよ！ 光っている針の場所に、赤い針と青い針を 重ねてみてね！`);
+    }
+  }
+
+  // 🚄 出発進行！（答え合わせ）
+  function checkClockAnswer() {
+    if (isChecking) return;
+    const { h, m } = getClockHourAndMinute(currentTotalMinutes);
+    const trainSpec = TRAINS[currentTrainIdx];
+
+    if (h === targetHour && m === targetMinute) {
+      // 🎉 大正解！列車が出発進行！
+      isChecking = true;
+      departRecords[trainSpec.id] = (departRecords[trainSpec.id] || 0) + 1;
+      saveProgress();
+
+      sound.playDepartureMelody();
+      spawnCelebrationPhysics();
+      trainState = 'DEPARTING';
+
+      const timeSpeech = formatTimeSpeech(targetHour, targetMinute);
+      showToast(`🎉 大正解！！ ${formatTimeDisplay(targetHour, targetMinute)}！ ${trainSpec.name}、出発進行ー！`);
+      sound.speak(`大正解！ ピッタリ ${timeSpeech} だね！ ${trainSpec.name}、出発進行ー！`);
+
+      setTimeout(() => {
+        const nextTrain = (currentTrainIdx + 1) % TRAINS.length;
+        setupStationTrain(nextTrain);
+        trainState = 'ARRIVING';
+        trainX = -18;
+        startNewQuestion(true);
+      }, 3200);
+    } else {
+      // 😊 間違えても怒られない！今の時計の時刻を教えてゴースト針を点灯
+      triggerGhostHint(false);
+      const curSpeech = formatTimeSpeech(h, m);
+      const goalSpeech = formatTimeSpeech(targetHour, targetMinute);
+      showToast(`😊 いまは「${formatTimeDisplay(h, m)}」だよ！ 光る針に合わせてみよう♪`);
+      sound.speak(`いまの時計は、${curSpeech} だよ！ ${goalSpeech} に合わせてみよう！ 光っている針に重ねてみてね！`);
+    }
+  }
+
+  // ==========================================
+  // 7. 3D時計盤の直接ドラッグ操作 ＆ 空白スワイプカメラ微調整
+  // ==========================================
+  let camPreset = 'front';
+  const camPresets = {
+    front: { yaw: 0.0, pitch: 0.14, dist: 16.5, label: '正面' },
+    clock: { yaw: 0.0, pitch: 0.08, dist: 12.2, label: '時計アップ' },
+    angle: { yaw: 0.42, pitch: 0.24, dist: 17.5, label: 'ななめ駅' }
+  };
+
+  let yawOffset = 0, pitchOffset = 0, zoomScale = 1.0;
+  let curYaw = 0, curPitch = 0.14, curDist = 16.5;
+
+  function setCameraPreset(mode) {
+    camPreset = mode;
+    yawOffset = 0;
+    pitchOffset = 0;
+    zoomScale = 1.0;
+    document.getElementById('cam-label').textContent = camPresets[mode].label;
+    document.querySelectorAll('#cam-select-grid .menu-chip').forEach(b => {
+      b.classList.toggle('selected', b.dataset.cam === mode);
+    });
+  }
+
+  function updateCameraSmooth() {
+    const aspect = window.innerWidth / window.innerHeight;
+    const isPortrait = aspect < 0.95;
+    const portraitZoom = isPortrait ? Math.min(1.52, 0.92 / aspect) : 1.0;
+    const lookYOffset = isPortrait ? -0.45 : 0.4;
+
+    const base = camPresets[camPreset];
+    const targetYaw = base.yaw + yawOffset;
+    const targetPitch = Math.max(-0.05, Math.min(0.85, base.pitch + pitchOffset));
+    const targetDist = base.dist * portraitZoom * zoomScale;
+
+    curYaw += (targetYaw - curYaw) * 0.14;
+    curPitch += (targetPitch - curPitch) * 0.14;
+    curDist += (targetDist - curDist) * 0.14;
+
+    const center = new THREE.Vector3(0, 1.1 + lookYOffset, -0.5);
+    camera.position.set(
+      center.x + Math.sin(curYaw) * Math.cos(curPitch) * curDist,
+      center.y + Math.sin(curPitch) * curDist,
+      center.z + Math.cos(curYaw) * Math.cos(curPitch) * curDist
+    );
+    camera.lookAt(center);
+  }
+
+  // 時計盤上のドラッグ回転判定（Raycaster）
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  let isDraggingClock = false;
+  let isDraggingCamera = false;
+  let prevClockAngle = null;
+  let prevPt = { x: 0, y: 0 };
+
+  function getClockFaceHitAngle(clientX, clientY) {
+    pointer.x = (clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+    const hits = raycaster.intersectObject(clockTouchPlane, false);
+    if (hits.length > 0) {
+      const localPt = hits[0].point.clone().sub(CLOCK_CENTER);
+      // 12時方向を 0 ラジアン、時計回りを正とする角度 (0 〜 2π)
+      let angle = Math.atan2(localPt.x, localPt.y);
+      if (angle < 0) angle += Math.PI * 2;
+      return { angle, radius: Math.hypot(localPt.x, localPt.y) };
+    }
+    return null;
+  }
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    prevPt = { x: e.clientX, y: e.clientY };
+    const hit = getClockFaceHitAngle(e.clientX, e.clientY);
+    if (hit && !isChecking) {
+      isDraggingClock = true;
+      prevClockAngle = hit.angle;
+    } else {
+      isDraggingCamera = true;
+    }
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    if (isDraggingClock && !isChecking) {
+      const hit = getClockFaceHitAngle(e.clientX, e.clientY);
+      if (!hit) return;
+
+      let deltaRad = hit.angle - prevClockAngle;
+      // 12時（0と2πの境界）をまたいだときの連続補正
+      if (deltaRad > Math.PI) deltaRad -= Math.PI * 2;
+      if (deltaRad < -Math.PI) deltaRad += Math.PI * 2;
+
+      // 中心に近い内周ドラッグ、またはLv.1（○時ちょうど）の場合は時間をスムーズに回す
+      const isInnerDrag = hit.radius < CLOCK_RADIUS * 0.52 || currentLevel === 1;
+      const minsPerRadian = isInnerDrag ? (720 / (Math.PI * 2)) : (60 / (Math.PI * 2));
+      const stepSnap = currentLevel === 1 ? 60 : 5;
+
+      const rawDeltaMins = deltaRad * minsPerRadian;
+      if (Math.abs(rawDeltaMins) >= stepSnap * 0.85) {
+        const snappedSteps = Math.round(rawDeltaMins / stepSnap) * stepSnap;
+        adjustClockByMinutes(snappedSteps);
+        prevClockAngle = hit.angle;
+      }
+    } else if (isDraggingCamera) {
+      const dx = e.clientX - prevPt.x;
+      const dy = e.clientY - prevPt.y;
+      prevPt = { x: e.clientX, y: e.clientY };
+      yawOffset = Math.max(-0.85, Math.min(0.85, yawOffset - dx * 0.0065));
+      pitchOffset = Math.max(-0.18, Math.min(0.42, pitchOffset + dy * 0.0055));
+    }
+  });
+
+  window.addEventListener('pointerup', () => {
+    isDraggingClock = false;
+    isDraggingCamera = false;
+    prevClockAngle = null;
+  });
+
+  renderer.domElement.addEventListener('wheel', (e) => {
+    zoomScale = Math.max(0.75, Math.min(1.3, zoomScale + e.deltaY * 0.0008));
+  }, { passive: true });
+
+  // ==========================================
+  // 8. 🏆 とけいタウン列車ずかん（3Dターンテーブル）
+  // ==========================================
+  const colModal = document.getElementById('collection-modal');
+  const colStage = document.getElementById('col-preview-stage');
+  let colScene, colCam, colRenderer, colPreviewMesh;
+  let colYaw = 0.5;
+
+  function initCollection3D() {
+    colScene = new THREE.Scene();
+    colCam = new THREE.PerspectiveCamera(40, 320 / 170, 0.1, 50);
+    colCam.position.set(0, 2.2, 8.8);
+    colCam.lookAt(0, 0.8, 0);
+
+    colRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    colRenderer.setSize(320, 170);
+    colRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    colStage.appendChild(colRenderer.domElement);
+
+    colScene.add(new THREE.AmbientLight(0xffffff, 0.88));
+    const dl = new THREE.DirectionalLight(0xfffbeb, 0.95);
+    dl.position.set(5, 10, 8);
+    colScene.add(dl);
+
+    let drag = false, px = 0;
+    colStage.addEventListener('pointerdown', e => { drag = true; px = e.clientX; });
+    window.addEventListener('pointermove', e => {
+      if (!drag) return;
+      colYaw += (e.clientX - px) * 0.015;
+      px = e.clientX;
+    });
+    window.addEventListener('pointerup', () => { drag = false; });
+  }
+  initCollection3D();
+
+  function showCollectionTrain(spec, speakIt = false) {
+    if (colPreviewMesh) colScene.remove(colPreviewMesh);
+    colPreviewMesh = createTrain3D(spec);
+    colScene.add(colPreviewMesh);
+    const cnt = departRecords[spec.id] || 0;
+    document.getElementById('col-preview-caption').textContent =
+      `${spec.emoji} ${spec.name} — 出発回数: ${cnt}回`;
+    if (speakIt) {
+      sound.speak(`${spec.name}！いつも時間を守って出発進行！`);
+    }
+  }
+
+  function renderCollectionGrid() {
+    const grid = document.getElementById('collection-grid');
+    grid.innerHTML = '';
+    TRAINS.forEach((spec, idx) => {
+      const cnt = departRecords[spec.id] || 0;
+      const cell = document.createElement('div');
+      cell.className = `train-cell ${cnt > 0 ? 'unlocked' : ''} ${idx === currentTrainIdx ? 'active-cell' : ''}`;
+      cell.innerHTML = `
+        <span class="t-emo">${spec.emoji}</span>
+        <div>${spec.name.slice(0, 6)}</div>
+        <div style="color:#fde047;">🕐×${cnt}</div>
+      `;
+      cell.addEventListener('click', () => {
+        document.querySelectorAll('.train-cell').forEach(el => el.classList.remove('active-cell'));
+        cell.classList.add('active-cell');
+        showCollectionTrain(spec, true);
+      });
+      grid.appendChild(cell);
+    });
+    showCollectionTrain(TRAINS[currentTrainIdx], false);
+  }
+
+  document.getElementById('collection-open-btn').addEventListener('click', () => {
+    renderCollectionGrid();
+    colModal.classList.add('active');
+  });
+  document.getElementById('close-col-btn').addEventListener('click', () => {
+    colModal.classList.remove('active');
+  });
+
+  // ==========================================
+  // 9. UIボタン＆設定メニュー連携
+  // ==========================================
+  // 設定内の列車選択ボタン生成
+  const trainSelectGrid = document.getElementById('train-select-grid');
+  TRAINS.forEach((spec, idx) => {
+    const btn = document.createElement('button');
+    btn.className = `menu-chip ${idx === 0 ? 'selected' : ''}`;
+    btn.textContent = `${spec.emoji}${spec.name.slice(0, 4)}`;
+    btn.addEventListener('click', () => {
+      setupStationTrain(idx);
+      updateStationBoardUI();
+      document.getElementById('settings-drawer').classList.remove('open');
+    });
+    trainSelectGrid.appendChild(btn);
+  });
+
+  // レベル選択
+  document.querySelectorAll('#level-select-grid .menu-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#level-select-grid .menu-chip').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      currentLevel = Number(btn.dataset.lv);
+      startNewQuestion(true);
+      document.getElementById('settings-drawer').classList.remove('open');
+    });
+  });
+
+  // 左上レベルバッジタップで次のレベルへ
+  document.getElementById('level-badge-btn').addEventListener('click', () => {
+    currentLevel = (currentLevel % 5) + 1;
+    document.querySelectorAll('#level-select-grid .menu-chip').forEach(b => {
+      b.classList.toggle('selected', Number(b.dataset.lv) === currentLevel);
+    });
+    startNewQuestion(true);
+  });
+
+  // 外周の「5, 10, 15...」補助数字ON/OFF
+  const toggleMinNumBtn = document.getElementById('toggle-min-numbers-btn');
+  toggleMinNumBtn.addEventListener('click', () => {
+    showMinuteHelperNumbers = !showMinuteHelperNumbers;
+    toggleMinNumBtn.classList.toggle('selected', showMinuteHelperNumbers);
+    toggleMinNumBtn.textContent = `🔢 外周の「5・10・15…」表示：${showMinuteHelperNumbers ? 'ON' : 'OFF'}`;
+    redrawClockFaceTexture();
+  });
+
+  // 右上ドロワー開閉
+  const drawerEl = document.getElementById('settings-drawer');
+  const openSettingsBtn = document.getElementById('open-settings-btn');
+  openSettingsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    drawerEl.classList.toggle('open');
+  });
+  document.getElementById('close-drawer-btn').addEventListener('click', () => {
+    drawerEl.classList.remove('open');
+  });
+  window.addEventListener('pointerdown', (e) => {
+    if (!drawerEl.contains(e.target) && e.target !== openSettingsBtn && !openSettingsBtn.contains(e.target)) {
+      drawerEl.classList.remove('open');
+    }
+  });
+
+  // カメラ切替
+  document.querySelectorAll('#cam-select-grid .menu-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setCameraPreset(btn.dataset.cam);
+      drawerEl.classList.remove('open');
+    });
+  });
+  document.getElementById('quick-cam-btn').addEventListener('click', () => {
+    const order = ['front', 'clock', 'angle'];
+    const next = order[(order.indexOf(camPreset) + 1) % order.length];
+    setCameraPreset(next);
+  });
+
+  // サウンド切替＆UI最小化
+  const soundBtn = document.getElementById('sound-toggle-btn');
+  soundBtn.addEventListener('click', () => {
+    sound.enabled = !sound.enabled;
+    soundBtn.textContent = sound.enabled ? '🔊' : '🔇';
+  });
+
+  const uiMinBtn = document.getElementById('ui-min-btn');
+  uiMinBtn.addEventListener('click', () => {
+    document.body.classList.toggle('ui-minimized');
+    uiMinBtn.classList.toggle('active-toggle');
+  });
+
+  // 下部：短針・長針調整ボタン
+  document.getElementById('btn-hour-minus').addEventListener('click', () => adjustClockByMinutes(-60));
+  document.getElementById('btn-hour-plus').addEventListener('click', () => adjustClockByMinutes(60));
+  document.getElementById('btn-min-minus').addEventListener('click', () => {
+    const step = LEVEL_CONFIG[currentLevel].stepMin === 60 ? 15 : LEVEL_CONFIG[currentLevel].stepMin;
+    adjustClockByMinutes(-step);
+  });
+  document.getElementById('btn-min-plus').addEventListener('click', () => {
+    const step = LEVEL_CONFIG[currentLevel].stepMin === 60 ? 15 : LEVEL_CONFIG[currentLevel].stepMin;
+    adjustClockByMinutes(step);
+  });
+
+  // ヒント・音声読み上げ・出発進行ボタン
+  document.getElementById('ghost-hint-btn').addEventListener('click', () => triggerGhostHint(true));
+
+  const speakCurrentStatus = () => {
+    const { h, m } = getClockHourAndMinute(currentTotalMinutes);
+    const goalSpeech = formatTimeSpeech(targetHour, targetMinute);
+    const curSpeech = formatTimeSpeech(h, m);
+    sound.speak(`お題は、${goalSpeech} だよ！ いまの時計は、${curSpeech} を指しているよ！`);
+  };
+  document.getElementById('station-board-card').addEventListener('click', speakCurrentStatus);
+  document.getElementById('speak-time-btn').addEventListener('click', speakCurrentStatus);
+  document.getElementById('depart-check-btn').addEventListener('click', checkClockAnswer);
+
+  // ==========================================
+  // 10. メイン物理＆アニメーションループ
+  // ==========================================
+  const clock = new THREE.Clock();
+  setupStationTrain(0);
+  startNewQuestion(false);
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.04);
+    const elapsed = clock.getElapsedTime();
+
+    world.step(1 / 60, dt, 3);
+
+    // ゴースト針の点滅アニメーション
+    if (ghostVisible) {
+      const alpha = 0.35 + Math.sin(elapsed * 7) * 0.2;
+      ghostHourHand.children.forEach(c => { c.material.opacity = alpha; });
+      ghostMinuteHand.children.forEach(c => { c.material.opacity = alpha; });
+    }
+
+    // 列車の発車・到着アニメーション＆踏切連動
+    if (activeTrainMesh) {
+      if (trainState === 'DEPARTING') {
+        trainX += 0.32;
+        activeTrainMesh.position.x = trainX;
+        crossingPivot.rotation.z += (0.0 - crossingPivot.rotation.z) * 0.18;
+      } else if (trainState === 'ARRIVING') {
+        trainX += (-0.5 - trainX) * 0.12;
+        activeTrainMesh.position.x = trainX;
+        crossingPivot.rotation.z += (1.1 - crossingPivot.rotation.z) * 0.12;
+        if (Math.abs(trainX + 0.5) < 0.08) {
+          trainX = -0.5;
+          trainState = 'WAITING';
+        }
+      } else {
+        activeTrainMesh.position.y = -2.85 + Math.sin(elapsed * 3.5) * 0.03;
+        crossingPivot.rotation.z += (1.1 - crossingPivot.rotation.z) * 0.12;
+      }
+    }
+
+    // 物理スター更新
+    for (let i = physicsStars.length - 1; i >= 0; i--) {
+      const s = physicsStars[i];
+      s.mesh.position.copy(s.body.position);
+      s.mesh.quaternion.copy(s.body.quaternion);
+      s.life--;
+      if (s.life <= 0) {
+        scene.remove(s.mesh);
+        world.removeBody(s.body);
+        physicsStars.splice(i, 1);
+      }
+    }
+
+    // 紙吹雪パーティクル更新
+    for (let i = confettiParticles.length - 1; i >= 0; i--) {
+      const p = confettiParticles[i];
+      p.mesh.position.add(p.vel);
+      p.vel.y -= 0.007;
+      p.mesh.rotation.x += 0.15;
+      p.mesh.rotation.y += 0.12;
+      p.life--;
+      if (p.life <= 0) {
+        scene.remove(p.mesh);
+        confettiParticles.splice(i, 1);
+      }
+    }
+
+    // 列車ずかんモーダル内の3D回転
+    if (colModal.classList.contains('active') && colPreviewMesh) {
+      colPreviewMesh.rotation.y = colYaw + elapsed * 0.55;
+      colRenderer.render(colScene, colCam);
+    }
+
+    updateCameraSmooth();
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  animate();
+})();
+</script>
+</body>
+</html>

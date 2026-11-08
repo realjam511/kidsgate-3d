@@ -1,0 +1,1672 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>3Dよくみておぼえて！シャッフルカップ＆注文暗記レストラン</title>
+<style>
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    margin: 0;
+    padding: 0;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: linear-gradient(180deg, #4c1d95 0%, #7c3aed 40%, #f472b6 100%);
+    font-family: "Hiragino Maru Gothic ProN", "Rounded Mplus 1c", "Meiryo", sans-serif;
+    touch-action: none;
+  }
+  #canvas-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+  canvas:active {
+    cursor: grabbing;
+  }
+
+  /* 左上：モード・レベル・スコア表示バッジ */
+  #top-left-hud {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .hud-pill {
+    background: rgba(30, 20, 60, 0.65);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  }
+  #level-pill {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.85), rgba(249, 115, 22, 0.85));
+    border-color: #fde047;
+    cursor: pointer;
+  }
+  #score-pill {
+    color: #fde047;
+  }
+
+  /* 右上：ヒント・視点・設定ドロワー・サウンド */
+  #top-right-hud {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tr-btn {
+    background: rgba(30, 20, 60, 0.68);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    border-radius: 999px;
+    padding: 6px 11px;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    transition: transform 0.12s, background 0.2s;
+  }
+  .tr-btn:active {
+    transform: scale(0.94);
+  }
+  .tr-btn.icon-only {
+    padding: 6px 9px;
+    font-size: 13px;
+  }
+  #hint-btn {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.82), rgba(5, 150, 105, 0.82));
+    border-color: #a7f3d0;
+  }
+
+  /* 右上：コンパクト収納設定ドロワー */
+  #settings-drawer {
+    position: fixed;
+    top: 48px;
+    right: 10px;
+    z-index: 35;
+    width: 280px;
+    background: rgba(24, 16, 48, 0.92);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
+    border-radius: 18px;
+    padding: 12px;
+    color: #fff;
+    box-shadow: 0 14px 32px rgba(0,0,0,0.55);
+    display: none;
+    animation: popIn 0.16s ease-out;
+  }
+  #settings-drawer.open {
+    display: block;
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .drawer-section {
+    margin-bottom: 10px;
+  }
+  .drawer-section:last-child {
+    margin-bottom: 0;
+  }
+  .drawer-title {
+    font-size: 11px;
+    color: #fbcfe8;
+    font-weight: 700;
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+  .grid-5 {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+  }
+  .menu-chip {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #f8fafc;
+    border-radius: 10px;
+    padding: 7px 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .menu-chip:active {
+    transform: scale(0.95);
+  }
+  .menu-chip.selected {
+    background: linear-gradient(135deg, #ec4899, #8b5cf6);
+    border-color: #fde047;
+    box-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
+  }
+
+  /* 上部お題・ガイドバナー（3D空間を邪魔しないコンパクト設計） */
+  #prompt-banner {
+    position: fixed;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 18;
+    background: rgba(24, 16, 48, 0.76);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    padding: 7px 18px;
+    border-radius: 999px;
+    border: 2px solid rgba(253, 224, 71, 0.8);
+    font-size: 13.5px;
+    font-weight: 900;
+    text-align: center;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+    pointer-events: none;
+    white-space: nowrap;
+    max-width: 94vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 注文暗記モード用：上部フローティング注文プレビュー（暗記中・答え合わせ中のみ表示） */
+  #order-bubble {
+    position: fixed;
+    top: 90px;
+    left: 50%;
+    transform: translateX(-50%) scale(0.95);
+    z-index: 19;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(8px);
+    border: 3px solid #f43f5e;
+    border-radius: 20px;
+    padding: 8px 14px;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+    transition: transform 0.2s, opacity 0.2s;
+  }
+  #order-bubble.show {
+    display: flex;
+    transform: translateX(-50%) scale(1);
+  }
+  .order-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #fff1f2;
+    border: 2px solid #fda4af;
+    border-radius: 12px;
+    padding: 4px 8px;
+    min-width: 48px;
+  }
+  .order-slot.correct {
+    background: #dcfce7;
+    border-color: #22c55e;
+  }
+  .order-slot.wrong {
+    background: #fee2e2;
+    border-color: #ef4444;
+  }
+  .order-slot .num {
+    font-size: 10px;
+    font-weight: 900;
+    color: #e11d48;
+  }
+  .order-slot .ico {
+    font-size: 22px;
+    line-height: 1.1;
+  }
+  .order-slot .lbl {
+    font-size: 9.5px;
+    font-weight: 800;
+    color: #334155;
+  }
+
+  /* =========================================================
+     下部：背景枠無し・半透明クリア操作ボタン群（画面最下部配置）
+     ========================================================= */
+  #bottom-controls {
+    position: fixed;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    width: min(96vw, 480px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+  }
+
+  /* シャッフルカップ用：カップ番号選択クリアボタン＆スタートボタン */
+  #cup-controls {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .glass-btn {
+    background: rgba(88, 28, 135, 0.36);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border: 1.5px solid rgba(255, 255, 255, 0.7);
+    color: #fff;
+    border-radius: 16px;
+    padding: 10px 15px;
+    font-size: 14px;
+    font-weight: 900;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.28), inset 0 1px 2px rgba(255,255,255,0.35);
+    cursor: pointer;
+    transition: transform 0.08s, background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+  }
+  .glass-btn:active {
+    transform: scale(0.93);
+    background: rgba(236, 72, 153, 0.68);
+    border-color: #fde047;
+  }
+  .glass-btn.primary-action {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.55), rgba(249, 115, 22, 0.55));
+    border: 2px solid #fde047;
+    padding: 12px 26px;
+    font-size: 15.5px;
+  }
+  .glass-btn:disabled {
+    opacity: 0.32;
+    pointer-events: none;
+  }
+
+  /* 暗記レストラン用：8種フード半透明グリッド＋提供ボタン */
+  #restaurant-controls {
+    pointer-events: auto;
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+  }
+  .food-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    width: 100%;
+  }
+  .food-btn {
+    background: rgba(30, 20, 60, 0.36);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border: 1.5px solid rgba(255, 255, 255, 0.65);
+    border-radius: 14px;
+    padding: 6px 4px;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+    transition: transform 0.08s, background 0.12s;
+  }
+  .food-btn .f-emo {
+    font-size: 20px;
+    line-height: 1.1;
+  }
+  .food-btn .f-name {
+    font-size: 10px;
+    font-weight: 800;
+    margin-top: 2px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  }
+  .food-btn:active {
+    transform: scale(0.92);
+    background: rgba(236, 72, 153, 0.65);
+    border-color: #fde047;
+  }
+  .food-btn:disabled {
+    opacity: 0.3;
+    pointer-events: none;
+  }
+  .rest-action-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    width: 100%;
+  }
+
+  @media (max-width: 400px) {
+    #prompt-banner {
+      font-size: 12px;
+      padding: 6px 12px;
+    }
+    .food-btn .f-emo {
+      font-size: 18px;
+    }
+    .food-btn .f-name {
+      font-size: 9px;
+    }
+    .glass-btn {
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<!-- 左上：モード・レベル・スコア -->
+<div id="top-left-hud">
+  <div class="hud-pill" id="mode-pill">🎩 シャッフルカップ</div>
+  <div class="hud-pill" id="level-pill" title="タップで次のレベルへ">⭐ Lv.1</div>
+  <div class="hud-pill" id="score-pill">🏆 0</div>
+</div>
+
+<!-- 右上：ヒント・カメラ・設定・音 -->
+<div id="top-right-hud">
+  <button class="tr-btn" id="hint-btn" title="お子様向けヒントを見る">💡 ヒント</button>
+  <button class="tr-btn" id="quick-cam-btn" title="カメラ視点を切替">🎥 <span id="cam-label">正面</span></button>
+  <button class="tr-btn" id="open-settings-btn">⚙️ 設定 ▾</button>
+  <button class="tr-btn icon-only" id="sound-btn" title="音ON/OFF">🔊</button>
+</div>
+
+<!-- 右上：コンパクト収納設定ドロワー -->
+<div id="settings-drawer">
+  <div class="drawer-section">
+    <div class="drawer-title">
+      <span>🎮 2つのゲームモード切替</span>
+      <span style="cursor:pointer;color:#fbcfe8;" id="close-drawer-btn">✕</span>
+    </div>
+    <div class="grid-2" id="mode-grid">
+      <button class="menu-chip selected" data-mode="cups">🎩 シャッフルカップ</button>
+      <button class="menu-chip" data-mode="restaurant">🍽️ 暗記レストラン</button>
+    </div>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-title"><span>⭐ 難易度レベル選択（カップ数・記憶数）</span></div>
+    <div class="grid-5" id="level-grid">
+      <button class="menu-chip selected" data-lv="1">Lv.1</button>
+      <button class="menu-chip" data-lv="2">Lv.2</button>
+      <button class="menu-chip" data-lv="3">Lv.3</button>
+      <button class="menu-chip" data-lv="4">Lv.4</button>
+      <button class="menu-chip" data-lv="5">Lv.5</button>
+    </div>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-title"><span>🎥 カメラ視点（画面スワイプで微調整OK）</span></div>
+    <div class="grid-2" id="cam-grid">
+      <button class="menu-chip selected" data-cam="front">🎥 正面ビュー</button>
+      <button class="menu-chip" data-cam="high">📐 見下ろしビュー</button>
+      <button class="menu-chip" data-cam="angleL">👀 左ななめ</button>
+      <button class="menu-chip" data-cam="angleR">👀 右ななめ</button>
+    </div>
+  </div>
+</div>
+
+<!-- お題・進行メッセージバナー -->
+<div id="prompt-banner">👆「スタート！」を押してよく見ておぼえよう！</div>
+
+<!-- 暗記レストラン用：注文リスト吹き出し -->
+<div id="order-bubble"></div>
+
+<!-- 下部：背景枠無し・半透明クリア操作ボタン群 -->
+<div id="bottom-controls">
+  <!-- モード1：シャッフルカップ用ボタン -->
+  <div id="cup-controls">
+    <button class="glass-btn primary-action" id="start-round-btn">▶️ スタート！</button>
+    <div id="cup-number-btns" style="display:none; gap:6px; flex-wrap:wrap; justify-content:center;"></div>
+  </div>
+
+  <!-- モード2：注文暗記レストラン用ボタン -->
+  <div id="restaurant-controls">
+    <div class="food-grid" id="food-grid"></div>
+    <div class="rest-action-row">
+      <button class="glass-btn" id="undo-food-btn" disabled>↩️ 1つ戻す</button>
+      <button class="glass-btn primary-action" id="serve-btn" disabled>🛎️ どうぞ！(提供)</button>
+      <button class="glass-btn primary-action" id="rest-next-btn" style="display:none;">▶️ 次の注文へ！</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+  // ==========================================
+  // 1. キャラクター＆フードメニュー定義
+  // ==========================================
+  const CHAR_LIST = [
+    { id: 'bear', name: 'くまちゃん', emoji: '🐻', color: 0xd97706, sub: 0xfef3c7 },
+    { id: 'rabbit', name: 'うさちゃん', emoji: '🐰', color: 0xf472b6, sub: 0xffffff },
+    { id: 'dolphin', name: 'いるかさん', emoji: '🐬', color: 0x0ea5e9, sub: 0xe0f2fe },
+    { id: 'sealion', name: 'あしかさん', emoji: '🦭', color: 0x64748b, sub: 0xfef08a },
+    { id: 'panda', name: 'パンダくん', emoji: '🐼', color: 0xffffff, sub: 0x1e293b }
+  ];
+
+  const FOOD_MENU = [
+    { id: 'burger', name: 'バーガー', emoji: '🍔', color: 0xd97706 },
+    { id: 'cake', name: 'ケーキ', emoji: '🍰', color: 0xf43f5e },
+    { id: 'croissant', name: 'クロワッサン', emoji: '🥐', color: 0xf59e0b },
+    { id: 'melonpan', name: 'メロンパン', emoji: '🍈', color: 0x84cc16 },
+    { id: 'apple', name: 'りんご', emoji: '🍎', color: 0xef4444 },
+    { id: 'banana', name: 'バナナ', emoji: '🍌', color: 0xfacc15 },
+    { id: 'softcream', name: 'ソフト', emoji: '🍦', color: 0xfdf4ff },
+    { id: 'juice', name: 'ジュース', emoji: '🧃', color: 0xf97316 }
+  ];
+
+  // ==========================================
+  // 2. Web Audio 効果音シンセサイザー
+  // ==========================================
+  class SoundFX {
+    constructor() {
+      this.ctx = null;
+      this.enabled = true;
+    }
+    init() {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) this.ctx = new AudioCtx();
+      }
+      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+    }
+    playTone(freq, dur = 0.12, type = 'sine', vol = 0.14) {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, now);
+      g.gain.setValueAtTime(vol, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      o.connect(g).connect(this.ctx.destination);
+      o.start(now);
+      o.stop(now + dur);
+    }
+    playSwoosh() {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(220, now);
+      o.frequency.exponentialRampToValueAtTime(520, now + 0.14);
+      g.gain.setValueAtTime(0.12, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+      o.connect(g).connect(this.ctx.destination);
+      o.start(now);
+      o.stop(now + 0.17);
+    }
+    playPop() {
+      this.playTone(620, 0.1, 'sine', 0.16);
+    }
+    playBell() {
+      this.playTone(1046.5, 0.35, 'sine', 0.18);
+      setTimeout(() => this.playTone(1318.5, 0.4, 'sine', 0.15), 90);
+    }
+    playCorrect() {
+      const notes = [523.25, 659.25, 783.99, 1046.5];
+      notes.forEach((f, i) => setTimeout(() => this.playTone(f, 0.22, 'triangle', 0.16), i * 95));
+    }
+    playWrong() {
+      this.playTone(195, 0.25, 'sawtooth', 0.12);
+      setTimeout(() => this.playTone(165, 0.35, 'sawtooth', 0.12), 180);
+    }
+  }
+  const sfx = new SoundFX();
+
+  // ==========================================
+  // 3. Three.js シーン＆3Dレストラン・カフェ空間構築
+  // ==========================================
+  const container = document.getElementById('canvas-container');
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x4c1d95, 0.0075);
+
+  const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 180);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  container.appendChild(renderer.domElement);
+
+  // 照明
+  scene.add(new THREE.AmbientLight(0xfff7ed, 0.84));
+  const dirLight = new THREE.DirectionalLight(0xfffbeb, 0.95);
+  dirLight.position.set(8, 22, 14);
+  dirLight.castShadow = true;
+  dirLight.shadow.mapSize.width = 1024;
+  dirLight.shadow.mapSize.height = 1024;
+  scene.add(dirLight);
+
+  const warmLight = new THREE.PointLight(0xfbbf24, 0.65, 35);
+  warmLight.position.set(0, 10, 4);
+  scene.add(warmLight);
+
+  // 3Dレストラン背景＆木製カウンターテーブル
+  const envGroup = new THREE.Group();
+  scene.add(envGroup);
+
+  // チェッカーフロア
+  function createCheckerTex() {
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 256;
+    const ctx = c.getContext('2d');
+    const cols = ['#fff1f2', '#ffe4e6', '#fef3c7', '#e0f2fe'];
+    for (let y = 0; y < 4; y++) {
+      for (let x = 0; x < 4; x++) {
+        ctx.fillStyle = cols[(x + y) % cols.length];
+        ctx.fillRect(x * 64, y * 64, 64, 64);
+      }
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(8, 8);
+    return t;
+  }
+  const floorMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(110, 110),
+    new THREE.MeshStandardMaterial({ map: createCheckerTex(), roughness: 0.5 })
+  );
+  floorMesh.rotation.x = -Math.PI / 2;
+  floorMesh.position.y = -4.5;
+  envGroup.add(floorMesh);
+
+  // メインの木製ステージテーブル（カップやトレイが乗る舞台）
+  const tableTop = new THREE.Mesh(
+    new THREE.CylinderGeometry(8.5, 8.8, 0.8, 36),
+    new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.35 })
+  );
+  tableTop.scale.set(1.35, 1, 0.85);
+  tableTop.position.set(0, -0.4, 0.5);
+  tableTop.receiveShadow = true;
+  envGroup.add(tableTop);
+
+  const tableRim = new THREE.Mesh(
+    new THREE.CylinderGeometry(8.75, 8.9, 0.5, 36),
+    new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.4 })
+  );
+  tableRim.scale.set(1.36, 1, 0.86);
+  tableRim.position.set(0, -0.5, 0.5);
+  envGroup.add(tableRim);
+
+  // テーブルクロス風フロントライン
+  const tableLeg = new THREE.Mesh(
+    new THREE.CylinderGeometry(5.5, 6.8, 4.2, 24),
+    new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.6 })
+  );
+  tableLeg.position.set(0, -2.6, 0.5);
+  envGroup.add(tableLeg);
+
+  // 背景のカフェ・ベーカリー棚＆ガーランド電飾
+  const backWall = new THREE.Group();
+  backWall.position.set(0, 0, -8.5);
+  envGroup.add(backWall);
+
+  // カフェの紅白ストライプひさし（オーニング）
+  for (let i = -7; i <= 7; i++) {
+    const stripe = new THREE.Mesh(
+      new THREE.BoxGeometry(1.4, 1.3, 2.4),
+      new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0xf43f5e : 0xffffff, roughness: 0.3 })
+    );
+    stripe.position.set(i * 1.4, 8.8, 1.2);
+    stripe.rotation.x = 0.35;
+    backWall.add(stripe);
+  }
+
+  // 背面の木製シェルフ2基
+  [-7.5, 7.5].forEach(sx => {
+    const shelf = new THREE.Mesh(
+      new THREE.BoxGeometry(4.5, 7.5, 1.6),
+      new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.6 })
+    );
+    shelf.position.set(sx, 2.5, 0);
+    backWall.add(shelf);
+
+    // 棚の上の飾りボトル・ポット
+    [0x38bdf8, 0xfacc15, 0x4ade80].forEach((c, idx) => {
+      const jar = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.4, 0.4, 1.1, 10),
+        new THREE.MeshStandardMaterial({ color: c, roughness: 0.2 })
+      );
+      jar.position.set(sx - 1.2 + idx * 1.2, 4.2, 0.4);
+      backWall.add(jar);
+    });
+  });
+
+  // ふわふわ浮かぶスター＆バルーン装飾
+  const floatingDecos = [];
+  const decoColors = [0xf43f5e, 0xfacc15, 0x38bdf8, 0x4ade80, 0xc084fc];
+  for (let i = 0; i < 6; i++) {
+    const b = new THREE.Mesh(
+      new THREE.SphereGeometry(0.95, 14, 14),
+      new THREE.MeshStandardMaterial({ color: decoColors[i % decoColors.length], roughness: 0.2 })
+    );
+    b.scale.y = 1.2;
+    const bx = (i < 3 ? -11 - i * 1.5 : 11 + (i - 3) * 1.5);
+    const by = 5.5 + (i % 3) * 1.6;
+    b.position.set(bx, by, -4);
+    envGroup.add(b);
+    floatingDecos.push({ mesh: b, baseY: by, phase: i * 1.2 });
+  }
+
+  // ==========================================
+  // 4. リッチな3Dキャラクター＆8種3Dフード生成関数
+  // ==========================================
+  function createCharacter3D(spec) {
+    const g = new THREE.Group();
+    const mainMat = new THREE.MeshStandardMaterial({ color: spec.color, roughness: 0.32 });
+    const subMat = new THREE.MeshStandardMaterial({ color: spec.sub, roughness: 0.35 });
+    const darkMat = new THREE.MeshBasicMaterial({ color: 0x111827 });
+    const cheekMat = new THREE.MeshBasicMaterial({ color: 0xfb7185 });
+
+    // 胴体＆お腹パッチ
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 14), mainMat);
+    body.scale.set(1, 0.95, 0.92);
+    body.position.y = 0.52;
+    const belly = new THREE.Mesh(new THREE.SphereGeometry(0.38, 12, 12), subMat);
+    belly.scale.set(0.95, 0.88, 0.45);
+    belly.position.set(0, 0.52, 0.38);
+    g.add(body, belly);
+
+    // 頭
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.52, 16, 14), mainMat);
+    head.scale.set(1.06, 0.96, 1.0);
+    head.position.y = 1.25;
+    g.add(head);
+
+    // 目＆ハイライト＆ほっぺ
+    [-0.19, 0.19].forEach(ex => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), darkMat);
+      eye.position.set(ex, 1.3, 0.46);
+      const shine = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      shine.position.set(ex + 0.025, 1.33, 0.52);
+      const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), cheekMat);
+      cheek.scale.set(1.2, 0.7, 0.5);
+      cheek.position.set(ex * 1.5, 1.2, 0.44);
+      g.add(eye, shine, cheek);
+    });
+
+    // 手
+    [-0.48, 0.48].forEach(ax => {
+      const arm = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 10), spec.id === 'panda' ? subMat : mainMat);
+      arm.position.set(ax, 0.62, 0.2);
+      g.add(arm);
+    });
+
+    // 耳・特徴パーツ
+    if (spec.id === 'rabbit') {
+      [-0.2, 0.2].forEach((ex, idx) => {
+        const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.65, 10), mainMat);
+        ear.position.set(ex, 1.92, 0);
+        ear.rotation.z = idx === 0 ? 0.12 : -0.12;
+        g.add(ear);
+      });
+    } else if (spec.id === 'dolphin') {
+      const fin = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.42, 6), mainMat);
+      fin.rotation.x = -0.45;
+      fin.position.set(0, 1.1, -0.45);
+      const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.25, 12), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+      hat.position.set(0, 1.8, 0);
+      g.add(fin, hat);
+    } else if (spec.id === 'sealion') {
+      const snout = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 10), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
+      snout.position.set(0, 1.2, 0.5);
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), new THREE.MeshStandardMaterial({ color: 0xf43f5e }));
+      ball.position.set(0, 1.52, 0.58);
+      g.add(snout, ball);
+    } else {
+      const earMat = spec.id === 'panda' ? subMat : mainMat;
+      [-0.35, 0.35].forEach(ex => {
+        const ear = new THREE.Mesh(new THREE.SphereGeometry(0.19, 10, 10), earMat);
+        ear.position.set(ex, 1.68, 0);
+        g.add(ear);
+      });
+    }
+
+    return g;
+  }
+
+  // 全8種の立体3Dフードメッシュ生成
+  function createFood3D(foodId) {
+    const g = new THREE.Group();
+    if (foodId === 'burger') {
+      // 🍔 ハンバーガー（バンズ・パティ・レタス・チーズ・トマト）
+      const bunBot = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.5, 0.2, 16), new THREE.MeshStandardMaterial({ color: 0xd97706 }));
+      bunBot.position.y = 0.1;
+      const patty = new THREE.Mesh(new THREE.CylinderGeometry(0.56, 0.56, 0.16, 16), new THREE.MeshStandardMaterial({ color: 0x451a03 }));
+      patty.position.y = 0.26;
+      const cheese = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.05, 0.86), new THREE.MeshStandardMaterial({ color: 0xfacc15 }));
+      cheese.position.y = 0.36;
+      cheese.rotation.y = 0.4;
+      const lettuce = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.58, 0.08, 12), new THREE.MeshStandardMaterial({ color: 0x22c55e }));
+      lettuce.position.y = 0.42;
+      const bunTop = new THREE.Mesh(new THREE.SphereGeometry(0.56, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xd97706 }));
+      bunTop.position.y = 0.45;
+      g.add(bunBot, patty, cheese, lettuce, bunTop);
+    } else if (foodId === 'cake') {
+      // 🍰 いちごショートケーキ
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.52, 0.42, 16), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+      base.position.y = 0.21;
+      const pinkStripe = new THREE.Mesh(new THREE.CylinderGeometry(0.53, 0.53, 0.1, 16), new THREE.MeshStandardMaterial({ color: 0xfda4af }));
+      pinkStripe.position.y = 0.21;
+      const berry = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.38, 10), new THREE.MeshStandardMaterial({ color: 0xf43f5e }));
+      berry.position.y = 0.58;
+      g.add(base, pinkStripe, berry);
+    } else if (foodId === 'croissant') {
+      // 🥐 クロワッサン（三日月型トーラス造形）
+      const main = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.18, 10, 16, Math.PI * 1.35), new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.35 }));
+      main.rotation.x = Math.PI / 2;
+      main.rotation.z = -0.65;
+      main.position.y = 0.22;
+      g.add(main);
+    } else if (foodId === 'melonpan') {
+      // 🍈 メロンパン（格子ライン入りドーム）
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(0.54, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.6), new THREE.MeshStandardMaterial({ color: 0xa3e635, roughness: 0.4 }));
+      dome.position.y = 0.12;
+      const grid = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.58), new THREE.MeshBasicMaterial({ color: 0xfef08a, wireframe: true }));
+      grid.position.y = 0.12;
+      g.add(dome, grid);
+    } else if (foodId === 'apple') {
+      // 🍎 りんご（軸＆緑の葉っぱ付き）
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.46, 16, 14), new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.2 }));
+      body.position.y = 0.44;
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.24, 6), new THREE.MeshStandardMaterial({ color: 0x78350f }));
+      stem.position.y = 0.92;
+      const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), new THREE.MeshStandardMaterial({ color: 0x22c55e }));
+      leaf.scale.set(1.5, 0.4, 0.8);
+      leaf.position.set(0.14, 0.94, 0);
+      g.add(body, stem, leaf);
+    } else if (foodId === 'banana') {
+      // 🍌 バナナ房
+      for (let i = -1; i <= 1; i++) {
+        const b = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.11, 8, 14, Math.PI * 0.85), new THREE.MeshStandardMaterial({ color: 0xfacc15 }));
+        b.rotation.z = 0.4;
+        b.position.set(i * 0.15, 0.35, i * 0.08);
+        g.add(b);
+      }
+    } else if (foodId === 'softcream') {
+      // 🍦 ソフトクリーム
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.65, 14), new THREE.MeshStandardMaterial({ color: 0xd97706 }));
+      cone.rotation.x = Math.PI;
+      cone.position.y = 0.32;
+      const s1 = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.13, 10, 16), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+      s1.rotation.x = Math.PI / 2;
+      s1.position.y = 0.68;
+      const s2 = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.42, 12), new THREE.MeshStandardMaterial({ color: 0xfdf4ff }));
+      s2.position.y = 0.92;
+      g.add(cone, s1, s2);
+    } else if (foodId === 'juice') {
+      // 🧃 オレンジジュース（ストロー＆オレンジスライス付き）
+      const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.3, 0.78, 16), new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.15 }));
+      glass.position.y = 0.4;
+      const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.08, 16), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+      rim.position.y = 0.8;
+      const straw = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.45, 8), new THREE.MeshStandardMaterial({ color: 0xf43f5e }));
+      straw.position.set(0.12, 0.95, 0);
+      straw.rotation.z = -0.25;
+      g.add(glass, rim, straw);
+    }
+    return g;
+  }
+
+  // ==========================================
+  // 5. スワイプ自由微調整カメラ＆縦画面オートフレーミング
+  // ==========================================
+  let camPreset = 'front';
+  const camPresetData = {
+    front:  { yaw: 0.0, pitch: 0.34, dist: 18.5, label: '正面' },
+    high:   { yaw: 0.0, pitch: 0.68, dist: 19.5, label: '見下ろし' },
+    angleL: { yaw: -0.48, pitch: 0.38, dist: 19.0, label: '左ななめ' },
+    angleR: { yaw: 0.48, pitch: 0.38, dist: 19.0, label: '右ななめ' }
+  };
+
+  let yawOffset = 0, pitchOffset = 0, zoomScale = 1.0;
+  let curYaw = 0, curPitch = 0.34, curDist = 18.5;
+
+  function setCameraPreset(key) {
+    camPreset = key;
+    yawOffset = 0;
+    pitchOffset = 0;
+    zoomScale = 1.0;
+    document.getElementById('cam-label').textContent = camPresetData[key].label;
+    document.querySelectorAll('#cam-grid .menu-chip').forEach(b => {
+      b.classList.toggle('selected', b.dataset.cam === key);
+    });
+  }
+
+  function updateCameraSmooth() {
+    const aspect = window.innerWidth / window.innerHeight;
+    const isPortrait = aspect < 0.95;
+    const portraitZoom = isPortrait ? Math.min(1.62, 0.92 / aspect) : 1.0;
+    // スマホ縦画面では注視点Yを少し下げてテーブルを画面の中央〜やや上寄りに配置
+    const lookYOffset = isPortrait ? -1.25 : 0.2;
+
+    const base = camPresetData[camPreset];
+    const targetYaw = base.yaw + yawOffset;
+    const targetPitch = Math.max(0.12, Math.min(1.25, base.pitch + pitchOffset));
+    const targetDist = base.dist * portraitZoom * zoomScale;
+
+    curYaw += (targetYaw - curYaw) * 0.14;
+    curPitch += (targetPitch - curPitch) * 0.14;
+    curDist += (targetDist - curDist) * 0.14;
+
+    const center = new THREE.Vector3(0, 1.5 + lookYOffset, 0.5);
+    camera.position.set(
+      center.x + Math.sin(curYaw) * Math.cos(curPitch) * curDist,
+      center.y + Math.sin(curPitch) * curDist,
+      center.z + Math.cos(curYaw) * Math.cos(curPitch) * curDist
+    );
+    camera.lookAt(center);
+  }
+
+  // ==========================================
+  // 6. ゲーム状態管理（シャッフルカップ ＆ 注文暗記レストラン）
+  // ==========================================
+  let gameMode = 'cups'; // 'cups' | 'restaurant'
+  let currentLevel = 1;  // 1〜5
+  let totalScore = 0;
+
+  const stageGroup = new THREE.Group();
+  scene.add(stageGroup);
+
+  // 紙吹雪パーティクル
+  const confettiList = [];
+  function spawnConfetti(originPos) {
+    const cols = [0xf43f5e, 0xfacc15, 0x38bdf8, 0x4ade80, 0xc084fc];
+    for (let i = 0; i < 36; i++) {
+      const m = new THREE.Mesh(
+        new THREE.BoxGeometry(0.22, 0.22, 0.05),
+        new THREE.MeshBasicMaterial({ color: cols[i % cols.length] })
+      );
+      m.position.copy(originPos).add(new THREE.Vector3(0, 1.2, 0));
+      scene.add(m);
+      confettiList.push({
+        mesh: m,
+        vel: new THREE.Vector3((Math.random() - 0.5) * 0.28, 0.18 + Math.random() * 0.22, (Math.random() - 0.5) * 0.28),
+        life: 65
+      });
+    }
+  }
+
+  function setPrompt(htmlText) {
+    document.getElementById('prompt-banner').innerHTML = htmlText;
+  }
+
+  function addScore(pts) {
+    totalScore += pts;
+    document.getElementById('score-pill').textContent = `🏆 ${totalScore}`;
+  }
+
+  // ==========================================
+  // 7. モード①：🎩 シャッフルカップのロジック
+  // ==========================================
+  let cups = []; // { group, cupMesh, charMesh, charSpec, slotIndex, baseX, liftY }
+  let cupPhase = 'READY'; // READY, REVEAL, SHUFFLING, GUESSING, RESULT
+  let targetCharSpec = null;
+  let shuffleQueue = [];
+  let activeSwap = null;
+  let hintGlowTimer = 0;
+
+  const CUP_COLORS = [0xf43f5e, 0x38bdf8, 0xfacc15, 0x4ade80, 0xc084fc];
+
+  function createCupMesh(colorHex) {
+    const g = new THREE.Group();
+    const bodyMat = new THREE.MeshPhysicalMaterial({
+      color: colorHex,
+      roughness: 0.2,
+      clearcoat: 0.8,
+      transparent: true,
+      opacity: 1.0
+    });
+    // 逆さカップ本体
+    const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.92, 1.28, 2.25, 24), bodyMat);
+    cone.position.y = 1.12;
+    cone.castShadow = true;
+
+    // ゴールドの縁取りリム
+    const rim = new THREE.Mesh(
+      new THREE.TorusGeometry(1.28, 0.09, 10, 24),
+      new THREE.MeshStandardMaterial({ color: 0xfde047, metalness: 0.6, roughness: 0.2 })
+    );
+    rim.rotation.x = Math.PI / 2;
+    rim.position.y = 0.06;
+
+    // カップ頂上の星型つまみ
+    const knob = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.32, 0),
+      new THREE.MeshStandardMaterial({ color: 0xfde047, metalness: 0.7, roughness: 0.2 })
+    );
+    knob.position.y = 2.42;
+
+    g.add(cone, rim, knob);
+    g.userData.bodyMat = bodyMat;
+    return g;
+  }
+
+  function getCupSpacing(numCups) {
+    if (numCups === 3) return 3.4;
+    if (numCups === 4) return 2.85;
+    return 2.35;
+  }
+
+  function initCupsStage() {
+    while (stageGroup.children.length > 0) stageGroup.remove(stageGroup.children[0]);
+    cups = [];
+    shuffleQueue = [];
+    activeSwap = null;
+    document.getElementById('order-bubble').classList.remove('show');
+
+    const numCups = currentLevel <= 2 ? 3 : (currentLevel <= 4 ? 4 : 5);
+    const spacing = getCupSpacing(numCups);
+
+    // 隠れるキャラクターの割り当て（Lv.4〜5は2匹別々のカップに入って記憶負荷UP）
+    const numHiddenChars = currentLevel >= 4 ? 2 : 1;
+    const shuffledChars = [...CHAR_LIST].sort(() => Math.random() - 0.5);
+    const hiddenSlots = [...Array(numCups).keys()].sort(() => Math.random() - 0.5).slice(0, numHiddenChars);
+
+    for (let i = 0; i < numCups; i++) {
+      const xPos = (i - (numCups - 1) / 2) * spacing;
+      const cupObjGroup = new THREE.Group();
+      cupObjGroup.position.set(xPos, 0, 0.8);
+
+      const cupMesh = createCupMesh(CUP_COLORS[i % CUP_COLORS.length]);
+      cupMesh.position.y = 1.9; // 初期状態は上がっていて中身が見える
+      cupObjGroup.add(cupMesh);
+
+      let charSpec = null;
+      let charMesh = null;
+      const hIdx = hiddenSlots.indexOf(i);
+      if (hIdx !== -1) {
+        charSpec = shuffledChars[hIdx];
+        charMesh = createCharacter3D(charSpec);
+        charMesh.scale.set(0.88, 0.88, 0.88);
+        cupObjGroup.add(charMesh);
+      }
+
+      stageGroup.add(cupObjGroup);
+      cups.push({
+        id: i,
+        group: cupObjGroup,
+        cupMesh,
+        charMesh,
+        charSpec,
+        slotIndex: i,
+        targetX: xPos,
+        liftY: 1.9
+      });
+    }
+
+    // 探すターゲットキャラクターを決定
+    const validCups = cups.filter(c => c.charSpec !== null);
+    targetCharSpec = validCups[Math.floor(Math.random() * validCups.length)].charSpec;
+
+    cupPhase = 'READY';
+    document.getElementById('start-round-btn').style.display = 'flex';
+    document.getElementById('start-round-btn').textContent = '▶️ シャッフル開始！';
+    document.getElementById('cup-number-btns').style.display = 'none';
+
+    if (numHiddenChars === 1) {
+      setPrompt(`👀 ${targetCharSpec.emoji} <b>${targetCharSpec.name}</b>の場所をおぼえて「シャッフル開始！」`);
+    } else {
+      setPrompt(`👀 2ひきの場所を両方おぼえて「シャッフル開始！」`);
+    }
+  }
+
+  function startCupShuffleRound() {
+    if (cupPhase !== 'READY' && cupPhase !== 'RESULT') return;
+    if (cupPhase === 'RESULT') {
+      initCupsStage();
+    }
+    sfx.playPop();
+    document.getElementById('start-round-btn').style.display = 'none';
+    document.getElementById('cup-number-btns').style.display = 'none';
+
+    // まずカップを下ろして隠す
+    cups.forEach(c => {
+      c.liftY = 0;
+      c.cupMesh.userData.bodyMat.opacity = 1.0;
+    });
+    setPrompt('🎩 カップがくるくる入れ替わるよ！目を離さないでね…');
+    cupPhase = 'REVEAL';
+
+    // シャッフルキューの作成
+    const numCups = cups.length;
+    const swapCount = 4 + currentLevel * 2;
+    const swapDuration = Math.max(0.28, 0.62 - currentLevel * 0.065);
+    shuffleQueue = [];
+
+    for (let s = 0; s < swapCount; s++) {
+      let a = Math.floor(Math.random() * numCups);
+      let b = Math.floor(Math.random() * numCups);
+      while (b === a) b = Math.floor(Math.random() * numCups);
+      // Lv.3以上では30%の確率で「途中まで回って元の場所に戻るフェイント」を混ぜる
+      const isFeint = currentLevel >= 3 && s > 1 && Math.random() < 0.28;
+      shuffleQueue.push({ slotA: a, slotB: b, duration: swapDuration, isFeint });
+    }
+
+    setTimeout(() => {
+      cupPhase = 'SHUFFLING';
+    }, 650);
+  }
+
+  function renderCupNumberButtons() {
+    const wrap = document.getElementById('cup-number-btns');
+    wrap.innerHTML = '';
+    wrap.style.display = 'flex';
+    const sorted = [...cups].sort((a, b) => a.slotIndex - b.slotIndex);
+    sorted.forEach((cup, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'glass-btn';
+      btn.innerHTML = `👆 左から<b>${idx + 1}</b>番目`;
+      btn.addEventListener('click', () => selectCupAnswer(cup));
+      wrap.appendChild(btn);
+    });
+  }
+
+  function selectCupAnswer(chosenCup) {
+    if (cupPhase !== 'GUESSING') return;
+    cupPhase = 'RESULT';
+    document.getElementById('cup-number-btns').style.display = 'none';
+
+    // 選ばれたカップを持ち上げる
+    chosenCup.liftY = 2.1;
+
+    const isCorrect = chosenCup.charSpec && chosenCup.charSpec.id === targetCharSpec.id;
+    if (isCorrect) {
+      sfx.playCorrect();
+      addScore(100 * currentLevel);
+      spawnConfetti(chosenCup.group.position);
+      setPrompt(`🎉 大正解！！ ${targetCharSpec.emoji} <b>${targetCharSpec.name}</b>を見つけたよ！`);
+    } else {
+      sfx.playWrong();
+      // 正解のカップも少し遅れて開ける
+      setTimeout(() => {
+        cups.forEach(c => { c.liftY = 1.9; });
+      }, 450);
+      setPrompt(`💦 おしいっ！ ${targetCharSpec.emoji} <b>${targetCharSpec.name}</b>はこっちでした！`);
+    }
+
+    const startBtn = document.getElementById('start-round-btn');
+    startBtn.textContent = '▶️ もういちど遊ぶ！';
+    startBtn.style.display = 'flex';
+  }
+
+  // ==========================================
+  // 8. モード②：🍽️ 注文暗記レストランのロジック
+  // ==========================================
+  let restPhase = 'MEMORIZE'; // MEMORIZE, COVERED, ORDERING, CHECKING, RESULT
+  let currentOrder = [];      // Food specs
+  let playerTrayItems = [];   // { spec, mesh }
+  let customerGroup = null;
+  let customerSpec = null;
+  let clocheMesh = null;      // 銀のドームカバー
+  let trayGroup = null;
+  let feintWaiterMesh = null;
+  let feintTimer = 0;
+
+  function buildFoodButtonsUI() {
+    const grid = document.getElementById('food-grid');
+    grid.innerHTML = '';
+    FOOD_MENU.forEach(item => {
+      const btn = document.createElement('button');
+      btn.className = 'food-btn';
+      btn.innerHTML = `<span class="f-emo">${item.emoji}</span><span class="f-name">${item.name}</span>`;
+      btn.addEventListener('click', () => addFoodToTray(item));
+      grid.appendChild(btn);
+    });
+  }
+  buildFoodButtonsUI();
+
+  function setFoodButtonsEnabled(enabled) {
+    document.querySelectorAll('.food-btn').forEach(b => { b.disabled = !enabled; });
+    document.getElementById('undo-food-btn').disabled = !enabled || playerTrayItems.length === 0;
+    document.getElementById('serve-btn').disabled = !enabled || playerTrayItems.length !== currentOrder.length;
+  }
+
+  function renderOrderBubble(revealAll = true, checkStep = -1) {
+    const bubble = document.getElementById('order-bubble');
+    bubble.innerHTML = '';
+    currentOrder.forEach((item, idx) => {
+      const slot = document.createElement('div');
+      slot.className = 'order-slot';
+      const isShown = revealAll || idx <= checkStep;
+      if (checkStep >= idx && playerTrayItems[idx]) {
+        const ok = playerTrayItems[idx].spec.id === item.id;
+        slot.classList.add(ok ? 'correct' : 'wrong');
+      }
+      slot.innerHTML = `
+        <span class="num">${idx + 1}ばん</span>
+        <span class="ico">${isShown ? item.emoji : '❓'}</span>
+        <span class="lbl">${isShown ? item.name : 'ひみつ'}</span>
+      `;
+      bubble.appendChild(slot);
+    });
+    bubble.classList.add('show');
+  }
+
+  function initRestaurantStage() {
+    while (stageGroup.children.length > 0) stageGroup.remove(stageGroup.children[0]);
+    playerTrayItems = [];
+    document.getElementById('rest-next-btn').style.display = 'none';
+    document.getElementById('serve-btn').style.display = 'flex';
+    document.getElementById('undo-food-btn').style.display = 'flex';
+
+    // お客さん3Dキャラをカウンター奥に配置
+    customerSpec = CHAR_LIST[Math.floor(Math.random() * CHAR_LIST.length)];
+    customerGroup = createCharacter3D(customerSpec);
+    customerGroup.scale.set(1.35, 1.35, 1.35);
+    customerGroup.position.set(0, 0, -2.5);
+    stageGroup.add(customerGroup);
+
+    // 手前の3D木製サービングトレイ＆白いお皿
+    trayGroup = new THREE.Group();
+    trayGroup.position.set(0, 0.05, 2.3);
+    const trayBoard = new THREE.Mesh(
+      new THREE.BoxGeometry(8.6, 0.22, 2.8),
+      new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.35 })
+    );
+    const trayRim = new THREE.Mesh(
+      new THREE.BoxGeometry(8.9, 0.16, 3.0),
+      new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.4 })
+    );
+    trayRim.position.y = -0.04;
+    trayGroup.add(trayRim, trayBoard);
+    stageGroup.add(trayGroup);
+
+    // 銀のドームカバー（クロッシュ：注文暗記後に降りてくる演出用）
+    clocheMesh = new THREE.Group();
+    const dome = new THREE.Mesh(
+      new THREE.SphereGeometry(1.5, 20, 14, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.75, roughness: 0.2 })
+    );
+    const handle = new THREE.Mesh(
+      new THREE.SphereGeometry(0.24, 10, 10),
+      new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.8 })
+    );
+    handle.position.y = 1.55;
+    clocheMesh.add(dome, handle);
+    clocheMesh.position.set(0, 6.5, -0.3);
+    clocheMesh.visible = false;
+    stageGroup.add(clocheMesh);
+
+    // レベルに応じた注文数（Lv1:2個, Lv2:3個, Lv3:3個+フェイント, Lv4:4個, Lv5:5個）
+    const orderCount = currentLevel === 1 ? 2 : (currentLevel <= 3 ? 3 : (currentLevel === 4 ? 4 : 5));
+    currentOrder = [];
+    for (let i = 0; i < orderCount; i++) {
+      const pick = FOOD_MENU[Math.floor(Math.random() * FOOD_MENU.length)];
+      currentOrder.push(pick);
+    }
+
+    // お皿のスロットガイドをトレイ上に並べる
+    const spacing = orderCount <= 3 ? 2.2 : 1.7;
+    for (let i = 0; i < orderCount; i++) {
+      const plate = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.72, 0.62, 0.12, 20),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 })
+      );
+      plate.position.set((i - (orderCount - 1) / 2) * spacing, 0.16, 0);
+      trayGroup.add(plate);
+    }
+
+    restPhase = 'MEMORIZE';
+    setFoodButtonsEnabled(false);
+    renderOrderBubble(true, -1);
+    sfx.playPop();
+
+    const memorizeDuration = Math.max(2600, 3200 + orderCount * 550 - currentLevel * 200);
+    setPrompt(`👀 ${customerSpec.emoji} <b>${customerSpec.name}</b>の注文を順番におぼえてね！（${orderCount}品）`);
+
+    clearTimeout(initRestaurantStage._timer);
+    initRestaurantStage._timer = setTimeout(() => {
+      if (gameMode !== 'restaurant' || restPhase !== 'MEMORIZE') return;
+      // 注文を隠して盛り付けスタート！
+      renderOrderBubble(false, -1);
+      sfx.playSwoosh();
+
+      // Lv.3以上ではちょっとだけ注意をそらすウェイター横断フェイント演出
+      if (currentLevel >= 3) {
+        triggerWaiterFeint();
+      }
+
+      restPhase = 'ORDERING';
+      setFoodButtonsEnabled(true);
+      setPrompt(`🍽️ おぼえた順番で下のフードボタンを押してトレイに乗せよう！（0/${currentOrder.length}）`);
+    }, memorizeDuration);
+  }
+
+  function triggerWaiterFeint() {
+    if (feintWaiterMesh) stageGroup.remove(feintWaiterMesh);
+    feintWaiterMesh = createCharacter3D(CHAR_LIST[4]); // パンダウェイター
+    feintWaiterMesh.position.set(-8, 0, 0.5);
+    stageGroup.add(feintWaiterMesh);
+    feintTimer = 55;
+  }
+
+  function addFoodToTray(foodSpec) {
+    if (restPhase !== 'ORDERING') return;
+    if (playerTrayItems.length >= currentOrder.length) return;
+
+    sfx.playPop();
+    const orderCount = currentOrder.length;
+    const spacing = orderCount <= 3 ? 2.2 : 1.7;
+    const idx = playerTrayItems.length;
+    const xPos = (idx - (orderCount - 1) / 2) * spacing;
+
+    const mesh = createFood3D(foodSpec.id);
+    mesh.position.set(xPos, 0.22, 0);
+    mesh.scale.set(0.1, 0.1, 0.1);
+    trayGroup.add(mesh);
+
+    playerTrayItems.push({ spec: foodSpec, mesh, targetScale: 1.05 });
+    setFoodButtonsEnabled(true);
+    setPrompt(`🍽️ トレイに盛り付け中…（${playerTrayItems.length}/${currentOrder.length}）`);
+  }
+
+  function undoLastFood() {
+    if (restPhase !== 'ORDERING' || playerTrayItems.length === 0) return;
+    sfx.playSwoosh();
+    const removed = playerTrayItems.pop();
+    trayGroup.remove(removed.mesh);
+    setFoodButtonsEnabled(true);
+    setPrompt(`🍽️ トレイに盛り付け中…（${playerTrayItems.length}/${currentOrder.length}）`);
+  }
+
+  function serveTrayOrder() {
+    if (restPhase !== 'ORDERING' || playerTrayItems.length !== currentOrder.length) return;
+    restPhase = 'CHECKING';
+    setFoodButtonsEnabled(false);
+    sfx.playBell();
+    setPrompt('🛎️ チリンチリン♪ 順番に答え合わせ中…！');
+
+    let step = 0;
+    let allCorrect = true;
+
+    function checkNext() {
+      if (gameMode !== 'restaurant') return;
+      renderOrderBubble(false, step);
+      const ok = playerTrayItems[step].spec.id === currentOrder[step].id;
+      if (ok) {
+        sfx.playTone(580 + step * 110, 0.14, 'triangle', 0.16);
+        playerTrayItems[step].mesh.position.y = 0.55;
+      } else {
+        allCorrect = false;
+        sfx.playWrong();
+      }
+      step++;
+      if (step < currentOrder.length) {
+        setTimeout(checkNext, 420);
+      } else {
+        setTimeout(() => finishRestaurantRound(allCorrect), 450);
+      }
+    }
+    setTimeout(checkNext, 350);
+  }
+
+  function finishRestaurantRound(allCorrect) {
+    restPhase = 'RESULT';
+    renderOrderBubble(true, currentOrder.length);
+    if (allCorrect) {
+      sfx.playCorrect();
+      addScore(120 * currentLevel);
+      spawnConfetti(customerGroup.position);
+      setPrompt(`🎉 大正解！！ ${customerSpec.emoji} <b>${customerSpec.name}</b>「ぜんぶ順番どおりでおいしい〜！」`);
+    } else {
+      sfx.playWrong();
+      setPrompt(`💦 おしいっ！正しい注文は上の吹き出しの順番でした！`);
+    }
+    document.getElementById('serve-btn').style.display = 'none';
+    document.getElementById('undo-food-btn').style.display = 'none';
+    document.getElementById('rest-next-btn').style.display = 'flex';
+  }
+
+  // ==========================================
+  // 9. 💡 お子様向けヒント機能
+  // ==========================================
+  document.getElementById('hint-btn').addEventListener('click', () => {
+    sfx.playPop();
+    if (gameMode === 'cups') {
+      if (cupPhase === 'GUESSING' || cupPhase === 'READY') {
+        hintGlowTimer = 75;
+        cups.forEach(c => {
+          if (c.charSpec && c.charSpec.id === targetCharSpec.id) {
+            c.cupMesh.userData.bodyMat.opacity = 0.38;
+          }
+        });
+        setPrompt(`💡 ヒント！ ${targetCharSpec.emoji} <b>${targetCharSpec.name}</b>がいるカップが透けて見えたよ！`);
+      }
+    } else {
+      if (restPhase === 'ORDERING') {
+        renderOrderBubble(true, -1);
+        setPrompt('💡 ヒント！ 注文をもういちど1.5秒だけ表示するよ！');
+        setTimeout(() => {
+          if (restPhase === 'ORDERING') renderOrderBubble(false, -1);
+        }, 1500);
+      }
+    }
+  });
+
+  // ==========================================
+  // 10. UIイベント＆3Dタップ（Raycaster）連携
+  // ==========================================
+  function switchGameMode(newMode) {
+    clearTimeout(initRestaurantStage._timer);
+    gameMode = newMode;
+    document.getElementById('mode-pill').textContent =
+      newMode === 'cups' ? '🎩 シャッフルカップ' : '🍽️ 暗記レストラン';
+    document.getElementById('cup-controls').style.display = newMode === 'cups' ? 'flex' : 'none';
+    document.getElementById('restaurant-controls').style.display = newMode === 'restaurant' ? 'flex' : 'none';
+
+    document.querySelectorAll('#mode-grid .menu-chip').forEach(b => {
+      b.classList.toggle('selected', b.dataset.mode === newMode);
+    });
+
+    if (newMode === 'cups') {
+      initCupsStage();
+    } else {
+      initRestaurantStage();
+    }
+  }
+
+  function setLevel(lv) {
+    currentLevel = lv;
+    document.getElementById('level-pill').textContent = `⭐ Lv.${lv}`;
+    document.querySelectorAll('#level-grid .menu-chip').forEach(b => {
+      b.classList.toggle('selected', Number(b.dataset.lv) === lv);
+    });
+    switchGameMode(gameMode);
+  }
+
+  // 左上レベルバッジタップでもレベル変更可
+  document.getElementById('level-pill').addEventListener('click', () => {
+    setLevel((currentLevel % 5) + 1);
+  });
+
+  // 右上ドロワー開閉
+  const drawerEl = document.getElementById('settings-drawer');
+  const openSettingsBtn = document.getElementById('open-settings-btn');
+  openSettingsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    drawerEl.classList.toggle('open');
+  });
+  document.getElementById('close-drawer-btn').addEventListener('click', () => drawerEl.classList.remove('open'));
+  window.addEventListener('pointerdown', (e) => {
+    if (!drawerEl.contains(e.target) && e.target !== openSettingsBtn && !openSettingsBtn.contains(e.target)) {
+      drawerEl.classList.remove('open');
+    }
+  });
+
+  document.querySelectorAll('#mode-grid .menu-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      switchGameMode(btn.dataset.mode);
+      drawerEl.classList.remove('open');
+    });
+  });
+
+  document.querySelectorAll('#level-grid .menu-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setLevel(Number(btn.dataset.lv));
+      drawerEl.classList.remove('open');
+    });
+  });
+
+  document.querySelectorAll('#cam-grid .menu-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setCameraPreset(btn.dataset.cam);
+      drawerEl.classList.remove('open');
+    });
+  });
+
+  document.getElementById('quick-cam-btn').addEventListener('click', () => {
+    const order = ['front', 'high', 'angleL', 'angleR'];
+    const next = order[(order.indexOf(camPreset) + 1) % order.length];
+    setCameraPreset(next);
+  });
+
+  const soundBtn = document.getElementById('sound-btn');
+  soundBtn.addEventListener('click', () => {
+    sfx.enabled = !sfx.enabled;
+    soundBtn.textContent = sfx.enabled ? '🔊' : '🔇';
+  });
+
+  document.getElementById('start-round-btn').addEventListener('click', startCupShuffleRound);
+  document.getElementById('undo-food-btn').addEventListener('click', undoLastFood);
+  document.getElementById('serve-btn').addEventListener('click', serveTrayOrder);
+  document.getElementById('rest-next-btn').addEventListener('click', initRestaurantStage);
+
+  // キャンバス上のスワイプカメラ回転 ＆ 3Dカップ直接タップ判定
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  let isDragging = false;
+  let dragDist = 0;
+  let prevPt = { x: 0, y: 0 };
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    isDragging = true;
+    dragDist = 0;
+    prevPt = { x: e.clientX, y: e.clientY };
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - prevPt.x;
+    const dy = e.clientY - prevPt.y;
+    dragDist += Math.hypot(dx, dy);
+    prevPt = { x: e.clientX, y: e.clientY };
+
+    yawOffset = Math.max(-0.95, Math.min(0.95, yawOffset - dx * 0.007));
+    pitchOffset = Math.max(-0.22, Math.min(0.45, pitchOffset + dy * 0.006));
+  });
+
+  window.addEventListener('pointerup', (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    // スワイプ移動量が小さい場合は3Dオブジェクトへのタップとして判定
+    if (dragDist < 8 && gameMode === 'cups' && cupPhase === 'GUESSING') {
+      pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+      pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+
+      for (const cup of cups) {
+        const hits = raycaster.intersectObjects(cup.cupMesh.children, true);
+        if (hits.length > 0) {
+          selectCupAnswer(cup);
+          break;
+        }
+      }
+    }
+  });
+
+  // ==========================================
+  // 11. メインアニメーションループ
+  // ==========================================
+  const clock = new THREE.Clock();
+  initCupsStage();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05);
+    const elapsed = clock.getElapsedTime();
+
+    // 背景バルーンのふわふわ移動
+    floatingDecos.forEach(d => {
+      d.mesh.position.y = d.baseY + Math.sin(elapsed * 2.2 + d.phase) * 0.35;
+    });
+
+    // モード1：シャッフルカップのアニメーション
+    if (gameMode === 'cups') {
+      if (hintGlowTimer > 0) {
+        hintGlowTimer--;
+        if (hintGlowTimer === 0) {
+          cups.forEach(c => { c.cupMesh.userData.bodyMat.opacity = 1.0; });
+        }
+      }
+
+      // シャッフル進行
+      if (cupPhase === 'SHUFFLING') {
+        if (!activeSwap && shuffleQueue.length > 0) {
+          const next = shuffleQueue.shift();
+          const cupA = cups.find(c => c.slotIndex === next.slotA);
+          const cupB = cups.find(c => c.slotIndex === next.slotB);
+          activeSwap = {
+            cupA,
+            cupB,
+            startAX: cupA.group.position.x,
+            startBX: cupB.group.position.x,
+            duration: next.duration,
+            isFeint: next.isFeint,
+            t: 0
+          };
+          sfx.playSwoosh();
+        } else if (activeSwap) {
+          activeSwap.t += dt / activeSwap.duration;
+          if (activeSwap.t >= 1.0) {
+            if (activeSwap.isFeint) {
+              // フェイント：元の場所へ戻る
+              activeSwap.cupA.group.position.set(activeSwap.startAX, 0, 0.8);
+              activeSwap.cupB.group.position.set(activeSwap.startBX, 0, 0.8);
+            } else {
+              // 本入れ替え：スロット番号とX座標を交換
+              activeSwap.cupA.group.position.set(activeSwap.startBX, 0, 0.8);
+              activeSwap.cupB.group.position.set(activeSwap.startAX, 0, 0.8);
+              const tmp = activeSwap.cupA.slotIndex;
+              activeSwap.cupA.slotIndex = activeSwap.cupB.slotIndex;
+              activeSwap.cupB.slotIndex = tmp;
+            }
+            activeSwap = null;
+          } else {
+            const p = activeSwap.t;
+            // フェイント時は折り返すサインカーブ、通常時は0→1のスムーズカーブ
+            const blend = activeSwap.isFeint
+              ? Math.sin(p * Math.PI) * 0.85
+              : 0.5 - 0.5 * Math.cos(p * Math.PI);
+            const arcZ = Math.sin(p * Math.PI) * 2.1;
+
+            activeSwap.cupA.group.position.x = THREE.MathUtils.lerp(activeSwap.startAX, activeSwap.startBX, blend);
+            activeSwap.cupA.group.position.z = 0.8 + arcZ;
+
+            activeSwap.cupB.group.position.x = THREE.MathUtils.lerp(activeSwap.startBX, activeSwap.startAX, blend);
+            activeSwap.cupB.group.position.z = 0.8 - arcZ;
+          }
+        } else {
+          // 全シャッフル完了 → 当てるフェーズへ
+          cupPhase = 'GUESSING';
+          setPrompt(`👆 ${targetCharSpec.emoji} <b>${targetCharSpec.name}</b>が入っているカップをタッチしてね！`);
+          renderCupNumberButtons();
+        }
+      }
+
+      // カップの上下リフト＆中身のキャラクターのぴょんぴょんアニメ
+      cups.forEach((c, idx) => {
+        c.cupMesh.position.y += (c.liftY - c.cupMesh.position.y) * 0.16;
+        if (c.charMesh) {
+          c.charMesh.position.y = Math.abs(Math.sin(elapsed * 4.5 + idx)) * 0.22;
+          c.charMesh.rotation.y = Math.sin(elapsed * 2 + idx) * 0.25;
+        }
+      });
+    }
+
+    // モード2：注文暗記レストランのアニメーション
+    if (gameMode === 'restaurant') {
+      if (customerGroup) {
+        customerGroup.position.y = Math.abs(Math.sin(elapsed * 3.5)) * 0.22;
+        customerGroup.rotation.y = Math.sin(elapsed * 1.8) * 0.18;
+      }
+      if (feintTimer > 0 && feintWaiterMesh) {
+        feintTimer--;
+        feintWaiterMesh.position.x += 0.3;
+        feintWaiterMesh.position.y = Math.abs(Math.sin(elapsed * 10)) * 0.3;
+        if (feintTimer === 0) {
+          stageGroup.remove(feintWaiterMesh);
+          feintWaiterMesh = null;
+        }
+      }
+      playerTrayItems.forEach((item, idx) => {
+        const s = item.mesh.scale.x + (item.targetScale - item.mesh.scale.x) * 0.22;
+        item.mesh.scale.set(s, s, s);
+        item.mesh.rotation.y = elapsed * 1.2 + idx;
+      });
+    }
+
+    // 紙吹雪パーティクル更新
+    for (let i = confettiList.length - 1; i >= 0; i--) {
+      const cf = confettiList[i];
+      cf.mesh.position.add(cf.vel);
+      cf.vel.y -= 0.006;
+      cf.mesh.rotation.x += 0.12;
+      cf.mesh.rotation.y += 0.15;
+      cf.life--;
+      if (cf.life <= 0) {
+        scene.remove(cf.mesh);
+        confettiList.splice(i, 1);
+      }
+    }
+
+    updateCameraSmooth();
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  animate();
+})();
+</script>
+</body>
+</html>

@@ -688,6 +688,7 @@
             if (t.includes('コインプッシャー')) return 'コインプッシャー';
             if (t.includes('クレーン')) return 'クレーンゲーム';
             if (t.includes('パニック') || t.includes('ピョコピョコ')) return 'タッチでパニック';
+            if (t.includes('ジオラマ') || t.includes('特急') || t.includes('はたらくくるま')) return 'ジオラマ特急';
             if (t.includes('レーサー') || t.includes('バギー')) return 'ぷちレーサー';
             if (t.includes('たしざん') || t.includes('ミックスランド')) return 'たしざん新幹線';
             if (t.includes('ボウリング')) return 'どうぶつボウリング';
@@ -696,21 +697,33 @@
             if (t.includes('まるばつ') || t.includes('○×')) return 'アンパンマン○×';
             if (t.includes('しんけいすいじゃく')) return '神経衰弱';
             if (t.includes('すごろく')) return '3Dすごろく';
+            if (t.includes('ピタゴラ') || t.includes('マーブルコースター')) return 'ピタゴラコースター';
+            if (t.includes('シャッフルカップ') || t.includes('暗記レストラン')) return '注文暗記レストラン';
+            if (t.includes('ひらがな')) return 'ひらがなボール';
+            if (t.includes('ランチタイム') || t.includes('くいしんぼう')) return '動物ランチタイム';
+            if (t.includes('とけい') || t.includes('ステーション')) return 'とけい新幹線';
             return t.replace(/^★\s*|\s*★$/g, '').slice(0, 8);
         }
 
         // 各ゲームのグループ判定（重複を防止）
         function getGameGroupId(g) {
+            const t = g.title;
             if (g.id.includes('コインプッシャー') || g.id.includes('クレーン') || g.id.includes('パニック') || 
-                g.title.includes('コイン') || g.title.includes('クレーン') || g.title.includes('パニック')) {
+                t.includes('コイン') || t.includes('クレーン') || t.includes('パニック') ||
+                t.includes('ピタゴラ') || t.includes('マーブルコースター')) {
                 return 'arcade';
             }
-            if (g.category === 'vehicle' || g.category === 'number' || 
-                g.title.includes('レーサー') || g.title.includes('バギー') || g.title.includes('たしざん')) {
+            if (t.includes('レーサー') || t.includes('バギー') || t.includes('たしざん') ||
+                t.includes('ジオラマ') || t.includes('特急') || t.includes('くるま') ||
+                t.includes('とけい') || t.includes('新幹線') || t.includes('ステーション')) {
                 return 'vehicle';
             }
-            if (g.category === 'nature' || g.title.includes('ボウリング') || g.title.includes('オセロ') || 
-                g.title.includes('たんけん') || g.title.includes('ライト')) {
+            if (t.includes('ひらがな') || t.includes('シャッフルカップ') || t.includes('暗記') ||
+                t.includes('まるばつ') || t.includes('しんけいすいじゃく') || t.includes('すごろく')) {
+                return 'puzzle';
+            }
+            if (g.category === 'nature' || t.includes('ボウリング') || t.includes('オセロ') || 
+                t.includes('たんけん') || t.includes('ライト') || t.includes('ランチタイム') || t.includes('くいしんぼう')) {
                 return 'nature';
             }
             return 'puzzle';

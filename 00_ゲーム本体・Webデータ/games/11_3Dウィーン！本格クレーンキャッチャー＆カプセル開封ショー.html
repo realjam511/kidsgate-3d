@@ -1,2392 +1,2069 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>3Dウィーン！本格クレーンキャッチャー＆カプセル開封ショー</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&display=swap" rel="stylesheet">
-  <!-- Three.js & Cannon.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>3Dウィーン！本格クレーンキャッチャー＆カプセル開封ショー</title>
+<style>
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    margin: 0;
+    padding: 0;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: linear-gradient(180deg, #3b1d70 0%, #6d28d9 42%, #f472b6 100%);
+    font-family: "Hiragino Maru Gothic ProN", "Rounded Mplus 1c", "Meiryo", sans-serif;
+    touch-action: none;
+  }
+  #canvas-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+  canvas:active {
+    cursor: grabbing;
+  }
 
-  <style>
-    * {
-      box-sizing: border-box;
-      user-select: none;
-      -webkit-user-select: none;
-      font-family: 'M PLUS Rounded 1c', sans-serif;
-    }
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: radial-gradient(circle at 50% 18%, #4a1d7c 0%, #220c3d 65%, #100520 100%);
-    }
-    #canvas-container {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
-    }
-    canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-      touch-action: none;
-    }
+  /* 左上：図鑑ボタンとマグネット状態バッジ */
+  #top-left-hud {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .hud-pill {
+    background: rgba(30, 20, 60, 0.65);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.28);
+    cursor: pointer;
+    transition: transform 0.12s, background 0.2s;
+  }
+  .hud-pill:active {
+    transform: scale(0.94);
+  }
+  #collection-btn {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.85), rgba(249, 115, 22, 0.85));
+    border-color: rgba(254, 215, 170, 0.85);
+  }
+  #magnet-quick-badge.on {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.88), rgba(5, 150, 105, 0.88));
+    border-color: #a7f3d0;
+    box-shadow: 0 0 14px rgba(16, 185, 129, 0.6);
+  }
 
-    /* Arcade Glass & Candy Panels */
-    .arcade-card {
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 240, 250, 0.92) 100%);
-      border: 3px solid #ff5ca8;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.45), inset 0 2px 0 rgba(255, 255, 255, 0.9);
-      backdrop-filter: blur(8px);
-    }
-    .arcade-btn {
-      transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
-      box-shadow: 0 4px 0 rgba(0, 0, 0, 0.28), 0 6px 14px rgba(0, 0, 0, 0.25);
-    }
-    .arcade-btn:hover:not(:disabled) {
-      transform: translateY(-2px);
-    }
-    .arcade-btn:active:not(:disabled), .arcade-btn.pressed {
-      transform: translateY(2px);
-      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.28);
-    }
-    .arcade-btn:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
+  /* 右上：視点切替・設定・サウンド */
+  #top-right-hud {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tr-btn {
+    background: rgba(30, 20, 60, 0.68);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.28);
+    transition: transform 0.12s, background 0.2s;
+  }
+  .tr-btn:active {
+    transform: scale(0.94);
+  }
+  .tr-btn.icon-only {
+    padding: 6px 9px;
+    font-size: 13px;
+  }
 
-    /* Magnet Mode Rainbow Aura */
-    @keyframes rainbowGlow {
-      0% { box-shadow: 0 0 15px #ff2a85, 0 4px 0 rgba(0,0,0,0.3); }
-      50% { box-shadow: 0 0 24px #00f2fe, 0 4px 0 rgba(0,0,0,0.3); }
-      100% { box-shadow: 0 0 15px #ff2a85, 0 4px 0 rgba(0,0,0,0.3); }
-    }
-    .magnet-active-btn {
-      animation: rainbowGlow 1.6s infinite ease-in-out;
-    }
+  /* 画面スワイプ回転ヒント（控えめなカプセル表示） */
+  #swipe-hint {
+    position: fixed;
+    top: 46px;
+    left: 12px;
+    z-index: 15;
+    background: rgba(30, 20, 60, 0.45);
+    backdrop-filter: blur(4px);
+    color: rgba(255, 255, 255, 0.9);
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.2);
+    font-size: 10.5px;
+    font-weight: 700;
+    pointer-events: none;
+  }
 
-    @keyframes floatUp {
-      0% { opacity: 1; transform: translateY(0) scale(0.85); }
-      35% { opacity: 1; transform: translateY(-16px) scale(1.08); }
-      100% { opacity: 0; transform: translateY(-42px) scale(0.95); }
-    }
-    .floating-pop {
-      animation: floatUp 1.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-    }
+  /* 右上：設定ドロワーメニュー */
+  #settings-drawer {
+    position: fixed;
+    top: 48px;
+    right: 10px;
+    z-index: 35;
+    width: 274px;
+    background: rgba(24, 16, 48, 0.92);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
+    border-radius: 18px;
+    padding: 12px;
+    color: #fff;
+    box-shadow: 0 14px 32px rgba(0,0,0,0.55);
+    display: none;
+    animation: popIn 0.16s ease-out;
+  }
+  #settings-drawer.open {
+    display: block;
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .drawer-section {
+    margin-bottom: 10px;
+  }
+  .drawer-section:last-child {
+    margin-bottom: 0;
+  }
+  .drawer-title {
+    font-size: 11px;
+    color: #fbcfe8;
+    font-weight: 700;
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+  .menu-chip {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #f8fafc;
+    border-radius: 10px;
+    padding: 7px 8px;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .menu-chip:active {
+    transform: scale(0.96);
+  }
+  .menu-chip.selected {
+    background: linear-gradient(135deg, #ec4899, #8b5cf6);
+    border-color: #fbcfe8;
+    box-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
+  }
+  .menu-chip.full-btn {
+    width: 100%;
+    padding: 8px;
+  }
+  .menu-chip.magnet-on {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-color: #6ee7b7;
+  }
 
-    /* Custom Scrollbars */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+  /* トースト通知 */
+  #toast-banner {
+    position: fixed;
+    top: 48px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    z-index: 25;
+    background: rgba(30, 20, 60, 0.85);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    padding: 5px 14px;
+    border-radius: 999px;
+    border: 1.5px solid rgba(253, 224, 71, 0.75);
+    font-size: 12px;
+    font-weight: 800;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.22s, transform 0.22s;
+    white-space: nowrap;
+  }
+  #toast-banner.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* =========================================================
+     下部：背景パネル無し・半透明クリア操作ボタン（画面最下部配置）
+     ========================================================= */
+  #bottom-controls {
+    position: fixed;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    width: min(96vw, 460px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 10px;
+    pointer-events: none;
+    padding: 0 4px;
+  }
+
+  /* 4方向十字パッド（コンパクト＆半透明ガラス調） */
+  #dpad-cluster {
+    pointer-events: auto;
+    display: grid;
+    grid-template-columns: repeat(3, 52px);
+    grid-template-rows: repeat(2, 46px);
+    gap: 6px;
+    align-items: center;
+    justify-items: center;
+  }
+  .dpad-btn {
+    width: 52px;
+    height: 46px;
+    border-radius: 14px;
+    background: rgba(88, 28, 135, 0.34);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border: 1.5px solid rgba(255, 255, 255, 0.65);
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.05;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.45);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.35);
+    cursor: pointer;
+    transition: transform 0.08s, background 0.12s, border-color 0.12s;
+  }
+  .dpad-btn span {
+    font-size: 9.5px;
+    font-weight: 700;
+    opacity: 0.95;
+    margin-top: 1px;
+  }
+  .dpad-btn:active, .dpad-btn.pressed {
+    transform: scale(0.92);
+    background: rgba(236, 72, 153, 0.68);
+    border-color: #fde047;
+    box-shadow: 0 0 14px rgba(236, 72, 153, 0.8);
+  }
+
+  /* 右側：キャッチボタン（半透明クリア＆押しやすい大判サイズ） */
+  #catch-btn {
+    pointer-events: auto;
+    flex: 1;
+    max-width: 210px;
+    height: 68px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.48), rgba(249, 115, 22, 0.48));
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border: 2px solid rgba(254, 240, 138, 0.85);
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 6px 18px rgba(236, 72, 153, 0.35), inset 0 1px 3px rgba(255, 255, 255, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: transform 0.08s, background 0.15s;
+  }
+  #catch-btn:active {
+    transform: scale(0.95);
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.78), rgba(249, 115, 22, 0.78));
+    border-color: #fff;
+  }
+
+  /* ゲーセン2ボタン式モード用 */
+  #arcade-cluster {
+    pointer-events: auto;
+    width: 100%;
+    display: none;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .arcade-btn {
+    height: 64px;
+    border-radius: 18px;
+    background: rgba(59, 130, 246, 0.4);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border: 2px solid rgba(191, 219, 254, 0.8);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 900;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+    cursor: pointer;
+  }
+  .arcade-btn.step2 {
+    background: rgba(236, 72, 153, 0.44);
+    border-color: rgba(251, 207, 232, 0.85);
+  }
+  .arcade-btn:disabled {
+    opacity: 0.32;
+    pointer-events: none;
+  }
+
+  /* =========================================================
+     モーダル1：🎉 カプセル開封ショー画面
+     ========================================================= */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(24, 14, 48, 0.82);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    color: #fff;
+  }
+  .modal-overlay.active {
+    display: flex;
+  }
+  .unbox-card {
+    width: min(92vw, 390px);
+    background: linear-gradient(180deg, rgba(88, 28, 135, 0.95), rgba(30, 27, 75, 0.96));
+    border: 2.5px solid #fde047;
+    border-radius: 26px;
+    padding: 18px;
+    text-align: center;
+    box-shadow: 0 18px 45px rgba(0,0,0,0.65);
+  }
+  .unbox-title {
+    font-size: 19px;
+    font-weight: 900;
+    color: #fde047;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    margin-bottom: 6px;
+  }
+  #unbox-3d-stage {
+    width: 250px;
+    height: 230px;
+    margin: 0 auto;
+    cursor: pointer;
+  }
+  .unbox-sub {
+    font-size: 13px;
+    color: #fbcfe8;
+    font-weight: 800;
+    margin: 8px 0 14px;
+  }
+  .modal-close-btn {
+    background: linear-gradient(135deg, #ec4899, #f97316);
+    border: 2px solid #fde047;
+    color: #fff;
+    font-weight: 900;
+    font-size: 14.5px;
+    padding: 10px 28px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(236, 72, 153, 0.5);
+  }
+
+  /* =========================================================
+     モーダル2：🏆 立体コレクション棚（全12種）
+     ========================================================= */
+  .shelf-card {
+    width: min(94vw, 490px);
+    max-height: 86vh;
+    background: linear-gradient(180deg, rgba(46, 16, 101, 0.96), rgba(15, 23, 42, 0.97));
+    border: 2px solid #f9a8d4;
+    border-radius: 24px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden;
+  }
+  .shelf-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .shelf-header h2 {
+    font-size: 15.5px;
+    color: #fde047;
+  }
+  #turntable-stage {
+    width: 100%;
+    height: 180px;
+    background: radial-gradient(circle, #4c1d95 0%, #1e1b4b 100%);
+    border-radius: 16px;
+    border: 1.5px solid rgba(255,255,255,0.22);
+    position: relative;
+    cursor: grab;
+  }
+  #turntable-caption {
+    position: absolute;
+    bottom: 6px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 800;
+    color: #fef08a;
+    pointer-events: none;
+  }
+  .shelf-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    overflow-y: auto;
+    padding: 2px;
+  }
+  .shelf-item {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 12px;
+    padding: 6px 4px;
+    text-align: center;
+    font-size: 10.5px;
+    font-weight: 700;
+    cursor: pointer;
+    color: #cbd5e1;
+  }
+  .shelf-item.unlocked {
+    background: rgba(236, 72, 153, 0.25);
+    border-color: #f9a8d4;
+    color: #fff;
+  }
+  .shelf-item.active-preview {
+    border-color: #fde047;
+    box-shadow: 0 0 10px rgba(253, 224, 71, 0.6);
+  }
+  .shelf-item .emoji {
+    font-size: 20px;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  @media (max-width: 390px) {
+    #dpad-cluster {
+      grid-template-columns: repeat(3, 46px);
+      grid-template-rows: repeat(2, 42px);
+      gap: 5px;
     }
-    ::-webkit-scrollbar-track {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
+    .dpad-btn {
+      width: 46px;
+      height: 42px;
+      font-size: 12px;
     }
-    ::-webkit-scrollbar-thumb {
-      background: #ff5ca8;
-      border-radius: 8px;
+    #catch-btn {
+      height: 62px;
+      font-size: 14.5px;
     }
-  </style>
+  }
+</style>
 </head>
-<body class="relative select-none overflow-hidden">
+<body>
 
-  <!-- 3D Main Crane Game Canvas -->
-  <div id="canvas-container"></div>
+<div id="canvas-container"></div>
 
-  <!-- Floating Status Popups -->
-  <div id="floating-layer" class="pointer-events-none fixed inset-0 z-20 overflow-hidden"></div>
+<!-- 左上：図鑑ボタンとマグネット状態バッジ -->
+<div id="top-left-hud">
+  <button class="hud-pill" id="collection-btn" title="集めた景品コレクションを見る">
+    🏆 図鑑 <span id="collection-count">0/12</span>
+  </button>
+  <button class="hud-pill" id="magnet-quick-badge" title="タップでマグネットアシスト切替">
+    🧲 <span id="magnet-badge-text">OFF</span>
+  </button>
+</div>
 
-  <!-- TOP HUD BAR -->
-  <header class="fixed top-0 left-0 right-0 z-30 p-2 sm:p-3 pointer-events-none">
-    <div class="max-w-7xl mx-auto w-full flex flex-wrap items-center justify-between gap-2">
-      
-      <!-- Left: Game Title & Crane State Badge -->
-      <div class="pointer-events-auto arcade-card rounded-2xl px-3 py-1.5 sm:px-4 sm:py-2 flex items-center gap-2.5">
-        <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-pink-400 via-fuchsia-500 to-indigo-600 flex items-center justify-center text-xl sm:text-2xl shadow-inner border-2 border-white">
-          🛸
-        </div>
-        <div>
-          <div class="flex items-center gap-1.5">
-            <span class="text-[10px] sm:text-xs font-black text-pink-600 tracking-wider">3D CRANE CATCHER</span>
-            <span id="crane-state-badge" class="bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">READY</span>
-          </div>
-          <div class="text-sm sm:text-lg font-black text-purple-950 leading-tight">
-            ウィーン！クレーン＆カプセル開封
-          </div>
-        </div>
-      </div>
+<!-- 画面スワイプで角度変更できるヒント -->
+<div id="swipe-hint">👆 画面スワイプで斜め・横へ角度調整OK</div>
 
-      <!-- Center: Kid-Friendly Magnet Mode Toggle (ぜったい取れるマグネットモード) -->
-      <div class="pointer-events-auto flex items-center gap-2">
-        <button id="btn-magnet-mode" class="arcade-btn rounded-2xl px-3.5 py-2 sm:px-5 sm:py-2.5 font-black text-xs sm:text-sm border-2 border-white flex items-center gap-2 bg-gradient-to-r from-slate-700 to-slate-800 text-white">
-          <span id="magnet-icon" class="text-base sm:text-xl">🧲</span>
-          <div class="text-left leading-tight">
-            <div class="text-[10px] text-amber-300 font-extrabold">お子様向けアシスト</div>
-            <div id="magnet-label">マグネットモード: OFF</div>
-          </div>
-        </button>
-      </div>
+<!-- 右上：視点切替・設定ドロワー・音 -->
+<div id="top-right-hud">
+  <button class="tr-btn" id="quick-cam-btn" title="カメラ視点を順番に切り替え（角度リセット）">
+    🎥 <span id="quick-cam-label">正面</span>
+  </button>
+  <button class="tr-btn" id="open-settings-btn">
+    ⚙️ 設定 ▾
+  </button>
+  <button class="tr-btn icon-only" id="sound-btn" title="効果音ON/OFF">🔊</button>
+</div>
 
-      <!-- Right: Camera Switch, Collection Shelf, Refill & Sound -->
-      <div class="pointer-events-auto flex items-center gap-1.5 sm:gap-2">
-        <button id="btn-camera" class="arcade-btn bg-gradient-to-b from-cyan-500 to-blue-600 text-white font-extrabold text-xs sm:text-sm px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-2xl border-2 border-cyan-200 flex items-center gap-1" title="カメラ視点を切り替えて奥行きを確認">
-          <span>🎥</span>
-          <span id="camera-label">正面視点</span>
-        </button>
-
-        <button id="btn-shelf" class="arcade-btn bg-gradient-to-b from-pink-500 to-rose-600 text-white font-extrabold text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl border-2 border-pink-200 flex items-center gap-1.5">
-          <span>🏆</span>
-          <span class="hidden sm:inline">コレクション棚</span>
-          <span id="collection-badge" class="bg-yellow-300 text-purple-950 font-black text-xs px-1.5 py-0.5 rounded-full">0/12</span>
-        </button>
-
-        <button id="btn-blueprint" class="arcade-btn bg-gradient-to-b from-purple-500 to-indigo-700 text-white font-extrabold text-xs sm:text-sm px-2.5 py-2 sm:px-3 sm:py-2.5 rounded-2xl border-2 border-purple-200" title="設計図を表示">
-          <span>📐</span>
-        </button>
-
-        <button id="btn-sound" class="arcade-btn bg-gradient-to-b from-emerald-500 to-teal-600 text-white font-extrabold text-xs sm:text-sm px-2.5 py-2 sm:px-3 sm:py-2.5 rounded-2xl border-2 border-emerald-200" title="効果音ON/OFF">
-          <span id="sound-icon">🔊</span>
-        </button>
-      </div>
-
+<!-- 右上：コンパクト収納設定ドロワー -->
+<div id="settings-drawer">
+  <div class="drawer-section">
+    <div class="drawer-title">
+      <span>🧲 お子様向けアシスト設定</span>
+      <span style="cursor:pointer;color:#fbcfe8;" id="close-drawer-btn">✕</span>
     </div>
-  </header>
+    <button class="menu-chip full-btn" id="drawer-magnet-btn">
+      🧲 ぜったい取れるマグネット：OFF
+    </button>
+  </div>
 
-  <!-- BOTTOM ARCADE CONTROL PANEL -->
-  <footer class="fixed bottom-0 left-0 right-0 z-30 p-2 sm:p-3.5 pointer-events-none">
-    <div class="max-w-4xl mx-auto w-full arcade-card rounded-3xl px-3 py-2.5 sm:px-5 sm:py-3 pointer-events-auto flex flex-col gap-2">
-      
-      <!-- Top Row of Footer: Control Mode Tabs & Utility Actions -->
-      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-pink-200 pb-1.5">
-        <div class="flex items-center gap-1.5">
-          <button id="tab-mode-free" class="text-xs font-black px-3 py-1 rounded-xl bg-pink-500 text-white shadow-sm transition">
-            🕹️ かんたん自由移動モード
-          </button>
-          <button id="tab-mode-twobtn" class="text-xs font-black px-3 py-1 rounded-xl bg-pink-100 text-pink-800 hover:bg-pink-200 transition">
-            🎰 ゲーセン2ボタン式
-          </button>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <span class="text-[11px] font-bold text-purple-800 hidden md:inline">
-            💡 ドラッグで視点微調整 / 矢印キー＆Space対応
-          </span>
-          <button id="btn-restock" class="arcade-btn bg-gradient-to-b from-amber-300 to-amber-500 text-purple-950 font-black text-xs px-2.5 py-1 rounded-xl border border-white flex items-center gap-1">
-            <span>🔄</span>
-            <span>景品シャッフル補充</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Mode A: Free Move D-Pad + Big Catch Button -->
-      <div id="panel-mode-free" class="flex flex-wrap items-center justify-between gap-3">
-        <!-- Directional Pad (8-way / 4-way continuous movement) -->
-        <div class="flex items-center gap-1.5 sm:gap-2">
-          <button data-dir="left" class="dpad-btn arcade-btn w-12 h-11 sm:w-14 sm:h-12 rounded-2xl bg-gradient-to-b from-indigo-500 to-purple-700 text-white font-black text-lg border-2 border-indigo-200 flex flex-col items-center justify-center leading-none">
-            <span>◀</span>
-            <span class="text-[9px] font-bold opacity-85">ひだり</span>
-          </button>
-          <div class="flex flex-col gap-1">
-            <button data-dir="back" class="dpad-btn arcade-btn w-12 h-9 sm:w-14 sm:h-10 rounded-xl bg-gradient-to-b from-indigo-500 to-purple-700 text-white font-black text-sm border-2 border-indigo-200 flex items-center justify-center gap-0.5">
-              <span>▲</span><span class="text-[9px]">おく</span>
-            </button>
-            <button data-dir="front" class="dpad-btn arcade-btn w-12 h-9 sm:w-14 sm:h-10 rounded-xl bg-gradient-to-b from-indigo-500 to-purple-700 text-white font-black text-sm border-2 border-indigo-200 flex items-center justify-center gap-0.5">
-              <span>▼</span><span class="text-[9px]">手前</span>
-            </button>
-          </div>
-          <button data-dir="right" class="dpad-btn arcade-btn w-12 h-11 sm:w-14 sm:h-12 rounded-2xl bg-gradient-to-b from-indigo-500 to-purple-700 text-white font-black text-lg border-2 border-indigo-200 flex flex-col items-center justify-center leading-none">
-            <span>▶</span>
-            <span class="text-[9px] font-bold opacity-85">みぎ</span>
-          </button>
-        </div>
-
-        <!-- Center Guide Text -->
-        <div class="hidden sm:flex flex-col items-center text-center">
-          <div class="text-xs font-black text-pink-600">🎯 光るリングを景品に合わせてね！</div>
-          <div class="text-[11px] font-bold text-purple-800">左手前の「GET口」へ運ぶとカプセル開封ショー！</div>
-        </div>
-
-        <!-- Giant Sparkly Catch Button -->
-        <button id="btn-drop-claw" class="arcade-btn flex-1 sm:flex-initial min-w-[175px] sm:min-w-[220px] bg-gradient-to-r from-pink-500 via-amber-400 to-rose-500 text-purple-950 font-black text-base sm:text-lg py-3 px-5 rounded-2xl border-4 border-white flex items-center justify-center gap-2">
-          <span class="text-xl sm:text-2xl">👇</span>
-          <span>キャッチ！(つかむ)</span>
-        </button>
-      </div>
-
-      <!-- Mode B: Classic 2-Step Arcade Buttons (① 横移動長押し -> ② 奥移動長押し) -->
-      <div id="panel-mode-twobtn" class="hidden flex-wrap items-center justify-between gap-3">
-        <div class="text-xs font-extrabold text-purple-900">
-          <span id="twobtn-instruction">①「よこ移動」ボタンを押し続けて狙いを決めよう！</span>
-        </div>
-
-        <div class="flex items-center gap-2.5 flex-1 sm:flex-initial justify-end">
-          <button id="btn-step1-x" class="arcade-btn flex-1 sm:w-44 py-3 px-4 rounded-2xl bg-gradient-to-b from-pink-500 to-rose-600 text-white font-black text-sm sm:text-base border-2 border-white flex items-center justify-center gap-1.5">
-            <span>① よこ移動 ▶</span>
-          </button>
-
-          <button id="btn-step2-z" disabled class="arcade-btn flex-1 sm:w-44 py-3 px-4 rounded-2xl bg-gradient-to-b from-amber-400 to-orange-500 text-purple-950 font-black text-sm sm:text-base border-2 border-white flex items-center justify-center gap-1.5">
-            <span>② おく移動 ▲</span>
-          </button>
-
-          <button id="btn-step-reset" class="arcade-btn py-3 px-3 rounded-2xl bg-slate-200 text-slate-700 font-black text-xs border border-white">
-            やり直し
-          </button>
-        </div>
-      </div>
-
-    </div>
-  </footer>
-
-  <!-- =====================================================================
-       MODAL 1: 🎉 3D CAPSULE OPENING SHOW (カプセル開封ショー演出)
-  ====================================================================== -->
-  <div id="opening-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6">
-    <div class="arcade-card rounded-3xl max-w-lg w-full overflow-hidden border-4 border-yellow-300 flex flex-col items-center p-4 sm:p-6 text-center relative">
-      
-      <!-- Top Ribbon -->
-      <div class="bg-gradient-to-r from-pink-500 via-amber-400 to-cyan-400 text-purple-950 font-black text-xs sm:text-sm px-4 py-1 rounded-full border-2 border-white shadow-md mb-2">
-        🎉 CAPSULE OPENING SHOW!! カプセル開封ショー 🎉
-      </div>
-
-      <h2 id="open-title" class="text-xl sm:text-2xl font-black text-purple-950">
-        ドキドキ… なにが出るかな？
-      </h2>
-      <p id="open-subtitle" class="text-xs sm:text-sm font-bold text-pink-600 mt-0.5">
-        下のボタンまたはカプセルをタップしてパカッと開けよう！
-      </p>
-
-      <!-- Dedicated 3D Stage Viewport for Capsule Pop & Mascot Reveal -->
-      <div id="opening-canvas-wrap" class="w-full h-64 sm:h-72 my-3 rounded-2xl bg-gradient-to-b from-indigo-950 via-purple-900 to-fuchsia-950 border-4 border-pink-400 shadow-inner relative overflow-hidden cursor-pointer">
-        <!-- Rarity & NEW Badge Overlay -->
-        <div id="open-badge-row" class="hidden absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-          <span id="open-rarity" class="bg-gradient-to-r from-amber-300 to-yellow-500 text-purple-950 font-black text-xs sm:text-sm px-3 py-1 rounded-full shadow">
-            ★★★★ RARE
-          </span>
-          <span id="open-new-badge" class="bg-pink-500 text-white font-black text-xs px-3 py-1 rounded-full shadow animate-bounce">
-            ✨ NEW GET!!
-          </span>
-        </div>
-      </div>
-
-      <!-- Prize Description Box (Revealed after opening) -->
-      <div id="open-desc-box" class="hidden bg-white/90 rounded-2xl p-3 border-2 border-pink-200 w-full mb-3">
-        <div id="open-prize-name" class="text-lg sm:text-xl font-black text-purple-950">🍓 ハニーくまちゃん</div>
-        <p id="open-prize-lore" class="text-xs font-bold text-purple-800 mt-1">
-          赤いリボンがチャームポイントのふわふわテディベア！
-        </p>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="flex items-center gap-3 w-full">
-        <button id="btn-pop-capsule" class="arcade-btn flex-1 bg-gradient-to-r from-pink-500 via-yellow-400 to-orange-500 text-purple-950 font-black text-base sm:text-lg py-3 px-6 rounded-2xl border-4 border-white">
-          ✨ パカッと開ける！(タップ)
-        </button>
-
-        <button id="btn-close-opening" class="hidden arcade-btn flex-1 bg-gradient-to-b from-emerald-400 to-teal-600 text-white font-black text-base py-3 px-6 rounded-2xl border-2 border-white">
-          🙌 コレクション棚へしまう
-        </button>
-      </div>
-
+  <div class="drawer-section">
+    <div class="drawer-title"><span>🎥 基準カメラ視点（スワイプで微調整可）</span></div>
+    <div class="grid-2" id="cam-grid">
+      <button class="menu-chip selected" data-cam="front">🎥 正面ベース</button>
+      <button class="menu-chip" data-cam="angle">📐 ななめベース</button>
+      <button class="menu-chip" data-cam="side">👀 真横(奥行確認)</button>
+      <button class="menu-chip" data-cam="top">🔍 真上見下ろし</button>
     </div>
   </div>
 
-  <!-- =====================================================================
-       MODAL 2: 🏆 3D COLLECTION SHELF (立体コレクション棚)
-  ====================================================================== -->
-  <div id="shelf-modal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-6">
-    <div class="arcade-card rounded-3xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden border-4 border-pink-400">
-      
-      <!-- Header -->
-      <div class="bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between text-white">
-        <div class="flex items-center gap-2.5">
-          <span class="text-2xl sm:text-3xl">🏆</span>
-          <div>
-            <h2 class="text-lg sm:text-2xl font-black leading-tight">3Dマスコット＆カプセル 立体コレクション棚</h2>
-            <p class="text-xs text-pink-100 font-bold">クレーンで獲得した景品が立体ディスプレイに並びます（ドラッグで360°回転鑑賞）</p>
-          </div>
-        </div>
-        <button id="btn-close-shelf" class="arcade-btn bg-white text-pink-600 font-black w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-lg">
-          ✕
-        </button>
-      </div>
-
-      <!-- Body -->
-      <div class="p-4 sm:p-6 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 flex-1">
-        <!-- Left 3D Turntable Viewer -->
-        <div class="lg:col-span-5 flex flex-col bg-gradient-to-b from-purple-950 via-indigo-950 to-slate-900 rounded-2xl p-4 border-2 border-purple-400 shadow-inner min-h-[280px]">
-          <div class="flex items-center justify-between mb-1">
-            <span id="shelf-preview-rarity" class="bg-gradient-to-r from-amber-300 to-yellow-500 text-purple-950 text-xs font-black px-2.5 py-0.5 rounded-full">
-              ★★★ MASCOT
-            </span>
-            <span id="shelf-preview-count" class="text-xs font-extrabold text-pink-300">獲得数: 0個</span>
-          </div>
-
-          <div id="shelf-canvas-wrap" class="relative w-full h-52 sm:h-60 flex-1 rounded-xl overflow-hidden cursor-grab active:cursor-grabbing"></div>
-
-          <div class="mt-2 text-center">
-            <h3 id="shelf-preview-name" class="text-lg sm:text-xl font-black text-white">景品を選択してください</h3>
-            <p id="shelf-preview-lore" class="text-xs text-purple-200 mt-1">ドラッグで3Dモデルを360度くるくる回して鑑賞できます。</p>
-          </div>
-        </div>
-
-        <!-- Right 12-Slot Shelf Grid -->
-        <div class="lg:col-span-7 flex flex-col justify-between">
-          <div id="shelf-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-2.5">
-            <!-- Populated by JS -->
-          </div>
-
-          <div class="mt-4 pt-3 border-t border-pink-200 flex flex-wrap items-center justify-between gap-2 text-xs text-purple-900 font-bold">
-            <div>💡「🧲 マグネットモード」をONにすると、狙った景品をピタッと吸い寄せて確実にゲットできます！</div>
-            <button id="btn-unlock-all" class="text-pink-600 underline hover:text-pink-800 font-extrabold">
-              全12種をお試し解放
-            </button>
-          </div>
-        </div>
-      </div>
-
+  <div class="drawer-section">
+    <div class="drawer-title"><span>🕹️ 操作モード切替</span></div>
+    <div class="grid-2" id="mode-grid">
+      <button class="menu-chip selected" data-mode="free">🕹️ 4方向自由移動</button>
+      <button class="menu-chip" data-mode="arcade">🎰 ゲーセン2ボタン</button>
     </div>
   </div>
 
-  <!-- =====================================================================
-       MODAL 3: 📐 SYSTEM BLUEPRINT (設計図詳細モーダル)
-  ====================================================================== -->
-  <div id="blueprint-modal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-6">
-    <div class="arcade-card rounded-3xl max-w-3xl w-full max-h-[88vh] flex flex-col overflow-hidden border-4 border-indigo-400">
-      <div class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 px-5 py-3.5 flex items-center justify-between text-white">
-        <div class="flex items-center gap-2">
-          <span class="text-2xl">📐</span>
-          <h2 class="text-base sm:text-xl font-black">3Dクレーンキャッチャー＆カプセル開封ショー 設計図</h2>
-        </div>
-        <button id="btn-close-blueprint" class="arcade-btn bg-white text-indigo-700 font-black w-9 h-9 rounded-full flex items-center justify-center">
-          ✕
-        </button>
-      </div>
+  <div class="drawer-section">
+    <div class="drawer-title"><span>🔄 ステージ管理</span></div>
+    <button class="menu-chip full-btn" id="shuffle-prizes-btn" style="background:rgba(234,179,8,0.32);border-color:#fde047;">
+      🔄 景品をシャッフル補充する
+    </button>
+  </div>
+</div>
 
-      <div class="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs sm:text-sm text-purple-950 leading-relaxed">
-        <div class="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-3.5">
-          <h3 class="font-black text-indigo-900 text-sm sm:text-base mb-1">1. ガントリー・3本爪アーム＆揺れ物理（Three.js + Cannon.js）</h3>
-          <p class="font-medium text-slate-700">
-            天井レール（Z軸ブリッジ＋X軸トロリー）の移動速度変化から加速度を算出し、ワイヤーとアーム全体に減衰振り子運動（Pendulum Damping）を適用しています。3本の爪（120°配置）それぞれにKinematic球体コライダーを追従させ、降下時には爪を開いてカプセルを包み込み、上昇時には爪を閉じて物理的にすくい上げます。
-          </p>
-        </div>
+<!-- 中央上部トースト通知 -->
+<div id="toast-banner">🧲 マグネットモード ON！</div>
 
-        <div class="bg-pink-50 border-2 border-pink-200 rounded-2xl p-3.5">
-          <h3 class="font-black text-pink-900 text-sm sm:text-base mb-1">2. ぜったい取れるマグネットモード（お子様向けアシスト設計）</h3>
-          <p class="font-medium text-slate-700">
-            マグネットモードON時は、爪の中心から半径2.4ユニット以内の最も近い景品を自動検知します。爪が最下点に到達した瞬間に磁気トラクタービームで景品を爪の中央へ引き寄せ、左手前の「GET口（落とし口）」上空まで落下しないよう完全ホールドします。
-          </p>
-        </div>
-
-        <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-3.5">
-          <h3 class="font-black text-amber-900 text-sm sm:text-base mb-1">3. カプセル開封ショー演出＆Web Audioモーター音合成</h3>
-          <p class="font-medium text-slate-700">
-            落とし口センサーを通過した景品は専用の3D開封ステージへ遷移します。タップ操作でカプセルの上下ドームが分離し、60個の3D紙吹雪パーティクルとともに内部の3Dキャラクターがポップアップします。また、クレーン移動中の「ウィーン…」というモーター駆動音はWeb Audio APIの2基のオシレーターとLFO変調でリアルタイム生成しています。
-          </p>
-        </div>
-      </div>
-    </div>
+<!-- 下部：背景パネル無し・半透明クリアボタン群 -->
+<div id="bottom-controls">
+  <div id="dpad-cluster">
+    <div></div>
+    <button class="dpad-btn" id="btn-up" data-dir="up">▲<span>おく</span></button>
+    <div></div>
+    <button class="dpad-btn" id="btn-left" data-dir="left">◀<span>ひだり</span></button>
+    <button class="dpad-btn" id="btn-down" data-dir="down">▼<span>手前</span></button>
+    <button class="dpad-btn" id="btn-right" data-dir="right">▶<span>みぎ</span></button>
   </div>
 
-  <!-- MAIN APPLICATION SCRIPT -->
-  <script>
-    /********************************************************************
-     * 1. 12 COLLECTIBLE PRIZE CATALOG & STATE PERSISTENCE
-     ********************************************************************/
-    const PRIZE_CATALOG = [
-      {
-        id: 'bear',
-        name: 'ハニーくまちゃん',
-        emoji: '🧸',
-        rarity: '★★★',
-        capsuleColor: 0xff6b9d,
-        desc: '赤いリボンがチャームポイント！はちみつ色のふわふわ3Dテディベアマスコット。'
-      },
-      {
-        id: 'rabbit',
-        name: 'みるくうさぎちゃん',
-        emoji: '🐰',
-        rarity: '★★★',
-        capsuleColor: 0xff85c0,
-        desc: '長いお耳とピンクのほっぺが可愛い、いちごミルク色のうさぎちゃんフィギュア。'
-      },
-      {
-        id: 'cat',
-        name: 'みけねこニャンコ',
-        emoji: '🐱',
-        rarity: '★★★',
-        capsuleColor: 0xfbbf24,
-        desc: '金の鈴付き首輪を付けた、幸運を呼ぶまんまる三毛猫マスコット。'
-      },
-      {
-        id: 'penguin',
-        name: 'ぺんぎんアイスマスコット',
-        emoji: '🐧',
-        rarity: '★★★',
-        capsuleColor: 0x38bdf8,
-        desc: 'ピンクのイヤーマフでおめかしした、氷の国からやってきた赤ちゃんペンギン。'
-      },
-      {
-        id: 'dolphin',
-        name: 'アクアいるかさん',
-        emoji: '🐬',
-        rarity: '★★★',
-        capsuleColor: 0x06b6d4,
-        desc: 'ツヤツヤのアクアブルーが輝く、ジャンプが得意なバンドウイルカフィギュア。'
-      },
-      {
-        id: 'frog',
-        name: 'けろけろ王冠カエル',
-        emoji: '🐸',
-        rarity: '★★★',
-        capsuleColor: 0x4ade80,
-        desc: '頭に小さな黄金の王冠を乗せた、にっこり笑顔のカエルの王子様マスコット。'
-      },
-      {
-        id: 'unicorn',
-        name: 'ドリームユニコーン',
-        emoji: '🦄',
-        rarity: '★★★★',
-        capsuleColor: 0xc084fc,
-        desc: 'キラキラの黄金ホーンとパステルカラーのたてがみを持つ夢見るユニコーン。'
-      },
-      {
-        id: 'octo',
-        name: 'ぷりぷりタコさん',
-        emoji: '🐙',
-        rarity: '★★★',
-        capsuleColor: 0xf87171,
-        desc: 'くるんと丸まった8本の足とねじりハチマキがキュートな人気者タコさん。'
-      },
-      {
-        id: 'parfait',
-        name: 'いちごプリンパフェ',
-        emoji: '🍨',
-        rarity: '★★★★',
-        capsuleColor: 0xf43f5e,
-        desc: 'カスタードプリンと生クリーム、フレッシュ苺を贅沢に盛り付けた3Dミニチュアパフェ。'
-      },
-      {
-        id: 'macaron',
-        name: 'トゥインクル星マカロン',
-        emoji: '🍓',
-        rarity: '★★★',
-        capsuleColor: 0xf472b6,
-        desc: 'パステルピンクのマカロン生地に流れ星キャンディをトッピングしたスイーツ景品。'
-      },
-      {
-        id: 'gold_robo',
-        name: 'ゴールデンメカロボ',
-        emoji: '🤖',
-        rarity: '★★★★',
-        capsuleColor: 0xeab308,
-        desc: '純金メッキボディにサイバーバイザーが光る、コレクター垂涎のレトロトイロボット！'
-      },
-      {
-        id: 'rainbow_dragon',
-        name: 'レインボー星ドラゴ',
-        emoji: '🐉',
-        rarity: '★★★★★',
-        capsuleColor: 0xec4899,
-        desc: '虹色のカプセルからのみ出現するウルトラレア！クリスタルの翼を持つ伝説の星ドラゴン！'
-      }
-    ];
+  <button id="catch-btn">👇 キャッチ！</button>
 
-    const STORAGE_KEY = 'arcade_3d_crane_collection_v1';
-    let collectionState = {};
-    PRIZE_CATALOG.forEach((p) => (collectionState[p.id] = 0));
+  <div id="arcade-cluster">
+    <button class="arcade-btn" id="arcade-btn-x">① よこ移動 (長押し▶)</button>
+    <button class="arcade-btn step2" id="arcade-btn-z" disabled>② おく移動 (長押し▲)</button>
+  </div>
+</div>
 
-    function loadCollection() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          collectionState = { ...collectionState, ...parsed };
-        }
-      } catch (e) {
-        console.warn('Storage load skipped:', e);
-      }
-      updateCollectionBadge();
+<!-- モーダル1：🎉 カプセル開封ショー -->
+<div class="modal-overlay" id="unbox-modal">
+  <div class="unbox-card">
+    <div class="unbox-title" id="unbox-title">🎉 カプセルGET！！</div>
+    <div id="unbox-3d-stage" title="タップしてカプセルを開封！"></div>
+    <div class="unbox-sub" id="unbox-sub">👆 カプセルをタップしてパカッと開けよう！</div>
+    <button class="modal-close-btn" id="unbox-close-btn">つづける</button>
+  </div>
+</div>
+
+<!-- モーダル2：🏆 立体コレクション棚 -->
+<div class="modal-overlay" id="shelf-modal">
+  <div class="shelf-card">
+    <div class="shelf-header">
+      <h2>🏆 おもちゃ図鑑（ドラッグで360°回転）</h2>
+      <button class="tr-btn" id="shelf-close-btn">✕ とじる</button>
+    </div>
+    <div id="turntable-stage">
+      <div id="turntable-caption">景品を選択すると3D表示されます</div>
+    </div>
+    <div class="shelf-grid" id="shelf-grid"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+<script>
+(() => {
+  // ==========================================
+  // 1. 全12種マスコット図鑑データ＆保存管理
+  // ==========================================
+  const PRIZE_CATALOG = [
+    { id: 'bear', name: 'ハニーくまちゃん', emoji: '🐻', color: 0xd97706, subColor: 0xfef3c7, capsuleColor: 0xfbbf24, rarity: '★' },
+    { id: 'rabbit', name: 'いちごうさちゃん', emoji: '🐰', color: 0xf9a8d4, subColor: 0xffffff, capsuleColor: 0xf472b6, rarity: '★' },
+    { id: 'penguin', name: 'ソーダペンギン', emoji: '🐧', color: 0x0284c7, subColor: 0xffffff, capsuleColor: 0x38bdf8, rarity: '★' },
+    { id: 'cat', name: 'みけねこニャン', emoji: '🐱', color: 0xfffbeb, subColor: 0xf97316, capsuleColor: 0xfb923c, rarity: '★' },
+    { id: 'panda', name: 'もっちりパンダ', emoji: '🐼', color: 0xffffff, subColor: 0x1e293b, capsuleColor: 0x4ade80, rarity: '★★' },
+    { id: 'dolphin', name: 'アクアいるかさん', emoji: '🐬', color: 0x0ea5e9, subColor: 0xe0f2fe, capsuleColor: 0x22d3ee, rarity: '★★' },
+    { id: 'sealion', name: '玉乗りあしかさん', emoji: '🦭', color: 0x64748b, subColor: 0xfef08a, capsuleColor: 0x818cf8, rarity: '★★' },
+    { id: 'cake', name: 'きらきらショートケーキ', emoji: '🍰', color: 0xffffff, subColor: 0xf43f5e, capsuleColor: 0xfb7185, rarity: '★★' },
+    { id: 'unicorn', name: 'ドリームユニコーン', emoji: '🦄', color: 0xfdf4ff, subColor: 0xc084fc, capsuleColor: 0xa855f7, rarity: '★★★' },
+    { id: 'crown', name: 'ロイヤル純金王冠', emoji: '👑', color: 0xfacc15, subColor: 0xef4444, capsuleColor: 0xeab308, rarity: '★★★' },
+    { id: 'robo', name: 'ゴールデンロボ', emoji: '🤖', color: 0xf59e0b, subColor: 0x38bdf8, capsuleColor: 0x6366f1, rarity: '★★★' },
+    { id: 'dragon', name: '虹色クリスタルドラゴン', emoji: '🐲', color: 0x10b981, subColor: 0xfacc15, capsuleColor: 0xec4899, rarity: '👑SSR' }
+  ];
+
+  const STORAGE_KEY = 'crane_catcher_collection_v2';
+  let unlockedCounts = {};
+  try {
+    unlockedCounts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  } catch (e) {
+    unlockedCounts = {};
+  }
+  function saveCollection() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(unlockedCounts));
+    } catch (e) {}
+    updateCollectionBadge();
+  }
+  function updateCollectionBadge() {
+    const count = PRIZE_CATALOG.filter(p => (unlockedCounts[p.id] || 0) > 0).length;
+    document.getElementById('collection-count').textContent = `${count}/${PRIZE_CATALOG.length}`;
+  }
+  updateCollectionBadge();
+
+  // ==========================================
+  // 2. Web Audio シンセサイザー
+  // ==========================================
+  class CraneSound {
+    constructor() {
+      this.ctx = null;
+      this.enabled = true;
+      this.motorOsc = null;
+      this.motorGain = null;
     }
-
-    function saveCollection() {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(collectionState));
-      } catch (e) {
-        // Ignore quota errors
+    init() {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) this.ctx = new AudioCtx();
       }
+      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
     }
-
-    function updateCollectionBadge() {
-      const unlocked = Object.values(collectionState).filter((v) => v > 0).length;
-      document.getElementById('collection-badge').textContent = `${unlocked}/${PRIZE_CATALOG.length}`;
+    startMotor(freq = 210) {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      if (this.motorOsc) {
+        this.motorOsc.frequency.setTargetAtTime(freq, this.ctx.currentTime, 0.05);
+        return;
+      }
+      const now = this.ctx.currentTime;
+      this.motorOsc = this.ctx.createOscillator();
+      this.motorGain = this.ctx.createGain();
+      this.motorOsc.type = 'triangle';
+      this.motorOsc.frequency.setValueAtTime(freq, now);
+      this.motorGain.gain.setValueAtTime(0.05, now);
+      this.motorOsc.connect(this.motorGain).connect(this.ctx.destination);
+      this.motorOsc.start(now);
     }
-
-    /********************************************************************
-     * 2. WEB AUDIO SYNTHESIZER (ウィーン！駆動音・効果音・開封ファンファーレ)
-     ********************************************************************/
-    class CraneAudioEngine {
-      constructor() {
-        this.ctx = null;
-        this.muted = false;
-        this.motorOsc1 = null;
-        this.motorOsc2 = null;
-        this.motorGain = null;
-        this.isMotorPlaying = false;
-      }
-
-      init() {
-        if (!this.ctx) {
-          const AudioCtx = window.AudioContext || window.webkitAudioContext;
-          if (AudioCtx) this.ctx = new AudioCtx();
-        }
-        if (this.ctx && this.ctx.state === 'suspended') {
-          this.ctx.resume();
-        }
-      }
-
-      toggleMute() {
-        this.muted = !this.muted;
-        if (this.muted) this.stopMotorHum();
-        return this.muted;
-      }
-
-      // Continuous "Wiin..." ("ウィーン…") Crane Motor Hum
-      startMotorHum(baseFreq = 195) {
-        if (this.muted) return;
-        this.init();
-        if (!this.ctx) return;
-
-        if (this.isMotorPlaying && this.motorOsc1) {
-          this.motorOsc1.frequency.setTargetAtTime(baseFreq, this.ctx.currentTime, 0.05);
-          this.motorOsc2.frequency.setTargetAtTime(baseFreq * 1.5, this.ctx.currentTime, 0.05);
-          return;
-        }
-
-        const now = this.ctx.currentTime;
-        this.motorOsc1 = this.ctx.createOscillator();
-        this.motorOsc2 = this.ctx.createOscillator();
-        this.motorGain = this.ctx.createGain();
-
-        this.motorOsc1.type = 'sawtooth';
-        this.motorOsc2.type = 'triangle';
-        this.motorOsc1.frequency.setValueAtTime(baseFreq, now);
-        this.motorOsc2.frequency.setValueAtTime(baseFreq * 1.5, now);
-
-        // Gentle lowpass filter for authentic arcade servo hum
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(620, now);
-
-        this.motorGain.gain.setValueAtTime(0.001, now);
-        this.motorGain.gain.linearRampToValueAtTime(0.055, now + 0.06);
-
-        this.motorOsc1.connect(filter);
-        this.motorOsc2.connect(filter);
-        filter.connect(this.motorGain);
-        this.motorGain.connect(this.ctx.destination);
-
-        this.motorOsc1.start(now);
-        this.motorOsc2.start(now);
-        this.isMotorPlaying = true;
-      }
-
-      stopMotorHum() {
-        if (!this.isMotorPlaying || !this.ctx || !this.motorGain) return;
-        const now = this.ctx.currentTime;
+    stopMotor() {
+      if (this.motorOsc && this.ctx) {
         try {
-          this.motorGain.gain.setTargetAtTime(0.0001, now, 0.04);
-          const o1 = this.motorOsc1;
-          const o2 = this.motorOsc2;
-          setTimeout(() => {
-            try {
-              if (o1) o1.stop();
-              if (o2) o2.stop();
-            } catch (e) {}
-          }, 90);
+          this.motorGain.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.04);
+          this.motorOsc.stop(this.ctx.currentTime + 0.06);
         } catch (e) {}
-        this.isMotorPlaying = false;
-        this.motorOsc1 = null;
-        this.motorOsc2 = null;
       }
-
-      // Mechanical Claw Latch Click
-      playClawLatch() {
-        if (this.muted) return;
-        this.init();
-        if (!this.ctx) return;
-
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(420, now);
-        osc.frequency.exponentialRampToValueAtTime(160, now + 0.09);
-
-        gain.gain.setValueAtTime(0.12, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.11);
-      }
-
-      // Magnet Lock Sci-Fi Sparkle
-      playMagnetLock() {
-        if (this.muted) return;
-        this.init();
-        if (!this.ctx) return;
-
-        const freqs = [587.33, 880, 1174.66, 1760];
-        freqs.forEach((f, i) => {
-          const t = this.ctx.currentTime + i * 0.045;
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(f, t);
-
-          gain.gain.setValueAtTime(0.1, t);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-
-          osc.connect(gain);
-          gain.connect(this.ctx.destination);
-          osc.start(t);
-          osc.stop(t + 0.2);
-        });
-      }
-
-      // Capsule Pop Open ("パカッ！ポン！")
-      playCapsulePop() {
-        if (this.muted) return;
-        this.init();
-        if (!this.ctx) return;
-
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(280, now);
-        osc.frequency.exponentialRampToValueAtTime(1120, now + 0.14);
-
-        gain.gain.setValueAtTime(0.22, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
-
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.18);
-      }
-
-      // Celebratory Fanfare on Prize Get / Capsule Reveal
-      playFanfare() {
-        if (this.muted) return;
-        this.init();
-        if (!this.ctx) return;
-
-        const notes = [
-          { f: 523.25, t: 0.0, d: 0.12 },
-          { f: 659.25, t: 0.12, d: 0.12 },
-          { f: 783.99, t: 0.24, d: 0.12 },
-          { f: 1046.5, t: 0.36, d: 0.32 },
-          { f: 783.99, t: 0.7, d: 0.12 },
-          { f: 1046.5, t: 0.84, d: 0.45 }
-        ];
-        notes.forEach((n) => {
-          const start = this.ctx.currentTime + n.t;
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(n.f, start);
-
-          gain.gain.setValueAtTime(0.16, start);
-          gain.gain.exponentialRampToValueAtTime(0.001, start + n.d);
-
-          osc.connect(gain);
-          gain.connect(this.ctx.destination);
-          osc.start(start);
-          osc.stop(start + n.d + 0.02);
-        });
-      }
+      this.motorOsc = null;
+      this.motorGain = null;
     }
-
-    const sound = new CraneAudioEngine();
-
-    /********************************************************************
-     * 3. PROCEDURAL 3D MASCOT & CAPSULE MODEL BUILDER (全12種)
-     ********************************************************************/
-    const goldMat = new THREE.MeshStandardMaterial({
-      color: 0xffd700,
-      metalness: 0.85,
-      roughness: 0.18
-    });
-    const darkEyeMat = new THREE.MeshStandardMaterial({
-      color: 0x1e1b4b,
-      roughness: 0.15
-    });
-
-    function addCuteEyesAndBlush(headGroup, yOffset = 0.06, zOffset = 0.34, spread = 0.14) {
-      const eyeGeo = new THREE.SphereGeometry(0.048, 10, 10);
-      const leftEye = new THREE.Mesh(eyeGeo, darkEyeMat);
-      leftEye.position.set(-spread, yOffset, zOffset);
-      const rightEye = leftEye.clone();
-      rightEye.position.x = spread;
-
-      const blushGeo = new THREE.SphereGeometry(0.055, 10, 10);
-      const blushMat = new THREE.MeshStandardMaterial({ color: 0xff6b9d, roughness: 0.4 });
-      const leftBlush = new THREE.Mesh(blushGeo, blushMat);
-      leftBlush.scale.set(1.2, 0.65, 0.5);
-      leftBlush.position.set(-spread * 1.45, yOffset - 0.07, zOffset - 0.02);
-      const rightBlush = leftBlush.clone();
-      rightBlush.position.x = spread * 1.45;
-
-      headGroup.add(leftEye, rightEye, leftBlush, rightBlush);
+    playBeep(freq = 660, dur = 0.1) {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(freq, now);
+      g.gain.setValueAtTime(0.12, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      o.connect(g).connect(this.ctx.destination);
+      o.start(now);
+      o.stop(now + dur);
     }
-
-    function createMascot3DModel(prizeId) {
-      const root = new THREE.Group();
-
-      if (prizeId === 'bear') {
-        const furMat = new THREE.MeshStandardMaterial({ color: 0xd98a3c, roughness: 0.45 });
-        const snoutMat = new THREE.MeshStandardMaterial({ color: 0xfde68a, roughness: 0.4 });
-        const ribbonMat = new THREE.MeshStandardMaterial({ color: 0xff2a55, roughness: 0.25 });
-
-        const body = new THREE.Mesh(new THREE.SphereGeometry(0.34, 18, 16), furMat);
-        body.scale.set(1, 0.92, 0.9);
-        body.position.y = -0.18;
-
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.36, 18, 16), furMat);
-        head.position.y = 0.24;
-
-        const earL = new THREE.Mesh(new THREE.SphereGeometry(0.14, 14, 14), furMat);
-        earL.position.set(-0.26, 0.52, 0);
-        const earR = earL.clone();
-        earR.position.x = 0.26;
-
-        const snout = new THREE.Mesh(new THREE.SphereGeometry(0.13, 14, 12), snoutMat);
-        snout.scale.set(1.1, 0.85, 0.8);
-        snout.position.set(0, 0.19, 0.31);
-
-        const ribbon = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.1, 0.1), ribbonMat);
-        ribbon.position.set(0, 0.0, 0.3);
-
-        addCuteEyesAndBlush(head, 0.05, 0.33, 0.13);
-        root.add(body, head, earL, earR, snout, ribbon);
-      } else if (prizeId === 'rabbit') {
-        const whiteMat = new THREE.MeshStandardMaterial({ color: 0xfff5f8, roughness: 0.35 });
-        const pinkMat = new THREE.MeshStandardMaterial({ color: 0xff85c0, roughness: 0.3 });
-
-        const body = new THREE.Mesh(new THREE.SphereGeometry(0.32, 18, 16), whiteMat);
-        body.position.y = -0.2;
-
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 18, 16), whiteMat);
-        head.position.y = 0.2;
-
-        const earGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.42, 14);
-        const earL = new THREE.Mesh(earGeo, whiteMat);
-        earL.position.set(-0.15, 0.62, 0);
-        earL.rotation.z = 0.12;
-        const earR = new THREE.Mesh(earGeo, whiteMat);
-        earR.position.set(0.15, 0.62, 0);
-        earR.rotation.z = -0.12;
-
-        const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 10), pinkMat);
-        nose.position.set(0, 0.2, 0.35);
-
-        addCuteEyesAndBlush(head, 0.04, 0.32, 0.13);
-        root.add(body, head, earL, earR, nose);
-      } else if (prizeId === 'cat') {
-        const creamMat = new THREE.MeshStandardMaterial({ color: 0xfffbeb, roughness: 0.35 });
-        const orangePatchMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.35 });
-        const collarMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.25 });
-
-        const body = new THREE.Mesh(new THREE.SphereGeometry(0.33, 18, 16), creamMat);
-        body.position.y = -0.18;
-
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.36, 18, 16), creamMat);
-        head.position.y = 0.22;
-
-        const earGeo = new THREE.ConeGeometry(0.15, 0.28, 4);
-        const earL = new THREE.Mesh(earGeo, orangePatchMat);
-        earL.position.set(-0.22, 0.52, 0);
-        earL.rotation.z = 0.35;
-        const earR = new THREE.Mesh(earGeo, darkEyeMat);
-        earR.position.set(0.22, 0.52, 0);
-        earR.rotation.z = -0.35;
-
-        const collar = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.04, 10, 20), collarMat);
-        collar.rotation.x = Math.PI / 2;
-        collar.position.y = 0.0;
-
-        const bell = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 12), goldMat);
-        bell.position.set(0, -0.02, 0.28);
-
-        addCuteEyesAndBlush(head, 0.04, 0.33, 0.14);
-        root.add(body, head, earL, earR, collar, bell);
-      } else if (prizeId === 'penguin') {
-        const blueMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.25 });
-        const bellyMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
-        const beakMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.2 });
-        const muffMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.3 });
-
-        const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 18), blueMat);
-        body.scale.set(0.95, 1.15, 0.9);
-
-        const belly = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 14), bellyMat);
-        belly.scale.set(0.85, 0.95, 0.6);
-        belly.position.set(0, -0.04, 0.22);
-
-        const beak = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.2, 12), beakMat);
-        beak.rotation.x = Math.PI / 2;
-        beak.position.set(0, 0.14, 0.42);
-
-        const muffL = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 12), muffMat);
-        muffL.position.set(-0.38, 0.22, 0);
-        const muffR = muffL.clone();
-        muffR.position.x = 0.38;
-
-        addCuteEyesAndBlush(body, 0.22, 0.35, 0.14);
-        root.add(body, belly, beak, muffL, muffR);
-      } else if (prizeId === 'dolphin') {
-        const aquaMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.15, metalness: 0.1 });
-        const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf0f9ff, roughness: 0.25 });
-
-        const torso = new THREE.Mesh(new THREE.SphereGeometry(0.4, 18, 16), aquaMat);
-        torso.scale.set(0.85, 0.8, 1.3);
-
-        const snout = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.34, 14), aquaMat);
-        snout.rotation.x = Math.PI / 2;
-        snout.position.set(0, -0.04, 0.54);
-
-        const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.32, 10), aquaMat);
-        dorsal.position.set(0, 0.34, -0.05);
-        dorsal.rotation.x = -0.35;
-
-        const belly = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 12), whiteMat);
-        belly.scale.set(0.75, 0.55, 1.1);
-        belly.position.y = -0.1;
-
-        addCuteEyesAndBlush(torso, 0.08, 0.36, 0.18);
-        root.add(torso, snout, dorsal, belly);
-      } else if (prizeId === 'frog') {
-        const greenMat = new THREE.MeshStandardMaterial({ color: 0x4ade80, roughness: 0.3 });
-        const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 16), greenMat);
-        head.scale.set(1.1, 0.88, 0.95);
-
-        [-0.22, 0.22].forEach((x) => {
-          const bump = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 14), greenMat);
-          bump.position.set(x, 0.34, 0.08);
-          const eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 12), whiteMat);
-          eyeWhite.position.set(x, 0.36, 0.18);
-          const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 10), darkEyeMat);
-          pupil.position.set(x, 0.36, 0.26);
-          root.add(bump, eyeWhite, pupil);
-        });
-
-        const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.11, 0.18, 7), goldMat);
-        crown.position.set(0, 0.44, 0);
-
-        root.add(head, crown);
-      } else if (prizeId === 'unicorn') {
-        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xfdf4ff, roughness: 0.28 });
-        const maneMat = new THREE.MeshStandardMaterial({ color: 0xc084fc, roughness: 0.25 });
-
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.36, 18, 16), bodyMat);
-        head.position.y = 0.16;
-
-        const snout = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 14), new THREE.MeshStandardMaterial({ color: 0xfbcfe8 }));
-        snout.position.set(0, 0.1, 0.28);
-
-        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.42, 14), goldMat);
-        horn.position.set(0, 0.58, 0.12);
-        horn.rotation.x = 0.25;
-
-        const body = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 14), bodyMat);
-        body.position.y = -0.22;
-
-        const mane = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 12), maneMat);
-        mane.position.set(0, 0.36, -0.22);
-
-        addCuteEyesAndBlush(head, 0.06, 0.31, 0.15);
-        root.add(head, snout, horn, body, mane);
-      } else if (prizeId === 'octo') {
-        const redMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.25 });
-        const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
-
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.4, 20, 18), redMat);
-        head.position.y = 0.12;
-
-        const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.14, 12), redMat);
-        spout.rotation.x = Math.PI / 2;
-        spout.position.set(0, 0.04, 0.4);
-
-        const band = new THREE.Mesh(new THREE.TorusGeometry(0.37, 0.045, 10, 24), whiteMat);
-        band.rotation.x = Math.PI / 2;
-        band.position.y = 0.32;
-
-        for (let i = 0; i < 8; i++) {
-          const a = (i / 8) * Math.PI * 2;
-          const leg = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12), redMat);
-          leg.position.set(Math.cos(a) * 0.34, -0.24, Math.sin(a) * 0.34);
-          root.add(leg);
-        }
-
-        addCuteEyesAndBlush(head, 0.06, 0.36, 0.15);
-        root.add(head, spout, band);
-      } else if (prizeId === 'parfait') {
-        const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, roughness: 0.1 });
-        const custardMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.25 });
-        const berryMat = new THREE.MeshStandardMaterial({ color: 0xff1e42, roughness: 0.2 });
-
-        const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.22, 0.52, 18), glassMat);
-        cup.position.y = -0.15;
-
-        const pudding = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 0.28, 18), custardMat);
-        pudding.position.y = 0.22;
-
-        const cherry = new THREE.Mesh(new THREE.SphereGeometry(0.13, 14, 14), berryMat);
-        cherry.position.y = 0.46;
-
-        root.add(cup, pudding, cherry);
-      } else if (prizeId === 'macaron') {
-        const shellMat = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.3 });
-        const creamMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25 });
-
-        const top = new THREE.Mesh(new THREE.SphereGeometry(0.45, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.55), shellMat);
-        top.scale.set(1, 0.55, 1);
-        top.position.y = 0.06;
-
-        const cream = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.16, 20), creamMat);
-
-        const bot = top.clone();
-        bot.rotation.x = Math.PI;
-        bot.position.y = -0.06;
-
-        const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.18, 0), goldMat);
-        star.position.y = 0.38;
-
-        root.add(top, cream, bot, star);
-      } else if (prizeId === 'gold_robo') {
-        const visorMat = new THREE.MeshStandardMaterial({ color: 0x00f2fe, emissive: 0x00c6ff, emissiveIntensity: 0.6 });
-
-        const head = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.42, 0.44), goldMat);
-        head.position.y = 0.2;
-
-        const visor = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.12, 0.06), visorMat);
-        visor.position.set(0, 0.22, 0.21);
-
-        const body = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.38, 0.36), goldMat);
-        body.position.y = -0.22;
-
-        const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.24, 10), goldMat);
-        antenna.position.y = 0.52;
-        const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 12), visorMat);
-        bulb.position.y = 0.65;
-
-        root.add(head, visor, body, antenna, bulb);
-      } else {
-        // rainbow_dragon (5-Star Ultra Rare)
-        const dragMat = new THREE.MeshStandardMaterial({
-          color: 0xff479d,
-          emissive: 0x6b21a8,
-          emissiveIntensity: 0.28,
-          metalness: 0.4,
-          roughness: 0.18
-        });
-        const wingMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.5, roughness: 0.2 });
-
-        const body = new THREE.Mesh(new THREE.SphereGeometry(0.36, 18, 16), dragMat);
-        body.position.y = -0.15;
-
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.34, 18, 16), dragMat);
-        head.position.y = 0.24;
-
-        const hornL = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.28, 10), goldMat);
-        hornL.position.set(-0.18, 0.54, 0);
-        hornL.rotation.z = 0.25;
-        const hornR = hornL.clone();
-        hornR.position.x = 0.18;
-        hornR.rotation.z = -0.25;
-
-        const wingGeo = new THREE.BoxGeometry(0.38, 0.28, 0.05);
-        const wingL = new THREE.Mesh(wingGeo, wingMat);
-        wingL.position.set(-0.42, 0.0, -0.12);
-        wingL.rotation.z = 0.3;
-        const wingR = wingL.clone();
-        wingR.position.x = 0.42;
-        wingR.rotation.z = -0.3;
-
-        const starGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.15, 0), goldMat);
-        starGem.position.set(0, -0.12, 0.34);
-
-        addCuteEyesAndBlush(head, 0.06, 0.31, 0.14);
-        root.add(body, head, hornL, hornR, wingL, wingR, starGem);
-      }
-
-      root.traverse((c) => {
-        if (c.isMesh) {
-          c.castShadow = true;
-          c.receiveShadow = true;
-        }
+    playPop() {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(300, now);
+      o.frequency.exponentialRampToValueAtTime(980, now + 0.16);
+      g.gain.setValueAtTime(0.22, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      o.connect(g).connect(this.ctx.destination);
+      o.start(now);
+      o.stop(now + 0.19);
+    }
+    playFanfare() {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const notes = [523.25, 659.25, 783.99, 1046.5];
+      const now = this.ctx.currentTime;
+      notes.forEach((f, i) => {
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(f, now + i * 0.11);
+        g.gain.setValueAtTime(0.16, now + i * 0.11);
+        g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.11 + 0.34);
+        o.connect(g).connect(this.ctx.destination);
+        o.start(now + i * 0.11);
+        o.stop(now + i * 0.11 + 0.35);
       });
+    }
+  }
+  const sound = new CraneSound();
 
-      return root;
+  // ==========================================
+  // 3. Three.js + Cannon.js メイン3D空間構築
+  // ==========================================
+  const container = document.getElementById('canvas-container');
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x4c1d95, 0.0085);
+
+  const camera = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.5, 220);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  container.appendChild(renderer.domElement);
+
+  // 華やかなトイ・アーケード照明
+  scene.add(new THREE.AmbientLight(0xfff5f7, 0.82));
+  const topLight = new THREE.DirectionalLight(0xfffbeb, 0.95);
+  topLight.position.set(10, 28, 16);
+  topLight.castShadow = true;
+  topLight.shadow.mapSize.width = 1024;
+  topLight.shadow.mapSize.height = 1024;
+  scene.add(topLight);
+
+  const neonPinkLight = new THREE.PointLight(0xf472b6, 0.75, 45);
+  neonPinkLight.position.set(-14, 14, 10);
+  scene.add(neonPinkLight);
+
+  const neonCyanLight = new THREE.PointLight(0x38bdf8, 0.7, 45);
+  neonCyanLight.position.set(14, 14, 10);
+  scene.add(neonCyanLight);
+
+  // Cannon.js 物理ワールド
+  const world = new CANNON.World();
+  world.gravity.set(0, -22, 0);
+  const defaultMat = new CANNON.Material('default');
+  world.defaultContactMaterial = new CANNON.ContactMaterial(defaultMat, defaultMat, {
+    friction: 0.45,
+    restitution: 0.25
+  });
+
+  // ==========================================
+  // 4. おもちゃのゲームセンター風（トイ・アーケード）背景＆筐体装飾
+  // ==========================================
+  const arcadeEnvGroup = new THREE.Group();
+  scene.add(arcadeEnvGroup);
+
+  // (A) カラフルなパステルチェッカー柄フロア
+  function createCheckerTexture() {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 256;
+    const ctx = c.getContext('2d');
+    const colors = ['#fdf2f8', '#fbcfe8', '#e0f2fe', '#fef9c3'];
+    for (let y = 0; y < 4; y++) {
+      for (let x = 0; x < 4; x++) {
+        ctx.fillStyle = colors[(x + y) % colors.length];
+        ctx.fillRect(x * 64, y * 64, 64, 64);
+      }
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(10, 10);
+    return tex;
+  }
+  const arcadeFloor = new THREE.Mesh(
+    new THREE.PlaneGeometry(130, 130),
+    new THREE.MeshStandardMaterial({ map: createCheckerTexture(), roughness: 0.5 })
+  );
+  arcadeFloor.rotation.x = -Math.PI / 2;
+  arcadeFloor.position.y = -6.2;
+  arcadeFloor.receiveShadow = true;
+  arcadeEnvGroup.add(arcadeFloor);
+
+  // (B) 背景に並ぶ2段ガチャガチャマシン＆アーケード筐体
+  function createBgGachaMachine(x, z, bodyColor) {
+    const g = new THREE.Group();
+    g.position.set(x, -6.2, z);
+    const base = new THREE.Mesh(
+      new THREE.BoxGeometry(4.2, 5.5, 3.8),
+      new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.3 })
+    );
+    base.position.y = 2.75;
+    const globe = new THREE.Mesh(
+      new THREE.SphereGeometry(2.2, 16, 14),
+      new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, roughness: 0.1 })
+    );
+    globe.position.y = 7.2;
+    const lid = new THREE.Mesh(
+      new THREE.ConeGeometry(2.3, 1.2, 16),
+      new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.3 })
+    );
+    lid.position.y = 9.3;
+    const dial = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.65, 0.65, 0.4, 12),
+      new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.6 })
+    );
+    dial.rotation.x = Math.PI / 2;
+    dial.position.set(0, 3.6, 2.0);
+    g.add(base, globe, lid, dial);
+
+    // ドーム内のミニカプセル粒
+    const miniColors = [0xf43f5e, 0x38bdf8, 0xfacc15, 0x4ade80, 0xc084fc];
+    for (let i = 0; i < 10; i++) {
+      const mc = new THREE.Mesh(
+        new THREE.SphereGeometry(0.45, 8, 8),
+        new THREE.MeshStandardMaterial({ color: miniColors[i % miniColors.length] })
+      );
+      mc.position.set((Math.random() - 0.5) * 2.2, 6.2 + Math.random() * 1.6, (Math.random() - 0.5) * 2.2);
+      g.add(mc);
+    }
+    arcadeEnvGroup.add(g);
+  }
+  createBgGachaMachine(-14.5, -9, 0xf43f5e);
+  createBgGachaMachine(-9.5, -12, 0x38bdf8);
+  createBgGachaMachine(9.5, -12, 0xfacc15);
+  createBgGachaMachine(14.5, -9, 0xa855f7);
+
+  // (C) ふわふわ浮かぶバルーン束＆天井ガーランド旗飾り
+  const balloons = [];
+  const balloonColors = [0xf43f5e, 0xfacc15, 0x38bdf8, 0x4ade80, 0xe879f9];
+  [[-11.5, -4], [11.5, -4], [-15, 2], [15, 2]].forEach(([bx, bz], idx) => {
+    for (let i = 0; i < 3; i++) {
+      const bMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(1.15, 14, 14),
+        new THREE.MeshStandardMaterial({ color: balloonColors[(idx + i) % balloonColors.length], roughness: 0.2, metalness: 0.1 })
+      );
+      bMesh.scale.y = 1.22;
+      bMesh.position.set(bx + (i - 1) * 1.1, 8 + i * 1.5, bz + (i % 2) * 0.8);
+      arcadeEnvGroup.add(bMesh);
+      balloons.push({ mesh: bMesh, baseY: bMesh.position.y, phase: idx + i * 1.3 });
+    }
+  });
+
+  // 天井フラッグガーランド
+  for (let i = -8; i <= 8; i++) {
+    const flag = new THREE.Mesh(
+      new THREE.ConeGeometry(0.65, 1.4, 3),
+      new THREE.MeshBasicMaterial({ color: balloonColors[Math.abs(i) % balloonColors.length] })
+    );
+    flag.rotation.z = Math.PI;
+    flag.position.set(i * 1.6, 15.2 - Math.cos(i * 0.25) * 1.1, -6);
+    arcadeEnvGroup.add(flag);
+  }
+
+  // ==========================================
+  // 5. UFOキャッチャー筐体（電飾ルーフ＆キャンディ支柱）
+  // ==========================================
+  const cabinetGroup = new THREE.Group();
+  scene.add(cabinetGroup);
+
+  // 下部ポップ台座＋前面パネル＋取り出し口
+  const basePedestal = new THREE.Mesh(
+    new THREE.BoxGeometry(15.4, 6, 12.4),
+    new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.3 })
+  );
+  basePedestal.position.set(0, -3.2, 0);
+  cabinetGroup.add(basePedestal);
+
+  const frontStripe = new THREE.Mesh(
+    new THREE.BoxGeometry(14.6, 4.6, 0.3),
+    new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.35 })
+  );
+  frontStripe.position.set(0, -3.2, 6.15);
+  cabinetGroup.add(frontStripe);
+
+  // 左手前「景品取り出し口ボックス」
+  const prizeDoor = new THREE.Mesh(
+    new THREE.BoxGeometry(3.6, 2.8, 0.5),
+    new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 })
+  );
+  prizeDoor.position.set(-4.8, -3.4, 6.2);
+  cabinetGroup.add(prizeDoor);
+
+  // ステージ床（L字構造：左手前が落とし口シュート）
+  const floorRightMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(10.2, 0.5, 11.0),
+    new THREE.MeshStandardMaterial({ color: 0xfff1f2, roughness: 0.28 })
+  );
+  floorRightMesh.position.set(1.9, -0.25, 0);
+  floorRightMesh.receiveShadow = true;
+  cabinetGroup.add(floorRightMesh);
+
+  const floorRightBody = new CANNON.Body({ mass: 0, material: defaultMat });
+  floorRightBody.addShape(new CANNON.Box(new CANNON.Vec3(5.1, 0.25, 5.5)));
+  floorRightBody.position.set(1.9, -0.25, 0);
+  world.addBody(floorRightBody);
+
+  const floorBackLeftMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(3.8, 0.5, 7.1),
+    new THREE.MeshStandardMaterial({ color: 0xfff1f2, roughness: 0.28 })
+  );
+  floorBackLeftMesh.position.set(-5.1, -0.25, -1.95);
+  floorBackLeftMesh.receiveShadow = true;
+  cabinetGroup.add(floorBackLeftMesh);
+
+  const floorBackLeftBody = new CANNON.Body({ mass: 0, material: defaultMat });
+  floorBackLeftBody.addShape(new CANNON.Box(new CANNON.Vec3(1.9, 0.25, 3.55)));
+  floorBackLeftBody.position.set(-5.1, -0.25, -1.95);
+  world.addBody(floorBackLeftBody);
+
+  // 左手前「GET口」のネオンガード＆光るリング
+  const chuteGuardMat = new THREE.MeshPhysicalMaterial({
+    color: 0x38bdf8,
+    transparent: true,
+    opacity: 0.5,
+    roughness: 0.1
+  });
+  const guardR = new THREE.Mesh(new THREE.BoxGeometry(0.24, 1.95, 3.9), chuteGuardMat);
+  guardR.position.set(-3.2, 0.95, 3.55);
+  cabinetGroup.add(guardR);
+  const guardRBody = new CANNON.Body({ mass: 0 });
+  guardRBody.addShape(new CANNON.Box(new CANNON.Vec3(0.12, 0.95, 1.95)));
+  guardRBody.position.set(-3.2, 0.95, 3.55);
+  world.addBody(guardRBody);
+
+  const guardB = new THREE.Mesh(new THREE.BoxGeometry(3.8, 1.95, 0.24), chuteGuardMat);
+  guardB.position.set(-5.1, 0.95, 1.6);
+  cabinetGroup.add(guardB);
+  const guardBBody = new CANNON.Body({ mass: 0 });
+  guardBBody.addShape(new CANNON.Box(new CANNON.Vec3(1.9, 0.95, 0.12)));
+  guardBBody.position.set(-5.1, 0.95, 1.6);
+  world.addBody(guardBBody);
+
+  // 落とし口の上で光るネオンエッジ
+  const chuteRim = new THREE.Mesh(
+    new THREE.BoxGeometry(3.9, 0.15, 3.9),
+    new THREE.MeshBasicMaterial({ color: 0xfde047, wireframe: true })
+  );
+  chuteRim.position.set(-5.1, 1.95, 3.55);
+  cabinetGroup.add(chuteRim);
+
+  // 外周ガラス壁コライダー
+  const wallSpecs = [
+    { pos: [0, 5, -5.6], size: [7.2, 5.5, 0.2] },
+    { pos: [0, 5, 5.6], size: [7.2, 5.5, 0.2] },
+    { pos: [-7.1, 5, 0], size: [0.2, 5.5, 5.6] },
+    { pos: [7.1, 5, 0], size: [0.2, 5.5, 5.6] }
+  ];
+  wallSpecs.forEach(w => {
+    const b = new CANNON.Body({ mass: 0 });
+    b.addShape(new CANNON.Box(new CANNON.Vec3(...w.size)));
+    b.position.set(...w.pos);
+    world.addBody(b);
+  });
+
+  // 四隅のパステルゴールド支柱＆電飾ルーフクラウン
+  const pillarMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.55, roughness: 0.22 });
+  [[-7.2, -5.6], [7.2, -5.6], [-7.2, 5.6], [7.2, 5.6]].forEach(([px, pz]) => {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 11.6, 14), pillarMat);
+    p.position.set(px, 5.75, pz);
+    cabinetGroup.add(p);
+  });
+
+  const roofFrame = new THREE.Mesh(
+    new THREE.BoxGeometry(15.4, 1.2, 12.4),
+    new THREE.MeshStandardMaterial({ color: 0xdb2777, roughness: 0.25 })
+  );
+  roofFrame.position.set(0, 11.7, 0);
+  cabinetGroup.add(roofFrame);
+
+  // 屋根のアーチ看板＆電飾バルブ（キラキラ点滅）
+  const marqueeArch = new THREE.Mesh(
+    new THREE.CylinderGeometry(3.2, 3.2, 1.1, 20, 1, false, 0, Math.PI),
+    new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.3 })
+  );
+  marqueeArch.rotation.z = -Math.PI / 2;
+  marqueeArch.rotation.y = Math.PI / 2;
+  marqueeArch.position.set(0, 12.2, 5.8);
+  cabinetGroup.add(marqueeArch);
+
+  const marqueeBulbs = [];
+  for (let i = -6; i <= 6; i++) {
+    const bulb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.24, 8, 8),
+      new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0xfef08a : 0x38bdf8 })
+    );
+    bulb.position.set(i * 1.15, 11.7, 6.28);
+    cabinetGroup.add(bulb);
+    marqueeBulbs.push(bulb);
+  }
+
+  // ==========================================
+  // 6. 3本爪クレーンアーム＆レーザー照準リング
+  // ==========================================
+  const gantryBridge = new THREE.Mesh(
+    new THREE.BoxGeometry(14.4, 0.28, 0.45),
+    new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.7 })
+  );
+  gantryBridge.position.set(0, 10.9, 0);
+  scene.add(gantryBridge);
+
+  const craneRoot = new THREE.Group();
+  craneRoot.position.set(0, 10.8, 0);
+  scene.add(craneRoot);
+
+  const wireMesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.06, 0.06, 1, 8),
+    new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8 })
+  );
+  craneRoot.add(wireMesh);
+
+  const clawHead = new THREE.Group();
+  craneRoot.add(clawHead);
+
+  const ufoBody = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.78, 1.08, 0.78, 18),
+    new THREE.MeshStandardMaterial({ color: 0xf43f5e, metalness: 0.35, roughness: 0.2 })
+  );
+  const ufoCap = new THREE.Mesh(
+    new THREE.SphereGeometry(0.75, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+    new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.15 })
+  );
+  ufoCap.position.y = 0.35;
+  clawHead.add(ufoBody, ufoCap);
+
+  const magnetRing = new THREE.Mesh(
+    new THREE.TorusGeometry(1.15, 0.09, 8, 24),
+    new THREE.MeshBasicMaterial({ color: 0x34d399 })
+  );
+  magnetRing.rotation.x = Math.PI / 2;
+  magnetRing.position.y = -0.5;
+  magnetRing.visible = false;
+  clawHead.add(magnetRing);
+
+  const prongs = [];
+  const prongMetalMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.85, roughness: 0.15 });
+  const tipMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.3 });
+
+  for (let i = 0; i < 3; i++) {
+    const angle = (i * Math.PI * 2) / 3;
+    const holder = new THREE.Group();
+    holder.rotation.y = angle;
+
+    const pivot = new THREE.Group();
+    pivot.position.set(0.78, -0.25, 0);
+
+    const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.35, 8), prongMetalMat);
+    upperArm.position.set(0.28, -0.55, 0);
+    upperArm.rotation.z = 0.42;
+
+    const lowerArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 1.15, 8), prongMetalMat);
+    lowerArm.position.set(0.32, -1.5, 0);
+    lowerArm.rotation.z = -0.52;
+
+    const rubyTip = new THREE.Mesh(new THREE.SphereGeometry(0.19, 10, 10), tipMat);
+    rubyTip.position.set(0.04, -1.98, 0);
+
+    pivot.add(upperArm, lowerArm, rubyTip);
+    holder.add(pivot);
+    clawHead.add(holder);
+    prongs.push(pivot);
+  }
+
+  const laserRing = new THREE.Mesh(
+    new THREE.RingGeometry(0.72, 1.05, 28),
+    new THREE.MeshBasicMaterial({ color: 0x22d3ee, side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
+  );
+  laserRing.rotation.x = -Math.PI / 2;
+  laserRing.position.set(1.5, 0.04, 0);
+  scene.add(laserRing);
+
+  // ==========================================
+  // 7. リッチ造形！全12種おもちゃ（3Dマスコット）生成関数
+  // ==========================================
+  function createMascot3D(spec) {
+    const g = new THREE.Group();
+    const mainMat = new THREE.MeshStandardMaterial({ color: spec.color, roughness: 0.32 });
+    const subMat = new THREE.MeshStandardMaterial({ color: spec.subColor || 0xffffff, roughness: 0.35 });
+    const darkMat = new THREE.MeshBasicMaterial({ color: 0x111827 });
+    const cheekMat = new THREE.MeshBasicMaterial({ color: 0xfb7185 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.75, roughness: 0.2 });
+
+    // ① 🍰 きらきらショートケーキ（専用造形）
+    if (spec.id === 'cake') {
+      const sponge1 = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 0.36, 20), new THREE.MeshStandardMaterial({ color: 0xfef08a }));
+      sponge1.position.y = -0.35;
+      const creamMid = new THREE.Mesh(new THREE.CylinderGeometry(0.66, 0.66, 0.16, 20), mainMat);
+      creamMid.position.y = -0.1;
+      const sponge2 = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 0.34, 20), mainMat);
+      sponge2.position.y = 0.15;
+      g.add(sponge1, creamMid, sponge2);
+
+      // ホイップクリーム6個＋大粒いちご
+      for (let i = 0; i < 6; i++) {
+        const a = (i * Math.PI * 2) / 6;
+        const whip = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.26, 8), mainMat);
+        whip.position.set(Math.cos(a) * 0.42, 0.42, Math.sin(a) * 0.42);
+        g.add(whip);
+      }
+      const berry = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.48, 12), subMat);
+      berry.position.set(0, 0.56, 0);
+      const leaf = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.02, 0.08, 6), new THREE.MeshStandardMaterial({ color: 0x22c55e }));
+      leaf.position.set(0, 0.34, 0);
+      g.add(berry, leaf);
+      return g;
     }
 
-    // Wrap a 3D Mascot inside a glossy Two-Tone Translucent Gacha Capsule
-    function createGachaCapsuleMesh(prizeId, radius = 0.66) {
-      const item = PRIZE_CATALOG.find((p) => p.id === prizeId) || PRIZE_CATALOG[0];
+    // ② 👑 ロイヤル純金王冠（専用造形）
+    if (spec.id === 'crown') {
+      const cushion = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.6, 0.42, 16), subMat);
+      cushion.position.y = -0.15;
+      const baseRing = new THREE.Mesh(new THREE.CylinderGeometry(0.64, 0.54, 0.38, 16), goldMat);
+      baseRing.position.y = 0.05;
+      g.add(cushion, baseRing);
+
+      const gemColors = [0xef4444, 0x3b82f6, 0x10b981, 0xec4899, 0xa855f7, 0x06b6d4];
+      for (let i = 0; i < 6; i++) {
+        const a = (i * Math.PI * 2) / 6;
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.48, 6), goldMat);
+        spike.position.set(Math.cos(a) * 0.56, 0.42, Math.sin(a) * 0.56);
+        const pearl = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), goldMat);
+        pearl.position.set(Math.cos(a) * 0.56, 0.66, Math.sin(a) * 0.56);
+        const gem = new THREE.Mesh(
+          new THREE.OctahedronGeometry(0.11, 0),
+          new THREE.MeshStandardMaterial({ color: gemColors[i], roughness: 0.1, metalness: 0.3 })
+        );
+        gem.position.set(Math.cos(a) * 0.62, 0.05, Math.sin(a) * 0.62);
+        g.add(spike, pearl, gem);
+      }
+      return g;
+    }
+
+    // ③ 🤖 ゴールデンロボ（専用造形）
+    if (spec.id === 'robo') {
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.68, 0.58), goldMat);
+      torso.position.y = -0.2;
+      const core = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 10), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+      core.position.set(0, -0.18, 0.3);
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.56, 0.58), goldMat);
+      head.position.y = 0.48;
+      const visor = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.2, 0.08), new THREE.MeshBasicMaterial({ color: 0x22d3ee }));
+      visor.position.set(0, 0.5, 0.28);
+      const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.35, 8), prongMetalMat);
+      antenna.position.set(0, 0.9, 0);
+      const antBall = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 8), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+      antBall.position.set(0, 1.08, 0);
+      [-0.5, 0.5].forEach(ax => {
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.52, 8), prongMetalMat);
+        arm.position.set(ax, -0.18, 0);
+        g.add(arm);
+      });
+      g.add(torso, core, head, visor, antenna, antBall);
+      return g;
+    }
+
+    // ④ どうぶつ・ファンタジー系キャラクター共通のぷっくりボディ＋顔パーツ
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 14), mainMat);
+    body.scale.set(1.0, 0.92, 0.95);
+    body.position.y = -0.22;
+    g.add(body);
+
+    // お腹の白い／クリーム色パッチ
+    const belly = new THREE.Mesh(new THREE.SphereGeometry(0.36, 12, 12), subMat);
+    belly.scale.set(0.95, 0.88, 0.5);
+    belly.position.set(0, -0.22, 0.34);
+    g.add(belly);
+
+    // 頭部
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.48, 16, 14), mainMat);
+    head.scale.set(1.06, 0.96, 1.0);
+    head.position.y = 0.38;
+    g.add(head);
+
+    // 瞳（黒目＋白いハイライトで生き生きと）
+    [-0.18, 0.18].forEach(ex => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 10), darkMat);
+      eye.position.set(ex, 0.44, 0.43);
+      const shine = new THREE.Mesh(new THREE.SphereGeometry(0.028, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      shine.position.set(ex + 0.025, 0.47, 0.49);
+      const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 8), cheekMat);
+      cheek.scale.set(1.2, 0.7, 0.5);
+      cheek.position.set(ex * 1.48, 0.34, 0.41);
+      g.add(eye, shine, cheek);
+    });
+
+    // 手足4つ
+    const limbMat = spec.id === 'panda' ? new THREE.MeshStandardMaterial({ color: 0x1e293b }) : mainMat;
+    [[-0.42, -0.12, 0.2], [0.42, -0.12, 0.2], [-0.26, -0.58, 0.22], [0.26, -0.58, 0.22]].forEach(([lx, ly, lz]) => {
+      const limb = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 10), limbMat);
+      limb.position.set(lx, ly, lz);
+      g.add(limb);
+    });
+
+    // キャラクター別ディテール＆持ち物アクセサリー
+    if (spec.id === 'bear') {
+      // 🐻 くま：丸耳＋内耳＋ぷっくりマズル＋ハチミツポット
+      [-0.32, 0.32].forEach(ex => {
+        const ear = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 10), mainMat);
+        ear.position.set(ex, 0.78, 0);
+        const inner = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), subMat);
+        inner.position.set(ex, 0.78, 0.11);
+        g.add(ear, inner);
+      });
+      const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 10), subMat);
+      muzzle.scale.set(1.2, 0.9, 0.8);
+      muzzle.position.set(0, 0.32, 0.46);
+      const nose = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), darkMat);
+      nose.position.set(0, 0.37, 0.56);
+      const honeyPot = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.15, 0.26, 10), goldMat);
+      honeyPot.position.set(0, -0.18, 0.52);
+      g.add(muzzle, nose, honeyPot);
+    } else if (spec.id === 'rabbit') {
+      // 🐰 うさぎ：長い耳＋頭の上の真っ赤ないちご飾り
+      [-0.2, 0.2].forEach((ex, i) => {
+        const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.62, 10), mainMat);
+        ear.position.set(ex, 0.98, 0);
+        ear.rotation.z = i === 0 ? 0.15 : -0.15;
+        g.add(ear);
+      });
+      const berryHat = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.3, 10), new THREE.MeshStandardMaterial({ color: 0xf43f5e }));
+      berryHat.position.set(0, 0.92, 0.15);
+      g.add(berryHat);
+    } else if (spec.id === 'penguin') {
+      // 🐧 ペンギン：黄色いくちばし＋ピンクのベレー帽
+      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.24, 8), goldMat);
+      beak.rotation.x = Math.PI / 2;
+      beak.position.set(0, 0.36, 0.54);
+      const beret = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 8), new THREE.MeshStandardMaterial({ color: 0xf43f5e }));
+      beret.scale.set(1.1, 0.45, 1.1);
+      beret.position.set(0.08, 0.82, 0);
+      g.add(beak, beret);
+    } else if (spec.id === 'cat') {
+      // 🐱 みけねこ：三角耳＋三毛模様パッチ＋赤い首輪と金の鈴
+      [-0.28, 0.28].forEach((ex, i) => {
+        const ear = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.34, 4), i === 0 ? subMat : darkMat);
+        ear.position.set(ex, 0.82, 0);
+        ear.rotation.z = i === 0 ? 0.25 : -0.25;
+        g.add(ear);
+      });
+      const collar = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.05, 8, 16), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+      collar.rotation.x = Math.PI / 2;
+      collar.position.y = 0.05;
+      const bell = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), goldMat);
+      bell.position.set(0, 0.02, 0.38);
+      g.add(collar, bell);
+    } else if (spec.id === 'panda') {
+      // 🐼 パンダ：黒耳＋たれ目黒パッチ＋緑の竹笹
+      const blackMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+      [-0.32, 0.32].forEach(ex => {
+        const ear = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 10), blackMat);
+        ear.position.set(ex, 0.78, 0);
+        g.add(ear);
+      });
+      [-0.18, 0.18].forEach(ex => {
+        const patch = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 8), blackMat);
+        patch.scale.set(1.1, 0.85, 0.4);
+        patch.position.set(ex, 0.43, 0.38);
+        g.add(patch);
+      });
+      const bamboo = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.55, 8), new THREE.MeshStandardMaterial({ color: 0x22c55e }));
+      bamboo.rotation.z = 0.4;
+      bamboo.position.set(0.32, -0.05, 0.42);
+      g.add(bamboo);
+    } else if (spec.id === 'dolphin') {
+      // 🐬 いるか：背びれ＋尾びれ＋ミニ王冠
+      const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.38, 6), mainMat);
+      dorsal.rotation.x = -0.4;
+      dorsal.position.set(0, 0.25, -0.42);
+      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.12, 0.18, 6), goldMat);
+      crown.position.set(0, 0.84, 0.05);
+      g.add(dorsal, crown);
+    } else if (spec.id === 'sealion') {
+      // 🦭 あしか：ぷっくり口元＋鼻の上のビーチボール！
+      const snout = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 10), new THREE.MeshStandardMaterial({ color: 0xcbd5e1 }));
+      snout.position.set(0, 0.36, 0.48);
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12), new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.2 }));
+      ball.position.set(0, 0.68, 0.56);
+      g.add(snout, ball);
+    } else if (spec.id === 'unicorn') {
+      // 🦄 ユニコーン：金のスパイラル角＋パステルたてがみ
+      const horn = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.52, 10), goldMat);
+      horn.rotation.x = 0.25;
+      horn.position.set(0, 0.94, 0.22);
+      g.add(horn);
+      [0xf472b6, 0x38bdf8, 0xfacc15].forEach((mc, i) => {
+        const mane = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), new THREE.MeshStandardMaterial({ color: mc }));
+        mane.position.set(0, 0.78 - i * 0.22, -0.36);
+        g.add(mane);
+      });
+    } else if (spec.id === 'dragon') {
+      // 🐲 ドラゴン：金の2本角＋背中の翼＋宝珠
+      [-0.22, 0.22].forEach((hx, i) => {
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.42, 8), goldMat);
+        horn.position.set(hx, 0.9, 0.05);
+        horn.rotation.z = i === 0 ? 0.3 : -0.3;
+        g.add(horn);
+      });
+      [-0.48, 0.48].forEach((wx, i) => {
+        const wing = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.48, 0.08), subMat);
+        wing.position.set(wx, -0.05, -0.25);
+        wing.rotation.y = i === 0 ? 0.4 : -0.4;
+        g.add(wing);
+      });
+    }
+
+    return g;
+  }
+
+  // カプセル＆中身のステージ配置
+  const prizes = [];
+  function spawnPrizesOnStage() {
+    prizes.forEach(p => {
+      scene.remove(p.mesh);
+      world.removeBody(p.body);
+    });
+    prizes.length = 0;
+
+    for (let i = 0; i < 16; i++) {
+      const spec = PRIZE_CATALOG[i % PRIZE_CATALOG.length];
+      const radius = 1.02;
       const group = new THREE.Group();
 
-      // Inner 3D Mascot visible through the clear top dome!
-      const innerMascot = createMascot3DModel(prizeId);
-      innerMascot.scale.set(0.68, 0.68, 0.68);
-      group.add(innerMascot);
-
-      // Colored Bottom Half Dome
-      const botDome = new THREE.Mesh(
-        new THREE.SphereGeometry(radius, 22, 14, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
-        new THREE.MeshStandardMaterial({
-          color: item.capsuleColor,
-          roughness: 0.18,
-          metalness: prizeId === 'rainbow_dragon' || prizeId === 'gold_robo' ? 0.55 : 0.1
-        })
+      // 下半分カプセルシェル（ツヤツヤ）
+      const bottomShell = new THREE.Mesh(
+        new THREE.SphereGeometry(radius, 20, 14, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
+        new THREE.MeshPhysicalMaterial({ color: spec.capsuleColor, roughness: 0.18, clearcoat: 0.9 })
       );
-      botDome.castShadow = true;
-      botDome.receiveShadow = true;
+      // カプセル中央の白いジョイントリング
+      const seamRing = new THREE.Mesh(
+        new THREE.TorusGeometry(radius * 0.99, 0.055, 8, 24),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 })
+      );
+      seamRing.rotation.x = Math.PI / 2;
 
-      // Clear Glossy Top Half Dome
-      const topDome = new THREE.Mesh(
-        new THREE.SphereGeometry(radius, 22, 14, 0, Math.PI * 2, 0, Math.PI / 2),
+      // 上半分クリアドーム
+      const topShell = new THREE.Mesh(
+        new THREE.SphereGeometry(radius, 20, 14, 0, Math.PI * 2, 0, Math.PI / 2),
         new THREE.MeshPhysicalMaterial({
           color: 0xffffff,
           transparent: true,
-          opacity: 0.42,
-          roughness: 0.08
+          opacity: 0.36,
+          roughness: 0.06,
+          clearcoat: 1.0
         })
       );
+      // リッチな中身マスコット
+      const mascot = createMascot3D(spec);
+      mascot.scale.set(0.84, 0.84, 0.84);
 
-      // Equator Ring Seam
-      const belt = new THREE.Mesh(
-        new THREE.TorusGeometry(radius, 0.042, 10, 28),
-        prizeId === 'rainbow_dragon' ? goldMat : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 })
-      );
-      belt.rotation.x = Math.PI / 2;
+      group.add(bottomShell, seamRing, topShell, mascot);
+      scene.add(group);
 
-      group.add(botDome, topDome, belt);
-      return group;
-    }
-
-    /********************************************************************
-     * 4. MAIN 3D SCENE, CABINET & CANNON.JS PHYSICS SETUP
-     ********************************************************************/
-    const container = document.getElementById('canvas-container');
-    const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x1d0938, 0.018);
-
-    const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 120);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    container.appendChild(renderer.domElement);
-
-    // Camera Presets for checking X and Z depth alignment!
-    const CAMERA_PRESETS = [
-      { name: '正面視点', pos: new THREE.Vector3(0, 5.2, 12.6), look: new THREE.Vector3(0, 1.8, 0) },
-      { name: 'ななめ視点', pos: new THREE.Vector3(7.6, 6.4, 10.2), look: new THREE.Vector3(-0.3, 1.5, 0) },
-      { name: '真横(奥行き確認)', pos: new THREE.Vector3(12.2, 4.4, 0.0), look: new THREE.Vector3(0, 1.6, 0) },
-      { name: '真上見下ろし', pos: new THREE.Vector3(0, 13.8, 3.2), look: new THREE.Vector3(0, 0.5, 0) }
-    ];
-    let currentCamPreset = 0;
-    let userOrbitYaw = 0;
-    let userOrbitPitch = 0;
-
-    // Studio & Arcade Lighting
-    const ambientLight = new THREE.AmbientLight(0xffe6f7, 0.78);
-    scene.add(ambientLight);
-
-    const mainDirLight = new THREE.DirectionalLight(0xfffbeb, 1.2);
-    mainDirLight.position.set(5, 16, 9);
-    mainDirLight.castShadow = true;
-    mainDirLight.shadow.mapSize.width = 1024;
-    mainDirLight.shadow.mapSize.height = 1024;
-    const sd = 7.5;
-    mainDirLight.shadow.camera.left = -sd;
-    mainDirLight.shadow.camera.right = sd;
-    mainDirLight.shadow.camera.top = sd;
-    mainDirLight.shadow.camera.bottom = -sd;
-    scene.add(mainDirLight);
-
-    const neonPinkLight = new THREE.PointLight(0xff2a85, 1.2, 18);
-    neonPinkLight.position.set(-4.5, 5.5, 2.5);
-    scene.add(neonPinkLight);
-
-    const neonCyanLight = new THREE.PointLight(0x00f2fe, 1.2, 18);
-    neonCyanLight.position.set(4.5, 5.5, 2.5);
-    scene.add(neonCyanLight);
-
-    // Cannon.js World
-    const world = new CANNON.World();
-    world.gravity.set(0, -18, 0);
-    world.broadphase = new CANNON.SAPBroadphase(world);
-    world.solver.iterations = 12;
-
-    const matFloor = new CANNON.Material('floorMat');
-    const matPrize = new CANNON.Material('prizeMat');
-    const matClaw = new CANNON.Material('clawMat');
-    const matWall = new CANNON.Material('wallMat');
-
-    world.addContactMaterial(new CANNON.ContactMaterial(matFloor, matPrize, { friction: 0.45, restitution: 0.2 }));
-    world.addContactMaterial(new CANNON.ContactMaterial(matPrize, matPrize, { friction: 0.3, restitution: 0.25 }));
-    world.addContactMaterial(new CANNON.ContactMaterial(matClaw, matPrize, { friction: 0.85, restitution: 0.05 }));
-    world.addContactMaterial(new CANNON.ContactMaterial(matWall, matPrize, { friction: 0.1, restitution: 0.2 }));
-
-    /********************************************************************
-     * 5. GLASS CABINET & PRIZE CHUTE (GET口) CONSTRUCTION
-     ********************************************************************/
-    // Cabinet bounds: X in [-4.2, +4.2], Z in [-3.4, +3.4]
-    // Front-Left Chute (GET口): X in [-4.2, -1.65], Z in [+0.95, +3.4]
-    const CAB_HALF_X = 4.2;
-    const CAB_HALF_Z = 3.4;
-    const CHUTE_X_MAX = -1.65;
-    const CHUTE_Z_MIN = 0.95;
-
-    // 5.1 Back Main Floor (X: -4.2 to +4.2, Z: -3.4 to +0.95)
-    const backFloorDepth = CHUTE_Z_MIN - (-CAB_HALF_Z); // 4.35
-    const backFloorZCenter = (-CAB_HALF_Z + CHUTE_Z_MIN) / 2; // -1.225
-    const backFloorMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(CAB_HALF_X * 2, 0.8, backFloorDepth),
-      new THREE.MeshStandardMaterial({ color: 0xffe4f2, roughness: 0.35 })
-    );
-    backFloorMesh.position.set(0, -0.4, backFloorZCenter);
-    backFloorMesh.receiveShadow = true;
-    scene.add(backFloorMesh);
-
-    const backFloorBody = new CANNON.Body({ mass: 0, material: matFloor });
-    backFloorBody.addShape(new CANNON.Box(new CANNON.Vec3(CAB_HALF_X, 0.4, backFloorDepth / 2)));
-    backFloorBody.position.set(0, -0.4, backFloorZCenter);
-    world.addBody(backFloorBody);
-
-    // 5.2 Front-Right Main Floor (X: -1.65 to +4.2, Z: +0.95 to +3.4)
-    const frWidth = CAB_HALF_X - CHUTE_X_MAX; // 5.85
-    const frXCenter = (CHUTE_X_MAX + CAB_HALF_X) / 2; // +1.275
-    const frDepth = CAB_HALF_Z - CHUTE_Z_MIN; // 2.45
-    const frZCenter = (CHUTE_Z_MIN + CAB_HALF_Z) / 2; // +2.175
-
-    const frFloorMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(frWidth, 0.8, frDepth),
-      new THREE.MeshStandardMaterial({ color: 0xffe4f2, roughness: 0.35 })
-    );
-    frFloorMesh.position.set(frXCenter, -0.4, frZCenter);
-    frFloorMesh.receiveShadow = true;
-    scene.add(frFloorMesh);
-
-    const frFloorBody = new CANNON.Body({ mass: 0, material: matFloor });
-    frFloorBody.addShape(new CANNON.Box(new CANNON.Vec3(frWidth / 2, 0.4, frDepth / 2)));
-    frFloorBody.position.set(frXCenter, -0.4, frZCenter);
-    world.addBody(frFloorBody);
-
-    // 5.3 Front-Left Prize Chute (GET口 / 落とし口) Guard Walls & Glowing Tunnel
-    const GUARD_HEIGHT = 1.25;
-    const guardMat = new THREE.MeshPhysicalMaterial({
-      color: 0xff66b2,
-      transparent: true,
-      opacity: 0.48,
-      roughness: 0.1
-    });
-
-    // Guard wall along X = CHUTE_X_MAX (-1.65), Z from +0.95 to +3.4
-    const guardRightMesh = new THREE.Mesh(new THREE.BoxGeometry(0.14, GUARD_HEIGHT, frDepth), guardMat);
-    guardRightMesh.position.set(CHUTE_X_MAX, GUARD_HEIGHT / 2, frZCenter);
-    scene.add(guardRightMesh);
-
-    const guardRightBody = new CANNON.Body({ mass: 0, material: matWall });
-    guardRightBody.addShape(new CANNON.Box(new CANNON.Vec3(0.08, GUARD_HEIGHT / 2, frDepth / 2)));
-    guardRightBody.position.set(CHUTE_X_MAX, GUARD_HEIGHT / 2, frZCenter);
-    world.addBody(guardRightBody);
-
-    // Guard wall along Z = CHUTE_Z_MIN (+0.95), X from -4.2 to -1.65
-    const chuteWidth = CHUTE_X_MAX - (-CAB_HALF_X); // 2.55
-    const chuteXCenter = (-CAB_HALF_X + CHUTE_X_MAX) / 2; // -2.925
-    const guardBackMesh = new THREE.Mesh(new THREE.BoxGeometry(chuteWidth, GUARD_HEIGHT, 0.14), guardMat);
-    guardBackMesh.position.set(chuteXCenter, GUARD_HEIGHT / 2, CHUTE_Z_MIN);
-    scene.add(guardBackMesh);
-
-    const guardBackBody = new CANNON.Body({ mass: 0, material: matWall });
-    guardBackBody.addShape(new CANNON.Box(new CANNON.Vec3(chuteWidth / 2, GUARD_HEIGHT / 2, 0.08)));
-    guardBackBody.position.set(chuteXCenter, GUARD_HEIGHT / 2, CHUTE_Z_MIN);
-    world.addBody(guardBackBody);
-
-    // Neon "GET口" Rim around the Chute Top
-    const chuteNeonRim = new THREE.Mesh(
-      new THREE.BoxGeometry(chuteWidth - 0.1, 0.1, frDepth - 0.1),
-      new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true })
-    );
-    chuteNeonRim.position.set(chuteXCenter, GUARD_HEIGHT + 0.02, frZCenter);
-    scene.add(chuteNeonRim);
-
-    // Deep Chute Tunnel Box below Y = 0
-    const chuteTunnelMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(chuteWidth, 1.8, frDepth),
-      new THREE.MeshStandardMaterial({ color: 0x1e0b36, emissive: 0x4c1d95, emissiveIntensity: 0.5, side: THREE.BackSide })
-    );
-    chuteTunnelMesh.position.set(chuteXCenter, -0.9, frZCenter);
-    scene.add(chuteTunnelMesh);
-
-    // 5.4 Perimeter Glass Walls & Corner Arcade Pillars
-    const wallSpecs = [
-      { x: 0, z: -CAB_HALF_Z - 0.15, sx: CAB_HALF_X * 2, sz: 0.3 }, // Back wall
-      { x: 0, z: CAB_HALF_Z + 0.15, sx: CAB_HALF_X * 2, sz: 0.3 },  // Front glass
-      { x: -CAB_HALF_X - 0.15, z: 0, sx: 0.3, sz: CAB_HALF_Z * 2 }, // Left glass
-      { x: CAB_HALF_X + 0.15, z: 0, sx: 0.3, sz: CAB_HALF_Z * 2 }   // Right glass
-    ];
-    wallSpecs.forEach((w) => {
-      const wb = new CANNON.Body({ mass: 0, material: matWall });
-      wb.addShape(new CANNON.Box(new CANNON.Vec3(w.sx / 2, 4.5, w.sz / 2)));
-      wb.position.set(w.x, 3.5, w.z);
-      world.addBody(wb);
-    });
-
-    // Corner Pillars & Roof Frame
-    const pillarGeo = new THREE.CylinderGeometry(0.24, 0.24, 7.6, 16);
-    const pillarMat = new THREE.MeshStandardMaterial({ color: 0xff479d, roughness: 0.2, metalness: 0.3 });
-    [
-      [-CAB_HALF_X, -CAB_HALF_Z],
-      [CAB_HALF_X, -CAB_HALF_Z],
-      [-CAB_HALF_X, CAB_HALF_Z],
-      [CAB_HALF_X, CAB_HALF_Z]
-    ].forEach(([px, pz]) => {
-      const p = new THREE.Mesh(pillarGeo, pillarMat);
-      p.position.set(px, 3.4, pz);
-      scene.add(p);
-    });
-
-    // Lower Cabinet Base Skirt
-    const baseSkirt = new THREE.Mesh(
-      new THREE.BoxGeometry(CAB_HALF_X * 2 + 0.5, 2.2, CAB_HALF_Z * 2 + 0.5),
-      new THREE.MeshStandardMaterial({ color: 0x3b0764, roughness: 0.4, metalness: 0.2 })
-    );
-    baseSkirt.position.set(0, -1.85, 0);
-    scene.add(baseSkirt);
-
-    /********************************************************************
-     * 6. OVERHEAD GANTRY, SWINGING CABLE & 3-PRONG CLAW MECHANISM
-     ********************************************************************/
-    const GANTRY_Y = 6.6;
-    const craneState = {
-      phase: 'IDLE', // IDLE | DESCENDING | GRABBING | ASCENDING | RETURNING | RELEASING | RESETTING
-      x: 0.8,
-      z: 0.0,
-      cableLen: 1.15, // Distance from gantry Y=6.6 down to claw hub
-      clawOpenAngle: 0.42, // radians (0.78 = wide open, 0.14 = tightly closed)
-      swingX: 0,
-      swingZ: 0,
-      swingVelX: 0,
-      swingVelZ: 0,
-      prevVelX: 0,
-      prevVelZ: 0,
-      magnetMode: false,
-      lockedPrize: null,
-      phaseTimer: 0
-    };
-
-    // 6.1 Z-Bridge Rail (moves front/back along Z)
-    const zBridgeGroup = new THREE.Group();
-    const zBridgeBeam = new THREE.Mesh(
-      new THREE.BoxGeometry(CAB_HALF_X * 2, 0.22, 0.32),
-      new THREE.MeshStandardMaterial({ color: 0xf472b6, metalness: 0.6, roughness: 0.2 })
-    );
-    zBridgeGroup.position.set(0, GANTRY_Y, craneState.z);
-    zBridgeGroup.add(zBridgeBeam);
-    scene.add(zBridgeGroup);
-
-    // 6.2 X-Trolley Carriage (moves left/right along X)
-    const xTrolleyGroup = new THREE.Group();
-    const trolleyBox = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.45, 0.52, 0.38, 20),
-      goldMat
-    );
-    xTrolleyGroup.position.set(craneState.x, GANTRY_Y, craneState.z);
-    xTrolleyGroup.add(trolleyBox);
-    scene.add(xTrolleyGroup);
-
-    // 6.3 Hanging Cable & Claw Assembly Group (Swings like a pendulum!)
-    const pendulumPivotGroup = new THREE.Group();
-    xTrolleyGroup.add(pendulumPivotGroup);
-
-    const cableMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.045, 0.045, 1, 10),
-      new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.8, roughness: 0.2 })
-    );
-    pendulumPivotGroup.add(cableMesh);
-
-    const clawHubGroup = new THREE.Group();
-    pendulumPivotGroup.add(clawHubGroup);
-
-    // Claw UFO Housing Dome
-    const ufoTop = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.32, 0.52, 0.34, 24),
-      new THREE.MeshStandardMaterial({ color: 0xff2a85, metalness: 0.45, roughness: 0.2 })
-    );
-    const ufoGoldRing = new THREE.Mesh(
-      new THREE.TorusGeometry(0.5, 0.06, 10, 24),
-      goldMat
-    );
-    ufoGoldRing.rotation.x = Math.PI / 2;
-    ufoGoldRing.position.y = -0.12;
-    clawHubGroup.add(ufoTop, ufoGoldRing);
-
-    // Magnet Aura Ring (glows rainbow when Magnet Mode is ON!)
-    const magnetAuraMesh = new THREE.Mesh(
-      new THREE.TorusGeometry(0.68, 0.055, 12, 32),
-      new THREE.MeshBasicMaterial({ color: 0x00f2fe })
-    );
-    magnetAuraMesh.rotation.x = Math.PI / 2;
-    magnetAuraMesh.position.y = -0.35;
-    magnetAuraMesh.visible = false;
-    clawHubGroup.add(magnetAuraMesh);
-
-    // 3 Articulated Prongs (120 degrees apart)
-    const prongPivots = [];
-    const prongTipRefs = [];
-    const prongTipBodies = [];
-    const PRONG_ANGLES = [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3];
-
-    PRONG_ANGLES.forEach((ang) => {
-      const mountGroup = new THREE.Group();
-      mountGroup.rotation.y = ang;
-
-      const hingePivot = new THREE.Group();
-      hingePivot.position.set(0.42, -0.16, 0); // Hinge point on outer edge of UFO hub
-
-      // Upper arm segment curving outward & downward
-      const upperArm = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.055, 0.05, 0.62, 12),
-        new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.85, roughness: 0.15 })
-      );
-      upperArm.position.set(0.18, -0.26, 0);
-      upperArm.rotation.z = 0.48;
-      hingePivot.add(upperArm);
-
-      // Lower curved hook segment pointing inward to cradle prizes
-      const lowerHook = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.05, 0.04, 0.56, 12),
-        new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.85, roughness: 0.15 })
-      );
-      lowerHook.position.set(0.22, -0.68, 0);
-      lowerHook.rotation.z = -0.52;
-      hingePivot.add(lowerHook);
-
-      // Pink Rubber Grip Tip
-      const rubberTip = new THREE.Mesh(
-        new THREE.SphereGeometry(0.1, 12, 12),
-        new THREE.MeshStandardMaterial({ color: 0xff2a85, roughness: 0.3 })
-      );
-      rubberTip.position.set(0.06, -0.92, 0);
-      hingePivot.add(rubberTip);
-
-      mountGroup.add(hingePivot);
-      clawHubGroup.add(mountGroup);
-
-      prongPivots.push(hingePivot);
-      prongTipRefs.push(rubberTip);
-
-      // Kinematic Physics Sphere on each prong tip to physically push & cradle prizes
-      const tipBody = new CANNON.Body({
-        mass: 0,
-        type: CANNON.Body.KINEMATIC,
-        material: matClaw
-      });
-      tipBody.addShape(new CANNON.Sphere(0.14));
-      world.addBody(tipBody);
-      prongTipBodies.push(tipBody);
-    });
-
-    // Also a kinematic bumper on the UFO hub top so prizes don't clip upward into the housing
-    const hubBumperBody = new CANNON.Body({
-      mass: 0,
-      type: CANNON.Body.KINEMATIC,
-      material: matClaw
-    });
-    hubBumperBody.addShape(new CANNON.Sphere(0.45));
-    world.addBody(hubBumperBody);
-
-    // 6.4 Laser Target Ring on Floor (照準リング)
-    const targetRingGroup = new THREE.Group();
-    const outerTargetRing = new THREE.Mesh(
-      new THREE.RingGeometry(0.52, 0.66, 32),
-      new THREE.MeshBasicMaterial({ color: 0x00ffcc, side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
-    );
-    outerTargetRing.rotation.x = -Math.PI / 2;
-
-    const innerTargetDot = new THREE.Mesh(
-      new THREE.CircleGeometry(0.15, 20),
-      new THREE.MeshBasicMaterial({ color: 0xffe600, side: THREE.DoubleSide })
-    );
-    innerTargetDot.rotation.x = -Math.PI / 2;
-    innerTargetDot.position.y = 0.01;
-
-    targetRingGroup.add(outerTargetRing, innerTargetDot);
-    targetRingGroup.position.set(craneState.x, 0.03, craneState.z);
-    scene.add(targetRingGroup);
-
-    /********************************************************************
-     * 7. SPAWNING 3D PRIZES & CAPSULES INSIDE THE CABINET
-     ********************************************************************/
-    const fieldPrizes = [];
-    const PRIZE_RADIUS = 0.65;
-
-    function spawnCabinetPrize(prizeId, x, y, z, asCapsule = true) {
-      const mesh = asCapsule ? createGachaCapsuleMesh(prizeId, PRIZE_RADIUS) : createMascot3DModel(prizeId);
-      if (!asCapsule) {
-        mesh.scale.set(1.18, 1.18, 1.18);
-      }
-      scene.add(mesh);
+      const px = -1.8 + (i % 4) * 2.2 + (Math.random() - 0.5) * 0.55;
+      const pz = -3.8 + Math.floor(i / 4) * 2.4 + (Math.random() - 0.5) * 0.55;
+      const py = 1.6 + (i % 3) * 1.35;
 
       const body = new CANNON.Body({
-        mass: 1.4,
-        material: matPrize,
-        linearDamping: 0.25,
-        angularDamping: 0.55
+        mass: 1.2,
+        material: defaultMat,
+        linearDamping: 0.35,
+        angularDamping: 0.45
       });
-      body.addShape(new CANNON.Sphere(PRIZE_RADIUS));
-      body.position.set(x, y, z);
-      body.quaternion.setFromEuler(
-        (Math.random() - 0.5) * 0.6,
-        Math.random() * Math.PI * 2,
-        (Math.random() - 0.5) * 0.6
-      );
+      body.addShape(new CANNON.Sphere(radius));
+      body.position.set(px, py, pz);
+      body.quaternion.setFromEuler((Math.random() - 0.5) * 0.6, Math.random() * Math.PI * 2, (Math.random() - 0.5) * 0.6);
       world.addBody(body);
 
-      fieldPrizes.push({
-        prizeId,
-        asCapsule,
-        mesh,
-        body
-      });
+      prizes.push({ spec, mesh: group, body, radius, grabbed: false });
     }
+  }
+  spawnPrizesOnStage();
 
-    function clearAndRestockCabinet() {
-      if (craneState.phase !== 'IDLE') return;
-      craneState.lockedPrize = null;
+  // ==========================================
+  // 8. 画面スワイプ／ドラッグで自由に少し斜め・横へ回せる3Dカメラ制御
+  // ==========================================
+  let cameraView = 'front';
+  const viewNames = { front: '正面', angle: 'ななめ', side: '真横', top: '真上' };
 
-      while (fieldPrizes.length > 0) {
-        const p = fieldPrizes.pop();
-        scene.remove(p.mesh);
-        world.removeBody(p.body);
+  // 各プリセットの基準角度（Yaw:左右角度, Pitch:上下角度, Dist:距離）
+  const presetAngles = {
+    front: { yaw: 0.0, pitch: 0.22, dist: 21.5 },
+    angle: { yaw: 0.62, pitch: 0.28, dist: 22.0 },
+    side:  { yaw: 1.48, pitch: 0.20, dist: 22.0 },
+    top:   { yaw: 0.0, pitch: 1.25, dist: 24.5 }
+  };
+
+  // スワイプで滑らかに追従する現在値と目標値
+  let targetYawOffset = 0.0;
+  let targetPitchOffset = 0.0;
+  let targetZoomScale = 1.0;
+  let curYaw = 0.0;
+  let curPitch = 0.22;
+  let curDist = 21.5;
+
+  function setCameraView(v) {
+    cameraView = v;
+    targetYawOffset = 0.0;
+    targetPitchOffset = 0.0;
+    targetZoomScale = 1.0;
+    document.getElementById('quick-cam-label').textContent = viewNames[v];
+    document.querySelectorAll('#cam-grid .menu-chip').forEach(b => {
+      b.classList.toggle('selected', b.dataset.cam === v);
+    });
+  }
+
+  // キャンバス上のスワイプ／ドラッグでカメラ角度を微調整
+  let isCanvasDragging = false;
+  let lastPointerX = 0;
+  let lastPointerY = 0;
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    isCanvasDragging = true;
+    lastPointerX = e.clientX;
+    lastPointerY = e.clientY;
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!isCanvasDragging) return;
+    const dx = e.clientX - lastPointerX;
+    const dy = e.clientY - lastPointerY;
+    lastPointerX = e.clientX;
+    lastPointerY = e.clientY;
+
+    // 正面からでも左右約±60度、上下約-18〜+35度まで滑らかに覗き込める
+    targetYawOffset = Math.max(-1.05, Math.min(1.05, targetYawOffset - dx * 0.0075));
+    targetPitchOffset = Math.max(-0.28, Math.min(0.55, targetPitchOffset + dy * 0.006));
+  });
+  window.addEventListener('pointerup', () => {
+    isCanvasDragging = false;
+  });
+  renderer.domElement.addEventListener('wheel', (e) => {
+    targetZoomScale = Math.max(0.75, Math.min(1.35, targetZoomScale + e.deltaY * 0.0008));
+  }, { passive: true });
+
+  function stepCameraSmooth() {
+    const aspect = window.innerWidth / window.innerHeight;
+    const isPortrait = aspect < 0.95;
+    const portraitZoom = isPortrait ? Math.min(1.65, 0.92 / aspect) : 1.0;
+    const lookYOffset = isPortrait ? -1.8 : 0.3;
+
+    const base = presetAngles[cameraView];
+    const goalYaw = base.yaw + targetYawOffset;
+    const goalPitch = Math.max(0.06, Math.min(1.42, base.pitch + targetPitchOffset));
+    const goalDist = base.dist * portraitZoom * targetZoomScale;
+
+    curYaw += (goalYaw - curYaw) * 0.14;
+    curPitch += (goalPitch - curPitch) * 0.14;
+    curDist += (goalDist - curDist) * 0.14;
+
+    const lookCenter = new THREE.Vector3(0, 3.8 + lookYOffset, 0);
+    camera.position.set(
+      lookCenter.x + Math.sin(curYaw) * Math.cos(curPitch) * curDist,
+      lookCenter.y + Math.sin(curPitch) * curDist,
+      lookCenter.z + Math.cos(curYaw) * Math.cos(curPitch) * curDist
+    );
+    camera.lookAt(lookCenter);
+  }
+
+  document.getElementById('quick-cam-btn').addEventListener('click', () => {
+    const order = ['front', 'angle', 'side', 'top'];
+    const next = order[(order.indexOf(cameraView) + 1) % order.length];
+    setCameraView(next);
+    showToast(`🎥 カメラ視点：${viewNames[next]}（スワイプで角度微調整OK）`);
+  });
+
+  document.querySelectorAll('#cam-grid .menu-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setCameraView(btn.dataset.cam);
+      document.getElementById('settings-drawer').classList.remove('open');
+    });
+  });
+
+  // ==========================================
+  // 9. クレーン制御＆UIイベント
+  // ==========================================
+  let craneState = 'IDLE';
+  let controlMode = 'free';
+  let magnetMode = false;
+
+  const cranePos = { x: 1.8, z: 0.0, dropLength: 1.2 };
+  const swingAngle = { x: 0, z: 0 };
+  let clawOpenRatio = 0.65;
+  let stateTimer = 0;
+  let heldPrize = null;
+
+  const inputDir = { left: false, right: false, up: false, down: false };
+
+  function showToast(text) {
+    const el = document.getElementById('toast-banner');
+    el.textContent = text;
+    el.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => el.classList.remove('show'), 2100);
+  }
+
+  function setMagnetMode(on) {
+    magnetMode = on;
+    magnetRing.visible = on;
+    const badge = document.getElementById('magnet-quick-badge');
+    const badgeTxt = document.getElementById('magnet-badge-text');
+    const drawerBtn = document.getElementById('drawer-magnet-btn');
+    badge.classList.toggle('on', on);
+    badgeTxt.textContent = on ? 'ON' : 'OFF';
+    drawerBtn.classList.toggle('magnet-on', on);
+    drawerBtn.textContent = `🧲 ぜったい取れるマグネット：${on ? 'ON' : 'OFF'}`;
+    sound.playBeep(on ? 880 : 440, 0.12);
+    showToast(on ? '🧲 ぜったい取れるマグネットモード ON！' : '🧲 マグネットモード OFF');
+  }
+
+  document.getElementById('magnet-quick-badge').addEventListener('click', () => setMagnetMode(!magnetMode));
+  document.getElementById('drawer-magnet-btn').addEventListener('click', () => setMagnetMode(!magnetMode));
+
+  const drawerEl = document.getElementById('settings-drawer');
+  const openSettingsBtn = document.getElementById('open-settings-btn');
+  openSettingsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    drawerEl.classList.toggle('open');
+  });
+  document.getElementById('close-drawer-btn').addEventListener('click', () => drawerEl.classList.remove('open'));
+  window.addEventListener('pointerdown', (e) => {
+    if (!drawerEl.contains(e.target) && e.target !== openSettingsBtn && !openSettingsBtn.contains(e.target)) {
+      drawerEl.classList.remove('open');
+    }
+  });
+
+  document.querySelectorAll('#mode-grid .menu-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#mode-grid .menu-chip').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      controlMode = btn.dataset.mode;
+      const isFree = controlMode === 'free';
+      document.getElementById('dpad-cluster').style.display = isFree ? 'grid' : 'none';
+      document.getElementById('catch-btn').style.display = isFree ? 'flex' : 'none';
+      document.getElementById('arcade-cluster').style.display = isFree ? 'none' : 'grid';
+      if (!isFree && craneState === 'IDLE') {
+        cranePos.x = -5.5;
+        cranePos.z = 3.8;
+        document.getElementById('arcade-btn-x').disabled = false;
+        document.getElementById('arcade-btn-z').disabled = true;
       }
+      drawerEl.classList.remove('open');
+      showToast(isFree ? '🕹️ 4方向自由移動モードに切替' : '🎰 ゲーセン2ボタン式モードに切替');
+    });
+  });
 
-      // Spawn 20 colorful prizes (both Capsules and direct 3D Mascots) across the safe floor bed
-      const coords = [];
-      // Back section (Z from -2.5 to +0.2, X from -3.2 to +3.2)
-      for (let z = -2.4; z <= 0.2; z += 1.25) {
-        for (let x = -3.0; x <= 3.1; x += 1.45) {
-          coords.push({ x: x + (Math.random() - 0.5) * 0.3, z: z + (Math.random() - 0.5) * 0.3 });
+  document.getElementById('shuffle-prizes-btn').addEventListener('click', () => {
+    spawnPrizesOnStage();
+    sound.playPop();
+    drawerEl.classList.remove('open');
+    showToast('🔄 カプセルとおもちゃをシャッフル補充しました！');
+  });
+
+  const soundBtn = document.getElementById('sound-btn');
+  soundBtn.addEventListener('click', () => {
+    sound.enabled = !sound.enabled;
+    if (!sound.enabled) sound.stopMotor();
+    soundBtn.textContent = sound.enabled ? '🔊' : '🔇';
+  });
+
+  document.querySelectorAll('.dpad-btn').forEach(btn => {
+    const dir = btn.dataset.dir;
+    const startHold = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (craneState !== 'IDLE') return;
+      inputDir[dir] = true;
+      btn.classList.add('pressed');
+      sound.startMotor(220);
+    };
+    const endHold = () => {
+      inputDir[dir] = false;
+      btn.classList.remove('pressed');
+      if (!inputDir.left && !inputDir.right && !inputDir.up && !inputDir.down && craneState === 'IDLE') {
+        sound.stopMotor();
+      }
+    };
+    btn.addEventListener('pointerdown', startHold);
+    btn.addEventListener('pointerup', endHold);
+    btn.addEventListener('pointerleave', endHold);
+    btn.addEventListener('pointercancel', endHold);
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (craneState !== 'IDLE' || controlMode !== 'free') return;
+    if (e.key === 'ArrowLeft') inputDir.left = true;
+    if (e.key === 'ArrowRight') inputDir.right = true;
+    if (e.key === 'ArrowUp') inputDir.up = true;
+    if (e.key === 'ArrowDown') inputDir.down = true;
+    if (e.key === ' ' || e.key === 'Enter') startCatchSequence();
+  });
+  window.addEventListener('keyup', (e) => {
+    if (e.key === 'ArrowLeft') inputDir.left = false;
+    if (e.key === 'ArrowRight') inputDir.right = false;
+    if (e.key === 'ArrowUp') inputDir.up = false;
+    if (e.key === 'ArrowDown') inputDir.down = false;
+  });
+
+  function startCatchSequence() {
+    if (craneState !== 'IDLE') return;
+    inputDir.left = inputDir.right = inputDir.up = inputDir.down = false;
+    craneState = 'DESCENDING';
+    clawOpenRatio = 0.92;
+    sound.startMotor(165);
+  }
+  document.getElementById('catch-btn').addEventListener('click', startCatchSequence);
+
+  const arcBtnX = document.getElementById('arcade-btn-x');
+  const arcBtnZ = document.getElementById('arcade-btn-z');
+  arcBtnX.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    if (craneState !== 'IDLE') return;
+    craneState = 'ARCADE_X';
+    sound.startMotor(230);
+  });
+  arcBtnX.addEventListener('pointerup', () => {
+    if (craneState === 'ARCADE_X') {
+      craneState = 'IDLE';
+      sound.stopMotor();
+      arcBtnX.disabled = true;
+      arcBtnZ.disabled = false;
+    }
+  });
+  arcBtnZ.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    if (craneState !== 'IDLE') return;
+    craneState = 'ARCADE_Z';
+    sound.startMotor(250);
+  });
+  arcBtnZ.addEventListener('pointerup', () => {
+    if (craneState === 'ARCADE_Z') {
+      arcBtnZ.disabled = true;
+      craneState = 'DESCENDING';
+      clawOpenRatio = 0.92;
+      sound.startMotor(165);
+    }
+  });
+
+  // ==========================================
+  // 10. 🎉 カプセル開封ショー ＆ 🏆 おもちゃ図鑑
+  // ==========================================
+  const unboxModal = document.getElementById('unbox-modal');
+  const unboxStage = document.getElementById('unbox-3d-stage');
+  let unboxScene, unboxCam, unboxRenderer, unboxCapsuleGroup, unboxTopHalf, unboxBottomHalf, unboxMascot;
+  let unboxOpened = false;
+
+  function initUnboxStage() {
+    unboxScene = new THREE.Scene();
+    unboxCam = new THREE.PerspectiveCamera(42, 250 / 230, 0.1, 50);
+    unboxCam.position.set(0, 0.7, 5.0);
+    unboxCam.lookAt(0, 0.05, 0);
+
+    unboxRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    unboxRenderer.setSize(250, 230);
+    unboxRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    unboxStage.appendChild(unboxRenderer.domElement);
+
+    unboxScene.add(new THREE.AmbientLight(0xffffff, 0.88));
+    const dl = new THREE.DirectionalLight(0xfffbeb, 0.95);
+    dl.position.set(3, 6, 5);
+    unboxScene.add(dl);
+  }
+  initUnboxStage();
+
+  function triggerUnboxModal(spec) {
+    sound.playFanfare();
+    unlockedCounts[spec.id] = (unlockedCounts[spec.id] || 0) + 1;
+    saveCollection();
+
+    if (unboxCapsuleGroup) unboxScene.remove(unboxCapsuleGroup);
+    unboxCapsuleGroup = new THREE.Group();
+
+    unboxBottomHalf = new THREE.Mesh(
+      new THREE.SphereGeometry(1.1, 20, 14, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
+      new THREE.MeshPhysicalMaterial({ color: spec.capsuleColor, roughness: 0.2 })
+    );
+    unboxTopHalf = new THREE.Mesh(
+      new THREE.SphereGeometry(1.1, 20, 14, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, roughness: 0.08 })
+    );
+    unboxMascot = createMascot3D(spec);
+    unboxMascot.scale.set(0.55, 0.55, 0.55);
+
+    unboxCapsuleGroup.add(unboxBottomHalf, unboxTopHalf, unboxMascot);
+    unboxScene.add(unboxCapsuleGroup);
+
+    unboxOpened = false;
+    document.getElementById('unbox-title').textContent = '🎉 カプセルGET！！';
+    document.getElementById('unbox-sub').textContent = '👆 カプセルをタップしてパカッと開けよう！';
+    unboxModal.classList.add('active');
+
+    clearTimeout(triggerUnboxModal._auto);
+    triggerUnboxModal._auto = setTimeout(() => {
+      if (!unboxOpened) openCapsuleAction(spec);
+    }, 900);
+
+    unboxStage.onclick = () => {
+      if (!unboxOpened) openCapsuleAction(spec);
+    };
+  }
+
+  function openCapsuleAction(spec) {
+    unboxOpened = true;
+    sound.playPop();
+    document.getElementById('unbox-title').textContent = `${spec.emoji} ${spec.name} (${spec.rarity})`;
+    document.getElementById('unbox-sub').textContent = `✨ おもちゃ図鑑に登録されました！（所持: ${unlockedCounts[spec.id]}個）`;
+  }
+
+  document.getElementById('unbox-close-btn').addEventListener('click', () => {
+    unboxModal.classList.remove('active');
+  });
+
+  // 🏆 図鑑ターンテーブル
+  const shelfModal = document.getElementById('shelf-modal');
+  const ttStage = document.getElementById('turntable-stage');
+  let ttScene, ttCam, ttRenderer, ttCurrentMesh;
+  let ttYaw = 0;
+
+  function initTurntable() {
+    ttScene = new THREE.Scene();
+    ttCam = new THREE.PerspectiveCamera(40, 320 / 180, 0.1, 50);
+    ttCam.position.set(0, 0.85, 4.1);
+    ttCam.lookAt(0, 0.1, 0);
+
+    ttRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    ttRenderer.setSize(320, 180);
+    ttStage.appendChild(ttRenderer.domElement);
+
+    ttScene.add(new THREE.AmbientLight(0xffffff, 0.88));
+    const dl = new THREE.DirectionalLight(0xfffbeb, 0.95);
+    dl.position.set(4, 6, 5);
+    ttScene.add(dl);
+
+    const pedestal = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.25, 1.4, 0.25, 24),
+      new THREE.MeshStandardMaterial({ color: 0xf472b6, metalness: 0.4, roughness: 0.3 })
+    );
+    pedestal.position.y = -0.7;
+    ttScene.add(pedestal);
+
+    let drag = false, px = 0;
+    ttStage.addEventListener('pointerdown', e => { drag = true; px = e.clientX; });
+    window.addEventListener('pointermove', e => {
+      if (!drag) return;
+      ttYaw += (e.clientX - px) * 0.015;
+      px = e.clientX;
+    });
+    window.addEventListener('pointerup', () => { drag = false; });
+  }
+  initTurntable();
+
+  function showTurntablePrize(spec) {
+    if (ttCurrentMesh) ttScene.remove(ttCurrentMesh);
+    ttCurrentMesh = createMascot3D(spec);
+    ttCurrentMesh.scale.set(1.2, 1.2, 1.2);
+    ttScene.add(ttCurrentMesh);
+    const cnt = unlockedCounts[spec.id] || 0;
+    document.getElementById('turntable-caption').textContent =
+      `${spec.emoji} ${spec.name} [${spec.rarity}] — 獲得数: ${cnt}個`;
+  }
+
+  function renderShelfGrid() {
+    const grid = document.getElementById('shelf-grid');
+    grid.innerHTML = '';
+    let firstUnlocked = PRIZE_CATALOG[0];
+
+    PRIZE_CATALOG.forEach(spec => {
+      const cnt = unlockedCounts[spec.id] || 0;
+      if (cnt > 0 && firstUnlocked === PRIZE_CATALOG[0]) firstUnlocked = spec;
+
+      const item = document.createElement('div');
+      item.className = `shelf-item ${cnt > 0 ? 'unlocked' : ''}`;
+      item.innerHTML = `<span class="emoji">${cnt > 0 ? spec.emoji : '❓'}</span><div>${cnt > 0 ? spec.name.slice(0, 6) : '未発見'}</div><div style="color:#fde047;">×${cnt}</div>`;
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.shelf-item').forEach(el => el.classList.remove('active-preview'));
+        item.classList.add('active-preview');
+        showTurntablePrize(spec);
+      });
+      grid.appendChild(item);
+    });
+    showTurntablePrize(firstUnlocked);
+  }
+
+  document.getElementById('collection-btn').addEventListener('click', () => {
+    renderShelfGrid();
+    shelfModal.classList.add('active');
+  });
+  document.getElementById('shelf-close-btn').addEventListener('click', () => {
+    shelfModal.classList.remove('active');
+  });
+
+  // ==========================================
+  // 11. メイン物理＆アニメーションループ
+  // ==========================================
+  const clock = new THREE.Clock();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.04);
+    const elapsed = clock.getElapsedTime();
+
+    world.step(1 / 60, dt, 3);
+
+    // バルーン＆屋根イルミネーションのアニメーション
+    balloons.forEach(b => {
+      b.mesh.position.y = b.baseY + Math.sin(elapsed * 2.2 + b.phase) * 0.45;
+    });
+    marqueeBulbs.forEach((bulb, idx) => {
+      const on = Math.floor(elapsed * 5 + idx) % 2 === 0;
+      bulb.material.color.setHex(on ? 0xfef08a : 0xf472b6);
+    });
+
+    // クレーン状態更新
+    const moveSpeed = 0.085;
+    let prevX = cranePos.x;
+    let prevZ = cranePos.z;
+
+    if (craneState === 'IDLE') {
+      if (inputDir.left) cranePos.x = Math.max(-5.8, cranePos.x - moveSpeed);
+      if (inputDir.right) cranePos.x = Math.min(5.8, cranePos.x + moveSpeed);
+      if (inputDir.up) cranePos.z = Math.max(-4.3, cranePos.z - moveSpeed);
+      if (inputDir.down) cranePos.z = Math.min(4.3, cranePos.z + moveSpeed);
+    } else if (craneState === 'ARCADE_X') {
+      cranePos.x = Math.min(5.8, cranePos.x + moveSpeed * 0.95);
+      if (cranePos.x >= 5.8) {
+        craneState = 'IDLE';
+        sound.stopMotor();
+        arcBtnX.disabled = true;
+        arcBtnZ.disabled = false;
+      }
+    } else if (craneState === 'ARCADE_Z') {
+      cranePos.z = Math.max(-4.3, cranePos.z - moveSpeed * 0.95);
+      if (cranePos.z <= -4.3) {
+        arcBtnZ.disabled = true;
+        craneState = 'DESCENDING';
+        clawOpenRatio = 0.92;
+        sound.startMotor(165);
+      }
+    } else if (craneState === 'DESCENDING') {
+      cranePos.dropLength += 0.095;
+      const clawTipY = 10.8 - cranePos.dropLength - 1.75;
+      let hitSurface = clawTipY <= 1.05;
+
+      prizes.forEach(p => {
+        const dx = p.body.position.x - cranePos.x;
+        const dz = p.body.position.z - cranePos.z;
+        if (Math.hypot(dx, dz) < 1.35 && clawTipY <= p.body.position.y + 0.65) {
+          hitSurface = true;
         }
+      });
+
+      if (hitSurface || cranePos.dropLength >= 7.8) {
+        craneState = 'GRABBING';
+        stateTimer = 38;
+        sound.startMotor(130);
       }
-      // Front-right section (Z from +1.4 to +2.5, X from -0.8 to +3.2)
-      for (let x = -0.7; x <= 3.1; x += 1.25) {
-        coords.push({ x: x + (Math.random() - 0.5) * 0.25, z: 1.85 + (Math.random() - 0.5) * 0.4 });
-      }
-
-      coords.forEach((pt, idx) => {
-        const catalogItem = PRIZE_CATALOG[idx % PRIZE_CATALOG.length];
-        const isCapsule = idx % 3 !== 0; // Mix 2/3 translucent capsules and 1/3 direct 3D mascots!
-        const yHeight = 0.85 + (idx % 3) * 0.65;
-        spawnCabinetPrize(catalogItem.id, pt.x, yHeight, pt.z, isCapsule);
-      });
-    }
-
-    /********************************************************************
-     * 8. FLOATING STATUS TEXT HELPER
-     ********************************************************************/
-    const floatingLayer = document.getElementById('floating-layer');
-    function spawnFloatingText(text, color = '#fde047') {
-      const el = document.createElement('div');
-      el.className = 'floating-pop absolute font-black text-base sm:text-2xl drop-shadow-[0_3px_5px_rgba(0,0,0,0.9)] pointer-events-none';
-      el.style.color = color;
-      el.style.left = `${36 + Math.random() * 26}%`;
-      el.style.top = `${45 + (Math.random() - 0.5) * 14}%`;
-      el.textContent = text;
-      floatingLayer.appendChild(el);
-      setTimeout(() => el.remove(), 1300);
-    }
-
-    /********************************************************************
-     * 9. 🎉 3D CAPSULE OPENING SHOW STAGE (カプセル開封ショー演出)
-     ********************************************************************/
-    const openingModal = document.getElementById('opening-modal');
-    const openingWrap = document.getElementById('opening-canvas-wrap');
-    const btnPopCapsule = document.getElementById('btn-pop-capsule');
-    const btnCloseOpening = document.getElementById('btn-close-opening');
-
-    let openScene, openCamera, openRenderer;
-    let openStageGroup, openTopShell, openBotShell, openMascotMesh;
-    let openConfettiList = [];
-    let openAnimState = 'WAITING'; // WAITING | POPPING | REVEALED
-    let openTimer = 0;
-    let currentOpeningPrizeId = 'bear';
-
-    function initOpeningShow3D() {
-      openScene = new THREE.Scene();
-      openCamera = new THREE.PerspectiveCamera(42, 1, 0.1, 30);
-      openCamera.position.set(0, 0.5, 3.6);
-      openCamera.lookAt(0, 0.05, 0);
-
-      openRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      openRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      openingWrap.appendChild(openRenderer.domElement);
-
-      const amb = new THREE.AmbientLight(0xffffff, 0.9);
-      const dir = new THREE.DirectionalLight(0xfffbeb, 1.3);
-      dir.position.set(3, 5, 4);
-      openScene.add(amb, dir);
-
-      openStageGroup = new THREE.Group();
-      openScene.add(openStageGroup);
-
-      openingWrap.addEventListener('click', () => {
-        if (openAnimState === 'WAITING') triggerCapsulePopAnimation();
-      });
-      btnPopCapsule.addEventListener('click', () => {
-        if (openAnimState === 'WAITING') triggerCapsulePopAnimation();
-      });
-      btnCloseOpening.addEventListener('click', () => {
-        openingModal.classList.add('hidden');
-      });
-    }
-
-    function resizeOpeningRenderer() {
-      if (!openRenderer || !openingWrap) return;
-      const w = openingWrap.clientWidth || 360;
-      const h = openingWrap.clientHeight || 260;
-      openCamera.aspect = w / h;
-      openCamera.updateProjectionMatrix();
-      openRenderer.setSize(w, h);
-    }
-
-    function startCapsuleOpeningShow(prizeId) {
-      currentOpeningPrizeId = prizeId;
-      const item = PRIZE_CATALOG.find((p) => p.id === prizeId) || PRIZE_CATALOG[0];
-      const isFirstTime = (collectionState[prizeId] || 0) === 0;
-
-      // Record unlock immediately so collection is saved
-      collectionState[prizeId] = (collectionState[prizeId] || 0) + 1;
-      saveCollection();
-      updateCollectionBadge();
-
-      // Reset UI
-      openingModal.classList.remove('hidden');
-      resizeOpeningRenderer();
-
-      document.getElementById('open-title').textContent = '🎉 景品GET！カプセル開封ショー！';
-      document.getElementById('open-subtitle').textContent = 'カプセルをタップして中身を取り出そう！';
-      document.getElementById('open-badge-row').classList.add('hidden');
-      document.getElementById('open-desc-box').classList.add('hidden');
-      btnPopCapsule.classList.remove('hidden');
-      btnCloseOpening.classList.add('hidden');
-
-      document.getElementById('open-rarity').textContent = `${item.rarity} PRIZE`;
-      const newBadge = document.getElementById('open-new-badge');
-      newBadge.textContent = isFirstTime ? '✨ NEW GET!! 初獲得!' : `所持 ×${collectionState[prizeId]}個`;
-
-      document.getElementById('open-prize-name').textContent = `${item.emoji} ${item.name}`;
-      document.getElementById('open-prize-lore').textContent = item.desc;
-
-      // Build 3D Capsule shells + hidden inner Mascot + Confetti
-      while (openStageGroup.children.length > 0) {
-        openStageGroup.remove(openStageGroup.children[0]);
-      }
-      openConfettiList = [];
-
-      openBotShell = new THREE.Mesh(
-        new THREE.SphereGeometry(0.85, 24, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
-        new THREE.MeshStandardMaterial({ color: item.capsuleColor, roughness: 0.18 })
-      );
-      openTopShell = new THREE.Mesh(
-        new THREE.SphereGeometry(0.85, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2),
-        new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, roughness: 0.08 })
-      );
-      const belt = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.05, 10, 28), goldMat);
-      belt.rotation.x = Math.PI / 2;
-      openTopShell.add(belt);
-
-      openMascotMesh = createMascot3DModel(prizeId);
-      openMascotMesh.scale.set(0.55, 0.55, 0.55);
-
-      openStageGroup.add(openBotShell, openTopShell, openMascotMesh);
-
-      openAnimState = 'WAITING';
-      openTimer = 0;
-    }
-
-    function triggerCapsulePopAnimation() {
-      if (openAnimState !== 'WAITING') return;
-      openAnimState = 'POPPING';
-      openTimer = 0;
-
-      sound.playCapsulePop();
-      setTimeout(() => sound.playFanfare(), 160);
-
-      // Spawn 55 3D Confetti Particles
-      const confettiColors = [0xff2a85, 0x00f2fe, 0xfde047, 0x4ade80, 0xc084fc, 0xffffff];
-      const confGeo = new THREE.BoxGeometry(0.11, 0.11, 0.03);
-      for (let i = 0; i < 55; i++) {
-        const conf = new THREE.Mesh(
-          confGeo,
-          new THREE.MeshBasicMaterial({ color: confettiColors[i % confettiColors.length] })
-        );
-        const theta = Math.random() * Math.PI * 2;
-        const phi = Math.random() * Math.PI;
-        const speed = 2.2 + Math.random() * 3.2;
-        conf.userData = {
-          vx: Math.sin(phi) * Math.cos(theta) * speed,
-          vy: Math.cos(phi) * speed + 1.5,
-          vz: Math.sin(phi) * Math.sin(theta) * speed,
-          rx: (Math.random() - 0.5) * 10,
-          ry: (Math.random() - 0.5) * 10
-        };
-        openStageGroup.add(conf);
-        openConfettiList.push(conf);
-      }
-
-      document.getElementById('open-title').textContent = '✨ パカッ！！ ✨';
-      document.getElementById('open-subtitle').textContent = '中から立体マスコットが飛び出したよ！';
-      document.getElementById('open-badge-row').classList.remove('hidden');
-      document.getElementById('open-desc-box').classList.remove('hidden');
-      btnPopCapsule.classList.add('hidden');
-      btnCloseOpening.classList.remove('hidden');
-    }
-
-    /********************************************************************
-     * 10. 🏆 3D COLLECTION SHELF MODAL & TURNTABLE
-     ********************************************************************/
-    const shelfModal = document.getElementById('shelf-modal');
-    const shelfGrid = document.getElementById('shelf-grid');
-    const shelfCanvasWrap = document.getElementById('shelf-canvas-wrap');
-
-    let shelfScene, shelfCamera, shelfRenderer, shelfModelGroup;
-    let selectedShelfPrizeId = 'bear';
-    let isDraggingShelf = false;
-    let shelfDragPrev = { x: 0, y: 0 };
-
-    function initShelfViewer3D() {
-      shelfScene = new THREE.Scene();
-      shelfCamera = new THREE.PerspectiveCamera(40, 1, 0.1, 30);
-      shelfCamera.position.set(0, 0.9, 2.8);
-      shelfCamera.lookAt(0, 0.05, 0);
-
-      shelfRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      shelfRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      shelfCanvasWrap.appendChild(shelfRenderer.domElement);
-
-      const amb = new THREE.AmbientLight(0xffffff, 0.9);
-      const dir = new THREE.DirectionalLight(0xfffbeb, 1.25);
-      dir.position.set(3, 5, 4);
-      shelfScene.add(amb, dir);
-
-      const pedestal = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.88, 1.0, 0.2, 28),
-        new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.25, metalness: 0.2 })
-      );
-      pedestal.position.y = -0.58;
-      shelfScene.add(pedestal);
-
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.04, 10, 32), goldMat);
-      rim.rotation.x = Math.PI / 2;
-      rim.position.y = -0.48;
-      shelfScene.add(rim);
-
-      shelfModelGroup = new THREE.Group();
-      shelfScene.add(shelfModelGroup);
-
-      shelfCanvasWrap.addEventListener('pointerdown', (e) => {
-        isDraggingShelf = true;
-        shelfDragPrev = { x: e.clientX, y: e.clientY };
-      });
-      window.addEventListener('pointermove', (e) => {
-        if (!isDraggingShelf || !shelfModelGroup) return;
-        const dx = e.clientX - shelfDragPrev.x;
-        const dy = e.clientY - shelfDragPrev.y;
-        shelfDragPrev = { x: e.clientX, y: e.clientY };
-        shelfModelGroup.rotation.y += dx * 0.014;
-        shelfModelGroup.rotation.x = Math.max(-0.55, Math.min(0.55, shelfModelGroup.rotation.x + dy * 0.01));
-      });
-      window.addEventListener('pointerup', () => {
-        isDraggingShelf = false;
-      });
-    }
-
-    function resizeShelfRenderer() {
-      if (!shelfRenderer || !shelfCanvasWrap) return;
-      const w = shelfCanvasWrap.clientWidth || 280;
-      const h = shelfCanvasWrap.clientHeight || 220;
-      shelfCamera.aspect = w / h;
-      shelfCamera.updateProjectionMatrix();
-      shelfRenderer.setSize(w, h);
-    }
-
-    function selectShelfItem(prizeId) {
-      selectedShelfPrizeId = prizeId;
-      const item = PRIZE_CATALOG.find((p) => p.id === prizeId) || PRIZE_CATALOG[0];
-      const count = collectionState[prizeId] || 0;
-
-      document.getElementById('shelf-preview-rarity').textContent = `${item.rarity} PRIZE`;
-      document.getElementById('shelf-preview-count').textContent = `獲得数: ${count}個`;
-      document.getElementById('shelf-preview-name').textContent =
-        count > 0 ? `${item.emoji} ${item.name}` : `🔒 ${item.name} (未獲得)`;
-      document.getElementById('shelf-preview-lore').textContent = item.desc;
-
-      while (shelfModelGroup.children.length > 0) {
-        shelfModelGroup.remove(shelfModelGroup.children[0]);
-      }
-
-      const model = createMascot3DModel(prizeId);
-      model.scale.set(1.18, 1.18, 1.18);
-      if (count === 0) {
-        model.traverse((c) => {
-          if (c.isMesh) {
-            c.material = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 });
-          }
-        });
-      }
-      shelfModelGroup.rotation.set(0.1, 0.35, 0);
-      shelfModelGroup.add(model);
-
-      renderShelfGrid();
-    }
-
-    function renderShelfGrid() {
-      shelfGrid.innerHTML = '';
-      PRIZE_CATALOG.forEach((item) => {
-        const count = collectionState[item.id] || 0;
-        const unlocked = count > 0;
-        const isSelected = item.id === selectedShelfPrizeId;
-
-        const btn = document.createElement('button');
-        btn.className = `arcade-btn rounded-2xl p-2 flex flex-col items-center text-center border-2 transition ${
-          isSelected
-            ? 'bg-gradient-to-b from-pink-100 to-amber-100 border-pink-500 ring-2 ring-pink-400'
-            : unlocked
-            ? 'bg-white hover:bg-pink-50 border-pink-200'
-            : 'bg-slate-100 border-slate-300 opacity-75'
-        }`;
-
-        btn.innerHTML = `
-          <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-xl sm:text-2xl mb-1 shadow-inner ${
-            unlocked ? 'bg-gradient-to-br from-amber-200 via-pink-200 to-purple-200' : 'bg-slate-200 grayscale'
-          }">
-            ${item.emoji}
-          </div>
-          <div class="text-[11px] font-black text-purple-950 line-clamp-1">${item.name}</div>
-          <div class="mt-0.5 text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-            unlocked ? 'bg-pink-500 text-white' : 'bg-slate-300 text-slate-600'
-          }">
-            ${unlocked ? `×${count}` : '未獲得'}
-          </div>
-        `;
-        btn.addEventListener('click', () => {
-          sound.playClawLatch();
-          selectShelfItem(item.id);
-        });
-        shelfGrid.appendChild(btn);
-      });
-    }
-
-    /********************************************************************
-     * 11. CONTROLS, INPUTS & CRANE SEQUENCE LOGIC
-     ********************************************************************/
-    const inputDirs = { left: false, right: false, back: false, front: false };
-    let twoBtnStage = 0; // 0 = ready for X, 1 = moving X, 2 = ready for Z, 3 = moving Z
-
-    const stateBadgeEl = document.getElementById('crane-state-badge');
-    function setCranePhase(newPhase) {
-      craneState.phase = newPhase;
-      craneState.phaseTimer = 0;
-      stateBadgeEl.textContent = newPhase;
-    }
-
-    function startClawDropSequence() {
-      if (craneState.phase !== 'IDLE') return;
-      sound.playClawLatch();
-      setCranePhase('DESCENDING');
-
-      // In Magnet Mode, pre-identify the closest prize on the floor so the laser & magnet lock onto it!
-      if (craneState.magnetMode && fieldPrizes.length > 0) {
+    } else if (craneState === 'GRABBING') {
+      clawOpenRatio = Math.max(0.12, clawOpenRatio - 0.03);
+      stateTimer--;
+      if (stateTimer <= 0) {
+        const clawTipY = 10.8 - cranePos.dropLength - 1.6;
         let bestPrize = null;
-        let bestDist = 2.6; // Generous magnet assist capture radius
-        fieldPrizes.forEach((p) => {
-          const dx = p.body.position.x - craneState.x;
-          const dz = p.body.position.z - craneState.z;
-          const dist = Math.hypot(dx, dz);
-          if (dist < bestDist) {
-            bestDist = dist;
+        let bestDist = magnetMode ? 3.2 : 1.38;
+
+        prizes.forEach(p => {
+          const dx = p.body.position.x - cranePos.x;
+          const dz = p.body.position.z - cranePos.z;
+          const dy = Math.abs(p.body.position.y - clawTipY);
+          const d = Math.hypot(dx, dz);
+          if (d < bestDist && dy < (magnetMode ? 3.0 : 1.75)) {
+            bestDist = d;
             bestPrize = p;
           }
         });
-        craneState.lockedPrize = bestPrize;
+
+        if (bestPrize) {
+          heldPrize = bestPrize;
+          heldPrize.grabbed = true;
+          heldPrize.slipTimer = (!magnetMode && bestDist > 0.88) ? (22 + Math.floor(Math.random() * 25)) : 9999;
+          sound.playBeep(780, 0.12);
+        }
+        craneState = 'ASCENDING';
+        sound.startMotor(210);
+      }
+    } else if (craneState === 'ASCENDING') {
+      cranePos.dropLength = Math.max(1.2, cranePos.dropLength - 0.09);
+      if (heldPrize && heldPrize.slipTimer < 900) {
+        heldPrize.slipTimer--;
+        if (heldPrize.slipTimer <= 0) {
+          heldPrize.grabbed = false;
+          heldPrize.body.velocity.set((Math.random() - 0.5) * 2, -2, (Math.random() - 0.5) * 2);
+          heldPrize = null;
+          showToast('💦 あっ！カプセルがすべり落ちた…！');
+        }
+      }
+      if (cranePos.dropLength <= 1.25) {
+        craneState = 'RETURNING';
+        sound.startMotor(240);
+      }
+    } else if (craneState === 'RETURNING') {
+      const targetX = -5.1;
+      const targetZ = 3.6;
+      const dx = targetX - cranePos.x;
+      const dz = targetZ - cranePos.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist > 0.12) {
+        cranePos.x += (dx / dist) * 0.095;
+        cranePos.z += (dz / dist) * 0.095;
       } else {
-        craneState.lockedPrize = null;
+        craneState = 'RELEASING';
+        stateTimer = 42;
+        sound.stopMotor();
+        sound.playBeep(520, 0.15);
+      }
+    } else if (craneState === 'RELEASING') {
+      clawOpenRatio = Math.min(0.88, clawOpenRatio + 0.04);
+      if (heldPrize) {
+        heldPrize.grabbed = false;
+        heldPrize.body.position.set(cranePos.x, 10.8 - cranePos.dropLength - 1.7, cranePos.z);
+        heldPrize.body.velocity.set(0, -3.5, 0);
+        heldPrize = null;
+      }
+      stateTimer--;
+      if (stateTimer <= 0) {
+        craneState = 'RESETTING';
+      }
+    } else if (craneState === 'RESETTING') {
+      clawOpenRatio = 0.65;
+      if (controlMode === 'arcade') {
+        cranePos.x = -5.5;
+        cranePos.z = 3.8;
+        arcBtnX.disabled = false;
+        arcBtnZ.disabled = true;
+      }
+      craneState = 'IDLE';
+    }
+
+    const vx = cranePos.x - prevX;
+    const vz = cranePos.z - prevZ;
+    swingAngle.z += (-vx * 0.65 - swingAngle.z * 0.14);
+    swingAngle.x += (vz * 0.65 - swingAngle.x * 0.14);
+
+    gantryBridge.position.z = cranePos.z;
+    craneRoot.position.set(cranePos.x, 10.8, cranePos.z);
+    craneRoot.rotation.z = swingAngle.z;
+    craneRoot.rotation.x = swingAngle.x;
+
+    wireMesh.scale.y = cranePos.dropLength;
+    wireMesh.position.y = -cranePos.dropLength / 2;
+    clawHead.position.y = -cranePos.dropLength;
+
+    prongs.forEach(pivot => {
+      pivot.rotation.z = -0.35 + clawOpenRatio * 0.78;
+    });
+
+    if (magnetMode) {
+      magnetRing.rotation.z = elapsed * 4;
+      const s = 1 + Math.sin(elapsed * 8) * 0.08;
+      magnetRing.scale.set(s, s, 1);
+    }
+
+    laserRing.position.set(cranePos.x, 0.04, cranePos.z);
+    laserRing.material.opacity = 0.55 + Math.sin(elapsed * 6) * 0.25;
+
+    for (let i = prizes.length - 1; i >= 0; i--) {
+      const p = prizes[i];
+      if (p.grabbed) {
+        const holdPos = new THREE.Vector3(0, -1.75, 0);
+        clawHead.localToWorld(holdPos);
+        p.body.position.set(holdPos.x, holdPos.y, holdPos.z);
+        p.body.velocity.set(0, 0, 0);
+      }
+      p.mesh.position.copy(p.body.position);
+      p.mesh.quaternion.copy(p.body.quaternion);
+
+      if (p.body.position.y < -1.4) {
+        const wonSpec = p.spec;
+        scene.remove(p.mesh);
+        world.removeBody(p.body);
+        prizes.splice(i, 1);
+        if (heldPrize === p) heldPrize = null;
+        triggerUnboxModal(wonSpec);
+
+        if (prizes.length < 5) {
+          setTimeout(spawnPrizesOnStage, 1200);
+        }
       }
     }
 
-    // D-Pad Buttons (Pointer & Touch hold)
-    document.querySelectorAll('.dpad-btn').forEach((btn) => {
-      const dir = btn.getAttribute('data-dir');
-      const startHold = (e) => {
-        e.preventDefault();
-        if (craneState.phase !== 'IDLE') return;
-        inputDirs[dir] = true;
-        btn.classList.add('pressed');
-      };
-      const endHold = () => {
-        inputDirs[dir] = false;
-        btn.classList.remove('pressed');
-      };
-      btn.addEventListener('pointerdown', startHold);
-      btn.addEventListener('pointerup', endHold);
-      btn.addEventListener('pointerleave', endHold);
-      btn.addEventListener('pointercancel', endHold);
-    });
-
-    // Keyboard Arrow Keys / WASD + Space
-    window.addEventListener('keydown', (e) => {
-      if (!openingModal.classList.contains('hidden')) {
-        if (e.code === 'Space' || e.code === 'Enter') {
-          e.preventDefault();
-          if (openAnimState === 'WAITING') triggerCapsulePopAnimation();
-          else openingModal.classList.add('hidden');
-        }
-        return;
+    if (unboxModal.classList.contains('active') && unboxCapsuleGroup) {
+      unboxCapsuleGroup.rotation.y += 0.026;
+      if (unboxOpened) {
+        unboxTopHalf.position.y += (1.35 - unboxTopHalf.position.y) * 0.12;
+        unboxTopHalf.rotation.z += (0.45 - unboxTopHalf.rotation.z) * 0.12;
+        unboxBottomHalf.position.y += (-1.25 - unboxBottomHalf.position.y) * 0.12;
+        const targetScale = 1.28;
+        unboxMascot.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.12);
       }
-      if (!shelfModal.classList.contains('hidden') || !document.getElementById('blueprint-modal').classList.contains('hidden')) {
-        return;
-      }
-
-      if (e.code === 'ArrowLeft' || e.code === 'KeyA') inputDirs.left = true;
-      if (e.code === 'ArrowRight' || e.code === 'KeyD') inputDirs.right = true;
-      if (e.code === 'ArrowUp' || e.code === 'KeyW') inputDirs.back = true;
-      if (e.code === 'ArrowDown' || e.code === 'KeyS') inputDirs.front = true;
-      if (e.code === 'Space' || e.code === 'Enter') {
-        e.preventDefault();
-        startClawDropSequence();
-      }
-    });
-
-    window.addEventListener('keyup', (e) => {
-      if (e.code === 'ArrowLeft' || e.code === 'KeyA') inputDirs.left = false;
-      if (e.code === 'ArrowRight' || e.code === 'KeyD') inputDirs.right = false;
-      if (e.code === 'ArrowUp' || e.code === 'KeyW') inputDirs.back = false;
-      if (e.code === 'ArrowDown' || e.code === 'KeyS') inputDirs.front = false;
-    });
-
-    document.getElementById('btn-drop-claw').addEventListener('click', () => {
-      startClawDropSequence();
-    });
-
-    // Control Mode Tabs (Free Move vs 2-Button Arcade)
-    const tabFree = document.getElementById('tab-mode-free');
-    const tabTwoBtn = document.getElementById('tab-mode-twobtn');
-    const panelFree = document.getElementById('panel-mode-free');
-    const panelTwoBtn = document.getElementById('panel-mode-twobtn');
-
-    tabFree.addEventListener('click', () => {
-      tabFree.className = 'text-xs font-black px-3 py-1 rounded-xl bg-pink-500 text-white shadow-sm transition';
-      tabTwoBtn.className = 'text-xs font-black px-3 py-1 rounded-xl bg-pink-100 text-pink-800 hover:bg-pink-200 transition';
-      panelFree.classList.remove('hidden');
-      panelTwoBtn.classList.add('hidden');
-    });
-
-    tabTwoBtn.addEventListener('click', () => {
-      tabTwoBtn.className = 'text-xs font-black px-3 py-1 rounded-xl bg-pink-500 text-white shadow-sm transition';
-      tabFree.className = 'text-xs font-black px-3 py-1 rounded-xl bg-pink-100 text-pink-800 hover:bg-pink-200 transition';
-      panelTwoBtn.classList.remove('hidden');
-      panelTwoBtn.classList.add('flex');
-      panelFree.classList.add('hidden');
-      resetTwoButtonMode();
-    });
-
-    const btnStep1X = document.getElementById('btn-step1-x');
-    const btnStep2Z = document.getElementById('btn-step2-z');
-    const twoBtnInst = document.getElementById('twobtn-instruction');
-
-    function resetTwoButtonMode() {
-      if (craneState.phase !== 'IDLE') return;
-      twoBtnStage = 0;
-      craneState.x = -2.8;
-      craneState.z = 2.2;
-      btnStep1X.disabled = false;
-      btnStep2Z.disabled = true;
-      twoBtnInst.textContent = '①「よこ移動 ▶」を押し続けて、狙いたい位置で指を離してね！';
+      unboxRenderer.render(unboxScene, unboxCam);
     }
 
-    btnStep1X.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      if (craneState.phase !== 'IDLE' || twoBtnStage !== 0) return;
-      twoBtnStage = 1;
-      inputDirs.right = true;
-    });
-    window.addEventListener('pointerup', () => {
-      if (twoBtnStage === 1) {
-        inputDirs.right = false;
-        twoBtnStage = 2;
-        btnStep1X.disabled = true;
-        btnStep2Z.disabled = false;
-        twoBtnInst.textContent = '②「おく移動 ▲」を押し続けて、指を離すとアームが降りるよ！';
-        sound.playClawLatch();
-      } else if (twoBtnStage === 3) {
-        inputDirs.back = false;
-        twoBtnStage = 4;
-        btnStep2Z.disabled = true;
-        twoBtnInst.textContent = '👇 アーム降下中！ドキドキ…！';
-        startClawDropSequence();
-      }
-    });
-
-    btnStep2Z.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      if (craneState.phase !== 'IDLE' || twoBtnStage !== 2) return;
-      twoBtnStage = 3;
-      inputDirs.back = true;
-    });
-
-    document.getElementById('btn-step-reset').addEventListener('click', () => {
-      resetTwoButtonMode();
-    });
-
-    // 🧲 Magnet Assist Mode Toggle Button
-    const btnMagnet = document.getElementById('btn-magnet-mode');
-    const magnetLabel = document.getElementById('magnet-label');
-    btnMagnet.addEventListener('click', () => {
-      craneState.magnetMode = !craneState.magnetMode;
-      magnetAuraMesh.visible = craneState.magnetMode;
-      if (craneState.magnetMode) {
-        sound.playMagnetLock();
-        magnetLabel.textContent = 'ぜったい取れる: ON ✨';
-        btnMagnet.className =
-          'arcade-btn magnet-active-btn rounded-2xl px-3.5 py-2 sm:px-5 sm:py-2.5 font-black text-xs sm:text-sm border-2 border-white flex items-center gap-2 bg-gradient-to-r from-pink-500 via-amber-400 to-cyan-400 text-purple-950';
-        spawnFloatingText('🧲 ぜったい取れるマグネットモード ON！', '#00ffcc');
-      } else {
-        sound.playClawLatch();
-        magnetLabel.textContent = 'マグネットモード: OFF';
-        btnMagnet.className =
-          'arcade-btn rounded-2xl px-3.5 py-2 sm:px-5 sm:py-2.5 font-black text-xs sm:text-sm border-2 border-white flex items-center gap-2 bg-gradient-to-r from-slate-700 to-slate-800 text-white';
-        spawnFloatingText('⚙️ リアル物理キャッチモード！', '#fde047');
-      }
-    });
-
-    // Camera Switcher, Shelf, Blueprint, Sound & Restock Buttons
-    document.getElementById('btn-camera').addEventListener('click', () => {
-      currentCamPreset = (currentCamPreset + 1) % CAMERA_PRESETS.length;
-      userOrbitYaw = 0;
-      userOrbitPitch = 0;
-      document.getElementById('camera-label').textContent = CAMERA_PRESETS[currentCamPreset].name;
-      sound.playClawLatch();
-    });
-
-    document.getElementById('btn-restock').addEventListener('click', () => {
-      sound.playFanfare();
-      clearAndRestockCabinet();
-      spawnFloatingText('🔄 景品をシャッフル補充しました！', '#fde047');
-    });
-
-    document.getElementById('btn-sound').addEventListener('click', () => {
-      const muted = sound.toggleMute();
-      document.getElementById('sound-icon').textContent = muted ? '🔇' : '🔊';
-    });
-
-    document.getElementById('btn-shelf').addEventListener('click', () => {
-      sound.playClawLatch();
-      shelfModal.classList.remove('hidden');
-      resizeShelfRenderer();
-      selectShelfItem(selectedShelfPrizeId);
-    });
-    document.getElementById('btn-close-shelf').addEventListener('click', () => {
-      shelfModal.classList.add('hidden');
-    });
-    document.getElementById('btn-unlock-all').addEventListener('click', () => {
-      sound.playFanfare();
-      PRIZE_CATALOG.forEach((p) => {
-        collectionState[p.id] = Math.max(1, (collectionState[p.id] || 0) + 1);
-      });
-      saveCollection();
-      updateCollectionBadge();
-      selectShelfItem(selectedShelfPrizeId);
-    });
-
-    const blueprintModal = document.getElementById('blueprint-modal');
-    document.getElementById('btn-blueprint').addEventListener('click', () => {
-      sound.playClawLatch();
-      blueprintModal.classList.remove('hidden');
-    });
-    document.getElementById('btn-close-blueprint').addEventListener('click', () => {
-      blueprintModal.classList.add('hidden');
-    });
-
-    // Drag on main canvas to subtly orbit camera angle
-    let isCanvasDragging = false;
-    let canvasDragPrev = { x: 0, y: 0 };
-    renderer.domElement.addEventListener('pointerdown', (e) => {
-      isCanvasDragging = true;
-      canvasDragPrev = { x: e.clientX, y: e.clientY };
-    });
-    window.addEventListener('pointermove', (e) => {
-      if (!isCanvasDragging) return;
-      const dx = e.clientX - canvasDragPrev.x;
-      const dy = e.clientY - canvasDragPrev.y;
-      canvasDragPrev = { x: e.clientX, y: e.clientY };
-      userOrbitYaw = Math.max(-0.6, Math.min(0.6, userOrbitYaw - dx * 0.0035));
-      userOrbitPitch = Math.max(-0.3, Math.min(0.45, userOrbitPitch + dy * 0.0035));
-    });
-    window.addEventListener('pointerup', () => {
-      isCanvasDragging = false;
-    });
-
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      resizeOpeningRenderer();
-      resizeShelfRenderer();
-    });
-
-    /********************************************************************
-     * 12. MAIN 60FPS GAME & PHYSICS LOOP
-     ********************************************************************/
-    const clock = new THREE.Clock();
-    const CHUTE_DROP_X = -2.95;
-    const CHUTE_DROP_Z = 2.15;
-    const tempWorldVec = new THREE.Vector3();
-
-    function animate() {
-      requestAnimationFrame(animate);
-
-      const dt = Math.min(clock.getDelta(), 0.045);
-      const elapsed = clock.getElapsedTime();
-
-      let vx = 0;
-      let vz = 0;
-      const moveSpeed = 3.2;
-
-      // 1. Crane State Machine
-      if (craneState.phase === 'IDLE') {
-        craneState.clawOpenAngle += (0.42 - craneState.clawOpenAngle) * 0.15;
-
-        if (inputDirs.left) vx -= moveSpeed;
-        if (inputDirs.right) vx += moveSpeed;
-        if (inputDirs.back) vz -= moveSpeed;
-        if (inputDirs.front) vz += moveSpeed;
-
-        craneState.x = Math.max(-3.45, Math.min(3.45, craneState.x + vx * dt));
-        craneState.z = Math.max(-2.65, Math.min(2.65, craneState.z + vz * dt));
-
-        if (Math.abs(vx) > 0.01 || Math.abs(vz) > 0.01) {
-          sound.startMotorHum(210);
-        } else {
-          sound.stopMotorHum();
-        }
-      } else if (craneState.phase === 'DESCENDING') {
-        // Open claw wide & lower cable
-        craneState.clawOpenAngle += (0.82 - craneState.clawOpenAngle) * 0.14;
-
-        // If Magnet Mode is ON and a target prize is nearby, gently steer toward its X/Z as we descend!
-        if (craneState.magnetMode && craneState.lockedPrize) {
-          const tp = craneState.lockedPrize.body.position;
-          craneState.x += (tp.x - craneState.x) * 4.5 * dt;
-          craneState.z += (tp.z - craneState.z) * 4.5 * dt;
-        }
-
-        craneState.cableLen += 2.65 * dt;
-        sound.startMotorHum(165);
-
-        // Stop descending when reaching floor pile height
-        if (craneState.cableLen >= 4.95) {
-          craneState.cableLen = 4.95;
-          sound.stopMotorHum();
-          sound.playClawLatch();
-          setCranePhase('GRABBING');
-
-          // Evaluate normal physics cradle target if Magnet Mode is OFF
-          if (!craneState.magnetMode) {
-            let closest = null;
-            let minDist = 1.08;
-            fieldPrizes.forEach((p) => {
-              const dist = Math.hypot(p.body.position.x - craneState.x, p.body.position.z - craneState.z);
-              if (dist < minDist) {
-                minDist = dist;
-                closest = { prize: p, alignOffset: dist };
-              }
-            });
-            if (closest) {
-              craneState.lockedPrize = closest.prize;
-              craneState.grabSlipChance = closest.alignOffset > 0.58 ? 0.55 : 0.1;
-            }
-          } else if (craneState.lockedPrize) {
-            sound.playMagnetLock();
-            spawnFloatingText('🧲 ピタッ！マグネット吸着！', '#00f2fe');
-          }
-        }
-      } else if (craneState.phase === 'GRABBING') {
-        craneState.phaseTimer += dt;
-        // Close prongs tightly around prize
-        craneState.clawOpenAngle += (0.15 - craneState.clawOpenAngle) * 0.16;
-
-        if (craneState.phaseTimer >= 0.75) {
-          setCranePhase('ASCENDING');
-        }
-      } else if (craneState.phase === 'ASCENDING') {
-        craneState.cableLen -= 2.45 * dt;
-        sound.startMotorHum(240);
-
-        // Realistic slip suspense in Normal Physics Mode if poorly aligned
-        if (!craneState.magnetMode && craneState.lockedPrize && craneState.cableLen < 3.4) {
-          if (craneState.grabSlipChance && Math.random() < craneState.grabSlipChance * dt) {
-            craneState.lockedPrize.body.velocity.set((Math.random() - 0.5) * 1.5, -1, (Math.random() - 0.5) * 1.5);
-            craneState.lockedPrize = null;
-            spawnFloatingText('💦 あっ！すべった…！', '#fbbf24');
-          }
-        }
-
-        if (craneState.cableLen <= 1.25) {
-          craneState.cableLen = 1.25;
-          sound.stopMotorHum();
-          setCranePhase('RETURNING');
-        }
-      } else if (craneState.phase === 'RETURNING') {
-        // Move gantry to Front-Left Prize Chute (CHUTE_DROP_X, CHUTE_DROP_Z)
-        const dx = CHUTE_DROP_X - craneState.x;
-        const dz = CHUTE_DROP_Z - craneState.z;
-        const dist = Math.hypot(dx, dz);
-
-        if (dist > 0.08) {
-          const step = Math.min(dist, 3.3 * dt);
-          vx = (dx / dist) * 3.3;
-          vz = (dz / dist) * 3.3;
-          craneState.x += (dx / dist) * step;
-          craneState.z += (dz / dist) * step;
-          sound.startMotorHum(215);
-        } else {
-          craneState.x = CHUTE_DROP_X;
-          craneState.z = CHUTE_DROP_Z;
-          sound.stopMotorHum();
-          sound.playClawLatch();
-          setCranePhase('RELEASING');
-        }
-      } else if (craneState.phase === 'RELEASING') {
-        craneState.phaseTimer += dt;
-        // Open claw to drop prize into the GET chute!
-        craneState.clawOpenAngle += (0.82 - craneState.clawOpenAngle) * 0.18;
-
-        if (craneState.lockedPrize) {
-          craneState.lockedPrize.body.velocity.set(0, -2.5, 0);
-          craneState.lockedPrize = null;
-        }
-
-        if (craneState.phaseTimer >= 0.85) {
-          setCranePhase('RESETTING');
-        }
-      } else if (craneState.phase === 'RESETTING') {
-        const homeX = 0.8;
-        const homeZ = 0.0;
-        const dx = homeX - craneState.x;
-        const dz = homeZ - craneState.z;
-        const dist = Math.hypot(dx, dz);
-
-        if (dist > 0.08) {
-          const step = Math.min(dist, 3.6 * dt);
-          vx = (dx / dist) * 3.6;
-          vz = (dz / dist) * 3.6;
-          craneState.x += (dx / dist) * step;
-          craneState.z += (dz / dist) * step;
-        } else {
-          setCranePhase('IDLE');
-          if (!panelTwoBtn.classList.contains('hidden')) {
-            resetTwoButtonMode();
-          }
-        }
-      }
-
-      // 2. Pendulum Swing Physics (アームの揺れ計算)
-      const accelX = (vx - craneState.prevVelX) / Math.max(dt, 0.01);
-      const accelZ = (vz - craneState.prevVelZ) / Math.max(dt, 0.01);
-      craneState.prevVelX = vx;
-      craneState.prevVelZ = vz;
-
-      craneState.swingVelZ += (-accelX * 0.045 - 14.0 * craneState.swingZ) * dt;
-      craneState.swingVelX += (accelZ * 0.045 - 14.0 * craneState.swingX) * dt;
-      craneState.swingVelZ *= 0.92;
-      craneState.swingVelX *= 0.92;
-
-      craneState.swingZ = Math.max(-0.28, Math.min(0.28, craneState.swingZ + craneState.swingVelZ * dt));
-      craneState.swingX = Math.max(-0.28, Math.min(0.28, craneState.swingX + craneState.swingVelX * dt));
-
-      // 3. Apply Transforms to Gantry, Cable, Claw & Kinematic Prong Colliders
-      zBridgeGroup.position.z = craneState.z;
-      xTrolleyGroup.position.set(craneState.x, GANTRY_Y, craneState.z);
-
-      pendulumPivotGroup.rotation.z = craneState.swingZ;
-      pendulumPivotGroup.rotation.x = craneState.swingX;
-
-      cableMesh.scale.set(1, craneState.cableLen, 1);
-      cableMesh.position.y = -craneState.cableLen / 2;
-
-      clawHubGroup.position.y = -craneState.cableLen;
-
-      // Update 3 Prong hinges
-      prongPivots.forEach((pivot) => {
-        pivot.rotation.z = craneState.clawOpenAngle;
-      });
-
-      // Animate Magnet Aura Ring if active
-      if (craneState.magnetMode) {
-        magnetAuraMesh.rotation.z = elapsed * 4.0;
-        const pulse = 1 + Math.sin(elapsed * 8.0) * 0.12;
-        magnetAuraMesh.scale.set(pulse, pulse, 1);
-      }
-
-      // Update Laser Target Ring on Floor
-      targetRingGroup.position.x = craneState.x;
-      targetRingGroup.position.z = craneState.z;
-      outerTargetRing.rotation.z = elapsed * 1.8;
-
-      // Sync Kinematic Prong Tip Physics Bodies to World Coordinates
-      scene.updateMatrixWorld();
-      clawHubGroup.getWorldPosition(tempWorldVec);
-      hubBumperBody.position.set(tempWorldVec.x, tempWorldVec.y, tempWorldVec.z);
-
-      prongTipRefs.forEach((tipMesh, idx) => {
-        tipMesh.getWorldPosition(tempWorldVec);
-        prongTipBodies[idx].position.set(tempWorldVec.x, tempWorldVec.y, tempWorldVec.z);
-      });
-
-      // 4. Hold / Cradle Locked Prize inside Claw during GRABBING / ASCENDING / RETURNING
-      if (
-        craneState.lockedPrize &&
-        (craneState.phase === 'GRABBING' || craneState.phase === 'ASCENDING' || craneState.phase === 'RETURNING')
-      ) {
-        clawHubGroup.getWorldPosition(tempWorldVec);
-        const holdX = tempWorldVec.x;
-        const holdY = tempWorldVec.y - 0.72;
-        const holdZ = tempWorldVec.z;
-
-        const pb = craneState.lockedPrize.body;
-        if (craneState.magnetMode) {
-          // Kid-friendly Magnet Mode: rock-solid magnetic lock
-          pb.position.x += (holdX - pb.position.x) * 0.38;
-          pb.position.y += (holdY - pb.position.y) * 0.38;
-          pb.position.z += (holdZ - pb.position.z) * 0.38;
-          pb.velocity.set(0, 0, 0);
-        } else {
-          // Normal Physics Mode: spring cradle with realistic jostling
-          pb.velocity.x = (holdX - pb.position.x) * 14;
-          pb.velocity.y = (holdY - pb.position.y) * 16;
-          pb.velocity.z = (holdZ - pb.position.z) * 14;
-        }
-      }
-
-      // 5. Step Cannon.js Physics World
-      world.step(1 / 60, dt, 3);
-
-      // 6. Sync Prize Meshes & Detect Front-Left Chute Win (GET口落下判定)
-      for (let i = fieldPrizes.length - 1; i >= 0; i--) {
-        const p = fieldPrizes[i];
-        p.mesh.position.copy(p.body.position);
-        p.mesh.quaternion.copy(p.body.quaternion);
-
-        // Did this prize fall down into the Front-Left Chute tunnel?
-        if (p.body.position.y < -0.55) {
-          const wonPrizeId = p.prizeId;
-          if (craneState.lockedPrize === p) craneState.lockedPrize = null;
-
-          scene.remove(p.mesh);
-          world.removeBody(p.body);
-          fieldPrizes.splice(i, 1);
-
-          sound.playFanfare();
-          spawnFloatingText('🎉 GET!! カプセル開封ショーへ！', '#fde047');
-          startCapsuleOpeningShow(wonPrizeId);
-
-          // Automatically restock if running low
-          if (fieldPrizes.length < 6) {
-            setTimeout(() => clearAndRestockCabinet(), 1500);
-          }
-        }
-      }
-
-      // 7. Smooth Camera Interpolation
-      const preset = CAMERA_PRESETS[currentCamPreset];
-      const desiredCamPos = preset.pos.clone();
-      desiredCamPos.x += userOrbitYaw * 7.5;
-      desiredCamPos.y += userOrbitPitch * 4.5;
-      camera.position.lerp(desiredCamPos, 0.09);
-      camera.lookAt(preset.look);
-
-      renderer.render(scene, camera);
-
-      // 8. Render Capsule Opening Show 3D Viewport if open
-      if (!openingModal.classList.contains('hidden') && openRenderer) {
-        openTimer += dt;
-        if (openAnimState === 'WAITING') {
-          // Excited wobble before opening
-          openStageGroup.rotation.z = Math.sin(openTimer * 14) * 0.08;
-          openStageGroup.rotation.y += dt * 1.4;
-        } else if (openAnimState === 'POPPING') {
-          openStageGroup.rotation.z = 0;
-          // Top and bottom capsule shells fly apart!
-          openTopShell.position.y += dt * 3.8;
-          openTopShell.rotation.x += dt * 3.5;
-          openBotShell.position.y -= dt * 3.2;
-          openBotShell.rotation.x -= dt * 2.5;
-
-          // Inner 3D Mascot scales up and spins heroically!
-          const s = Math.min(1.38, openMascotMesh.scale.x + dt * 1.8);
-          openMascotMesh.scale.set(s, s, s);
-          openMascotMesh.rotation.y += dt * 2.4;
-
-          // Update Confetti Particles
-          openConfettiList.forEach((c) => {
-            c.position.x += c.userData.vx * dt;
-            c.position.y += c.userData.vy * dt;
-            c.position.z += c.userData.vz * dt;
-            c.userData.vy -= 5.5 * dt; // gravity
-            c.rotation.x += c.userData.rx * dt;
-            c.rotation.y += c.userData.ry * dt;
-          });
-        }
-        openRenderer.render(openScene, openCamera);
-      }
-
-      // 9. Render 3D Collection Shelf Turntable if open
-      if (!shelfModal.classList.contains('hidden') && shelfRenderer && shelfModelGroup) {
-        if (!isDraggingShelf) {
-          shelfModelGroup.rotation.y += dt * 1.05;
-        }
-        shelfRenderer.render(shelfScene, shelfCamera);
-      }
+    if (shelfModal.classList.contains('active') && ttCurrentMesh) {
+      ttCurrentMesh.rotation.y = ttYaw + elapsed * 0.85;
+      ttRenderer.render(ttScene, ttCam);
     }
 
-    // Boot Application on Window Load
-    window.onload = function () {
-      loadCollection();
-      initOpeningShow3D();
-      initShelfViewer3D();
-      clearAndRestockCabinet();
-      animate();
-    };
-  </script>
+    stepCameraSmooth();
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  animate();
+})();
+</script>
 </body>
 </html>

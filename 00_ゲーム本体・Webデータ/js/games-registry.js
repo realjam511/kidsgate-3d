@@ -143,5 +143,83 @@ window.KIDS_GAMES_REGISTRY = [
         file: "games/11_3Dウィーン！本格クレーンキャッチャー＆カプセル開封ショー.html",
         isHero: false,
         tag: "大人気・クレーン"
+    },
+    {
+        id: "game-3Dゴーゴー！箱庭ジオラマ特急＆はたらくくるまドライブ",
+        title: "3Dゴーゴー！箱庭ジオラマ特急＆はたらくくるまドライブ",
+        desc: "新幹線・特急やはたらく車を運転しよう！箱庭ジオラマを走る楽しい3Dドライブ知育ゲーム！",
+        icon: "🚅",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "vehicle",
+        categoryLabel: "のりもの・しんかんせん",
+        file: "games/12_3Dゴーゴー！箱庭ジオラマ特急＆はたらくくるまドライブ.html",
+        isHero: false,
+        tag: "大人気・特急"
+    },
+    {
+        id: "game-3Dコロコロ！からくりピタゴラ・マーブルコースター",
+        title: "3Dコロコロ！からくりピタゴラ・マーブルコースター",
+        desc: "ボールを転がしてスイッチ・ループ・シーソーのからくりを作動させよう！童謡オルゴールが流れる爽快マーブルコースター知育ゲーム。",
+        icon: "🎢",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "touch",
+        categoryLabel: "からくり・アクション",
+        file: "games/13_3Dコロコロ！からくりピタゴラ・マーブルコースター.html",
+        isHero: false,
+        tag: "ピタゴラ"
+    },
+    {
+        id: "game-3Dよくみておぼえて！シャッフルカップ＆注文暗記レストラン",
+        title: "3Dよくみておぼえて！シャッフルカップ＆注文暗記レストラン",
+        desc: "シャッフルされるカップをよく見てアメを探そう！動物たちからの注文を覚えて届ける楽しい3D記憶力トレーニング知育ゲーム。",
+        icon: "🧁",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "puzzle",
+        categoryLabel: "きおく・あたまの体操",
+        file: "games/14_3Dよくみておぼえて！シャッフルカップ＆注文暗記レストラン.html",
+        isHero: false,
+        tag: "きおく"
+    },
+    {
+        id: "game-3Dコロコロ！ひらがなボールたんけん",
+        title: "3Dコロコロ！ひらがなボールたんけん",
+        desc: "3Dのお部屋に転がるカラフルなひらがなボールを探してタッチ＆ゴール！音声読み上げとあいうえお表コレクションで楽しくひらがなを覚える知育3Dゲーム。",
+        icon: "🔤",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "puzzle",
+        categoryLabel: "もじ・ことば",
+        file: "games/15_3Dコロコロ！ひらがなボールたんけん.html",
+        isHero: false,
+        tag: "ひらがな"
+    },
+    {
+        id: "game-3Dパクパクもぐもぐ！くいしんぼう動物のランチタイム",
+        title: "3Dパクパクもぐもぐ！くいしんぼう動物のランチタイム",
+        desc: "お皿のリンゴやドーナツをタッチしてウサギやパンダに食べさせよう！3Dアニメーションと音声読み上げで楽しく「ひきざん」の基礎が身につく知育ゲーム。",
+        icon: "🐰",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "nature",
+        categoryLabel: "どうぶつ・ひきざん",
+        file: "games/16_3Dパクパクもぐもぐ！くいしんぼう動物のランチタイム.html",
+        isHero: false,
+        tag: "ひきざん"
+    },
+    {
+        id: "game-3Dチクタク出発進行！とけいタウンの新幹線ステーション",
+        title: "3Dチクタク出発進行！とけいタウンの新幹線ステーション",
+        desc: "大きな3D時計塔の針を合わせて新幹線や特急列車を出発させよう！デジタル表示と音声読み上げで楽しく時計の読み方が身につく知育3Dゲーム。",
+        icon: "🕐",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "vehicle",
+        categoryLabel: "のりもの・とけい",
+        file: "games/17_3Dチクタク出発進行！とけいタウンの新幹線ステーション.html",
+        isHero: false,
+        tag: "とけい"
     }
 ];

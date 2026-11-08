@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>3Dコロコロ！からくりピタゴラ・マーブルコースター</title>
+<style>
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    margin: 0;
+    padding: 0;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: linear-gradient(180deg, #1e3a8a 0%, #3b82f6 48%, #fef08a 100%);
+    font-family: "Hiragino Maru Gothic ProN", "Rounded Mplus 1c", "Meiryo", sans-serif;
+    touch-action: none;
+  }
+  #canvas-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+  canvas:active {
+    cursor: grabbing;
+  }
+
+  /* 左上：ゴールカウンター＆現在の童謡バッジ */
+  #top-left-hud {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .hud-pill {
+    background: rgba(15, 23, 42, 0.62);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    cursor: pointer;
+    transition: transform 0.12s, background 0.2s;
+  }
+  .hud-pill:active {
+    transform: scale(0.94);
+  }
+  #goal-pill {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.85), rgba(236, 72, 153, 0.85));
+    border-color: rgba(254, 240, 138, 0.85);
+  }
+  #song-pill {
+    background: rgba(30, 58, 138, 0.68);
+    border-color: rgba(147, 197, 253, 0.6);
+  }
+
+  /* スワイプ操作ヒント */
+  #swipe-hint {
+    position: fixed;
+    top: 46px;
+    left: 12px;
+    z-index: 15;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(4px);
+    color: rgba(255, 255, 255, 0.92);
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.22);
+    font-size: 10.5px;
+    font-weight: 700;
+    pointer-events: none;
+  }
+
+  /* 右上：視点切替・設定ドロワー・音 */
+  #top-right-hud {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tr-btn {
+    background: rgba(15, 23, 42, 0.68);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.28);
+    transition: transform 0.12s, background 0.2s;
+  }
+  .tr-btn:active {
+    transform: scale(0.94);
+  }
+  .tr-btn.icon-only {
+    padding: 6px 9px;
+    font-size: 13px;
+  }
+
+  /* 右上：コンパクト収納設定ドロワー */
+  #settings-drawer {
+    position: fixed;
+    top: 48px;
+    right: 10px;
+    z-index: 35;
+    width: 286px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
+    border-radius: 18px;
+    padding: 12px;
+    color: #fff;
+    box-shadow: 0 14px 32px rgba(0,0,0,0.55);
+    display: none;
+    animation: popIn 0.16s ease-out;
+  }
+  #settings-drawer.open {
+    display: block;
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .drawer-section {
+    margin-bottom: 10px;
+  }
+  .drawer-section:last-child {
+    margin-bottom: 0;
+  }
+  .drawer-title {
+    font-size: 11px;
+    color: #93c5fd;
+    font-weight: 800;
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+  .grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+  }
+  .menu-chip {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #f8fafc;
+    border-radius: 10px;
+    padding: 6px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .menu-chip:active {
+    transform: scale(0.95);
+  }
+  .menu-chip.selected {
+    background: linear-gradient(135deg, #ec4899, #8b5cf6);
+    border-color: #fde047;
+    box-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
+  }
+  .menu-chip.full-btn {
+    width: 100%;
+    padding: 8px;
+    font-size: 11.5px;
+  }
+  .menu-chip.auto-on {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-color: #a7f3d0;
+  }
+
+  /* 中央上部トースト通知 */
+  #toast-banner {
+    position: fixed;
+    top: 48px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    z-index: 25;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    padding: 5px 14px;
+    border-radius: 999px;
+    border: 1.5px solid rgba(253, 224, 71, 0.75);
+    font-size: 12px;
+    font-weight: 800;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.22s, transform 0.22s;
+    white-space: nowrap;
+  }
+  #toast-banner.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* =========================================================
+     下部：背景パネル無し・半透明クリア操作ボタン（画面最下部配置）
+     ========================================================= */
+  #bottom-controls {
+    position: fixed;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    width: min(96vw, 480px);
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 8px;
+    pointer-events: none;
+    padding: 0 2px;
+  }
+
+  .glass-action-btn {
+    pointer-events: auto;
+    height: 58px;
+    border-radius: 18px;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    color: #ffffff;
+    font-weight: 900;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.15;
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28), inset 0 1px 2px rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: transform 0.08s, background 0.15s, border-color 0.15s;
+  }
+  .glass-action-btn:active {
+    transform: scale(0.93);
+  }
+  .glass-action-btn .main-txt {
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .glass-action-btn .sub-txt {
+    font-size: 9.5px;
+    opacity: 0.92;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+
+  /* 1. ボール投入ボタン（メイン・大判クリアピンクオレンジ） */
+  #spawn-one-btn {
+    flex: 1.35;
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.48), rgba(249, 115, 22, 0.48));
+    border: 2px solid rgba(254, 240, 138, 0.85);
+  }
+  #spawn-one-btn:active {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.8), rgba(249, 115, 22, 0.8));
+  }
+
+  /* 2. 大量シャワーボタン（クリアレインボーブルー） */
+  #spawn-shower-btn {
+    flex: 1.05;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.44), rgba(168, 85, 247, 0.44));
+    border: 1.8px solid rgba(191, 219, 254, 0.8);
+  }
+  #spawn-shower-btn:active {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.78), rgba(168, 85, 247, 0.78));
+  }
+
+  /* 3. 分岐切替ボタン（クリアエメラルド / アンバー） */
+  #branch-switch-btn {
+    flex: 1.05;
+    background: rgba(16, 185, 129, 0.42);
+    border: 1.8px solid rgba(167, 243, 208, 0.85);
+  }
+  #branch-switch-btn.cannon-mode {
+    background: rgba(245, 158, 11, 0.46);
+    border-color: rgba(253, 230, 138, 0.9);
+  }
+
+  @media (max-width: 390px) {
+    .glass-action-btn {
+      height: 54px;
+      border-radius: 15px;
+    }
+    .glass-action-btn .main-txt {
+      font-size: 12.5px;
+    }
+    .glass-action-btn .sub-txt {
+      font-size: 8.8px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<!-- 左上：ゴール数＆メロディ表示 -->
+<div id="top-left-hud">
+  <button class="hud-pill" id="goal-pill" title="ゴールしたボールの数（タップで15個シャワー！）">
+    🔔 ゴール <span id="goal-count">0</span>個
+  </button>
+  <button class="hud-pill" id="song-pill" title="タップで鉄琴の童謡メロディを切り替え">
+    🎹 <span id="song-name-label">きらきら星</span>
+  </button>
+</div>
+
+<!-- スワイプ回転ヒント -->
+<div id="swipe-hint">👆 画面スワイプで自由な角度から鑑賞OK</div>
+
+<!-- 右上：カメラ視点・設定ドロワー・音 -->
+<div id="top-right-hud">
+  <button class="tr-btn" id="quick-cam-btn" title="カメラアングルを順番に切り替え">
+    🎥 <span id="quick-cam-label">全体</span>
+  </button>
+  <button class="tr-btn" id="open-settings-btn">
+    ⚙️ 設定 ▾
+  </button>
+  <button class="tr-btn icon-only" id="sound-btn" title="サウンドON/OFF">🔊</button>
+</div>
+
+<!-- 右上：コンパクト設定ドロワー -->
+<div id="settings-drawer">
+  <div class="drawer-section">
+    <div class="drawer-title">
+      <span>🐾 転がすキャラボール選択</span>
+      <span style="cursor:pointer;color:#fbcfe8;" id="close-drawer-btn">✕</span>
+    </div>
+    <div class="grid-4" id="char-grid">
+      <button class="menu-chip selected" data-char="random">🎲 全種</button>
+      <button class="menu-chip" data-char="bear">🐻 くま</button>
+      <button class="menu-chip" data-char="rabbit">🐰 うさ</button>
+      <button class="menu-chip" data-char="panda">🐼 パンダ</button>
+      <button class="menu-chip" data-char="penguin">🐧 ペン</button>
+      <button class="menu-chip" data-char="dolphin">🐬 いるか</button>
+      <button class="menu-chip" data-char="sealion">🦭 あしか</button>
+      <button class="menu-chip" data-char="star">🌟 スター</button>
+    </div>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-title"><span>🎵 鉄琴の階段メロディ（童謡4曲）</span></div>
+    <div class="grid-2" id="song-grid">
+      <button class="menu-chip selected" data-song="twinkle">⭐ きらきら星</button>
+      <button class="menu-chip" data-song="tulip">🌷 チューリップ</button>
+      <button class="menu-chip" data-song="butterfly">🦋 ちょうちょ</button>
+      <button class="menu-chip" data-song="acorn">🌰 どんぐりころころ</button>
+    </div>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-title"><span>🎥 カメラ視点切替（スワイプ微調整可）</span></div>
+    <div class="grid-2" id="cam-grid">
+      <button class="menu-chip selected" data-cam="overview">🏰 タワー全体</button>
+      <button class="menu-chip" data-cam="chase">🔍 ボール追跡</button>
+      <button class="menu-chip" data-cam="xylophone">🎹 鉄琴階段アップ</button>
+      <button class="menu-chip" data-cam="action">💣 大砲＆ループ橋</button>
+    </div>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-title"><span>🔄 自動スタート設定</span></div>
+    <button class="menu-chip full-btn auto-on" id="auto-spawn-btn">
+      🔄 オート連射モード：ON（自動で次々転がる）
+    </button>
+  </div>
+</div>
+
+<!-- 中央上部トースト通知 -->
+<div id="toast-banner">🎵 メロディ：きらきら星</div>
+
+<!-- 下部：背景枠なし・半透明クリアボタン3つ -->
+<div id="bottom-controls">
+  <button class="glass-action-btn" id="spawn-one-btn">
+    <div class="main-txt">🔴 ボール投入！</div>
+    <div class="sub-txt">連打でいっぱい転がるよ</div>
+  </button>
+
+  <button class="glass-action-btn" id="spawn-shower-btn">
+    <div class="main-txt">🌈 大量シャワー</div>
+    <div class="sub-txt">15個イッキに放出！</div>
+  </button>
+
+  <button class="glass-action-btn" id="branch-switch-btn">
+    <div class="main-txt" id="branch-main-txt">🔀 ループ橋🎢</div>
+    <div class="sub-txt" id="branch-sub-txt">タップで大砲💣へ切替</div>
+  </button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+  // ==========================================
+  // 1. キャラクターボール定義＆童謡メロディ音階データ
+  // ==========================================
+  const CHAR_TYPES = [
+    { id: 'bear', name: 'ハニーくま', emoji: '🐻', color: 0xd97706, subColor: 0xfef3c7 },
+    { id: 'rabbit', name: 'いちごうさぎ', emoji: '🐰', color: 0xf472b6, subColor: 0xffffff },
+    { id: 'panda', name: 'もっちりパンダ', emoji: '🐼', color: 0xffffff, subColor: 0x1e293b },
+    { id: 'penguin', name: 'ソーダペンギン', emoji: '🐧', color: 0x0284c7, subColor: 0xfef08a },
+    { id: 'dolphin', name: 'アクアいるか', emoji: '🐬', color: 0x06b6d4, subColor: 0xe0f2fe },
+    { id: 'sealion', name: '玉乗りあしか', emoji: '🦭', color: 0x64748b, subColor: 0xf43f5e },
+    { id: 'star', name: 'レインボースター', emoji: '🌟', color: 0xfacc15, subColor: 0xec4899 }
+  ];
+
+  // 音名→周波数(Hz)マップ（1オクターブ上の明るいグロッケンシュピール音域）
+  const NOTE_FREQ = {
+    C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.00, B5: 987.77, C6: 1046.50, D6: 1174.66
+  };
+
+  // 童謡4曲のメロディ配列（鉄琴の階段を跳ねるたびに1音ずつ進行）
+  const SONGS = {
+    twinkle: {
+      title: 'きらきら星',
+      notes: ['C5','C5','G5','G5','A5','A5','G5','F5', 'F5','E5','E5','D5','D5','C5','G5','G5', 'F5','F5','E5','E5','D5','G5','G5','F5', 'F5','E5','E5','D5','C5','G5','A5','C6']
+    },
+    tulip: {
+      title: 'チューリップ',
+      notes: ['C5','D5','E5','C5','D5','E5','G5','E5', 'D5','C5','D5','E5','D5','C5','D5','E5', 'G5','E5','D5','C5','D5','E5','C5','G5', 'G5','E5','G5','A5','A5','G5','E5','E5', 'D5','D5','C5']
+    },
+    butterfly: {
+      title: 'ちょうちょ',
+      notes: ['G5','E5','E5','F5','D5','D5','C5','D5', 'E5','F5','G5','G5','G5','G5','E5','E5', 'E5','F5','D5','D5','C5','E5','G5','G5', 'E5','E5','E5','D5','D5','D5','D5','E5', 'F5','E5','E5','E5','E5','F5','G5']
+    },
+    acorn: {
+      title: 'どんぐりころころ',
+      notes: ['G5','G5','E5','C5','D5','E5','G5','E5', 'A5','A5','G5','E5','G5','G5','E5','G5', 'C6','C6','A5','C6','G5','G5','E5','G5', 'A5','G5','F5','D5','E5','D5','C5','C6']
+    }
+  };
+
+  let currentSongKey = 'twinkle';
+  let melodyCursor = 0;
+
+  // ==========================================
+  // 2. Web Audio API シンセサイザー（鉄琴・大砲・風車・シーソー・鐘）
+  // ==========================================
+  class CoasterAudio {
+    constructor() {
+      this.ctx = null;
+      this.enabled = true;
+    }
+    init() {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) this.ctx = new AudioCtx();
+      }
+      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+    }
+    // 🎹 鉄琴（グロッケン・シロフォン）の澄んだ金属・木琴ハーモニクス音
+    playXylophoneNote(noteName) {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const freq = NOTE_FREQ[noteName] || 523.25;
+      const now = this.ctx.currentTime;
+
+      // 基音＋3倍音でキラキラした鉄琴の響きを合成
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
+      const gain1 = this.ctx.createGain();
+      const gain2 = this.ctx.createGain();
+
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(freq, now);
+      gain1.gain.setValueAtTime(0.22, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(freq * 3.0, now);
+      gain2.gain.setValueAtTime(0.06, now);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+      osc1.connect(gain1).connect(this.ctx.destination);
+      osc2.connect(gain2).connect(this.ctx.destination);
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.56);
+      osc2.stop(now + 0.15);
+    }
+    // 🎡 風車のカラカラ木製打音
+    playWoodClack(pitch = 420) {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(pitch, now);
+      osc.frequency.exponentialRampToValueAtTime(140, now + 0.06);
+      gain.gain.setValueAtTime(0.11, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.065);
+      osc.connect(gain).connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.07);
+    }
+    // ⚖️ シーソーの「カッタン！」音
+    playSeesawTilt() {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(260, now);
+      osc.frequency.exponentialRampToValueAtTime(520, now + 0.11);
+      gain.gain.setValueAtTime(0.14, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc.connect(gain).connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.13);
+    }
+    // 🎢 ループ橋の「シュイーン！」加速音
+    playLoopWhoosh() {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.28);
+      osc.frequency.exponentialRampToValueAtTime(440, now + 0.5);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.52);
+      osc.connect(gain).connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.53);
+    }
+    // 💣 大砲の「ドカン！＋ヒューン！」発射音
+    playCannonBoom() {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      // 低音パンチ
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(160, now);
+      osc.frequency.exponentialRampToValueAtTime(38, now + 0.26);
+      gain.gain.setValueAtTime(0.24, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      osc.connect(gain).connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.29);
+
+      // 飛び出しホイッスル音
+      const wOsc = this.ctx.createOscillator();
+      const wGain = this.ctx.createGain();
+      wOsc.type = 'sine';
+      wOsc.frequency.setValueAtTime(520, now + 0.05);
+      wOsc.frequency.exponentialRampToValueAtTime(1150, now + 0.35);
+      wGain.gain.setValueAtTime(0.09, now + 0.05);
+      wGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+      wOsc.connect(wGain).connect(this.ctx.destination);
+      wOsc.start(now + 0.05);
+      wOsc.stop(now + 0.39);
+    }
+    // 🔔 ゴールベル＆10個達成ファンファーレ
+    playGoalBell(isMilestone = false) {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      if (isMilestone) {
+        [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => {
+          const o = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          o.type = 'triangle';
+          o.frequency.setValueAtTime(f, now + i * 0.09);
+          g.gain.setValueAtTime(0.16, now + i * 0.09);
+          g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.09 + 0.35);
+          o.connect(g).connect(this.ctx.destination);
+          o.start(now + i * 0.09);
+          o.stop(now + i * 0.09 + 0.36);
+        });
+      } else {
+        [1046.5, 1567.98].forEach((f, i) => {
+          const o = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          o.type = 'sine';
+          o.frequency.setValueAtTime(f, now + i * 0.06);
+          g.gain.setValueAtTime(0.14, now + i * 0.06);
+          g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.06 + 0.32);
+          o.connect(g).connect(this.ctx.destination);
+          o.start(now + i * 0.06);
+          o.stop(now + i * 0.06 + 0.33);
+        });
+      }
+    }
+  }
+  const sound = new CoasterAudio();
+
+  // ==========================================
+  // 3. Three.js シーン＆おもちゃのワンダーランド背景構築
+  // ==========================================
+  const container = document.getElementById('canvas-container');
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x2563eb, 0.0055);
+
+  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 300);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  container.appendChild(renderer.domElement);
+
+  // 照明設定
+  scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+  const sunLight = new THREE.DirectionalLight(0xfffbeb, 0.98);
+  sunLight.position.set(22, 42, 28);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.width = 2048;
+  sunLight.shadow.mapSize.height = 2048;
+  const d = 26;
+  sunLight.shadow.camera.left = -d;
+  sunLight.shadow.camera.right = d;
+  sunLight.shadow.camera.top = d;
+  sunLight.shadow.camera.bottom = -d;
+  scene.add(sunLight);
+
+  const warmPoint = new THREE.PointLight(0xf472b6, 0.65, 50);
+  warmPoint.position.set(-15, 16, 12);
+  scene.add(warmPoint);
+
+  // ==========================================
+  // 4. 木製トイ・テーブル＆背景の積み木・バルーン装飾
+  // ==========================================
+  const worldGroup = new THREE.Group();
+  scene.add(worldGroup);
+
+  // パステルチェッカーフロア
+  function createToyFloorTexture() {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 256;
+    const ctx = c.getContext('2d');
+    const cols = ['#fef9c3', '#fce7f3', '#e0f2fe', '#dcfce7'];
+    for (let y = 0; y < 4; y++) {
+      for (let x = 0; x < 4; x++) {
+        ctx.fillStyle = cols[(x + y) % cols.length];
+        ctx.fillRect(x * 64, y * 64, 64, 64);
+      }
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(12, 12);
+    return tex;
+  }
+  const roomFloor = new THREE.Mesh(
+    new THREE.PlaneGeometry(160, 160),
+    new THREE.MeshStandardMaterial({ map: createToyFloorTexture(), roughness: 0.55 })
+  );
+  roomFloor.rotation.x = -Math.PI / 2;
+  roomFloor.position.y = -3.2;
+  roomFloor.receiveShadow = true;
+  worldGroup.add(roomFloor);
+
+  // コースターの土台となる木製トイボード
+  const woodBoard = new THREE.Mesh(
+    new THREE.BoxGeometry(30, 1.6, 20),
+    new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.65 })
+  );
+  woodBoard.position.set(0, -1.6, 0);
+  woodBoard.receiveShadow = true;
+  worldGroup.add(woodBoard);
+
+  const innerMat = new THREE.Mesh(
+    new THREE.BoxGeometry(28.4, 0.3, 18.4),
+    new THREE.MeshStandardMaterial({ color: 0x86efac, roughness: 0.7 })
+  );
+  innerMat.position.set(0, -0.75, 0);
+  innerMat.receiveShadow = true;
+  worldGroup.add(innerMat);
+
+  // 木製タワー支柱（コースターを支えるカラフルな柱）
+  const pillarColors = [0xf59e0b, 0x38bdf8, 0xf43f5e, 0x10b981, 0xa855f7];
+  const towerPillars = [
+    [-10, 19.5, -2.5], [-3, 17.5, -2.5], [5, 16.0, -2.5], [10, 14.0, -2.5],
+    [-8, 12.0, 2.5], [0, 10.5, 2.5], [8, 9.0, 2.5]
+  ];
+  towerPillars.forEach(([px, h, pz], idx) => {
+    const col = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.38, 0.44, h, 12),
+      new THREE.MeshStandardMaterial({ color: pillarColors[idx % pillarColors.length], roughness: 0.4 })
+    );
+    col.position.set(px, h / 2 - 0.8, pz);
+    col.castShadow = true;
+    worldGroup.add(col);
+  });
+
+  // 背景のおもちゃ積み木城＆ふわふわ気球・バルーン
+  const floatingDecos = [];
+  [[-19, -12], [19, -12], [-22, 4], [22, 4]].forEach(([bx, bz], i) => {
+    const block = new THREE.Mesh(
+      new THREE.BoxGeometry(4.5, 5.5, 4.5),
+      new THREE.MeshStandardMaterial({ color: pillarColors[i % pillarColors.length], roughness: 0.4 })
+    );
+    block.position.set(bx, -0.4, bz);
+    const roof = new THREE.Mesh(
+      new THREE.ConeGeometry(3.6, 3.8, 4),
+      new THREE.MeshStandardMaterial({ color: pillarColors[(i + 2) % pillarColors.length], roughness: 0.35 })
+    );
+    roof.position.set(bx, 4.2, bz);
+    roof.rotation.y = Math.PI / 4;
+    worldGroup.add(block, roof);
+
+    // 浮かぶバルーン
+    const bal = new THREE.Mesh(
+      new THREE.SphereGeometry(1.4, 14, 14),
+      new THREE.MeshStandardMaterial({ color: pillarColors[(i + 1) % pillarColors.length], roughness: 0.2 })
+    );
+    bal.scale.y = 1.2;
+    bal.position.set(bx * 0.85, 14 + (i % 2) * 3, bz - 2);
+    worldGroup.add(bal);
+    floatingDecos.push({ mesh: bal, baseY: bal.position.y, phase: i * 1.4 });
+  });
+
+  // ==========================================
+  // 5. からくりピタゴラコース＆5大ギミック構築
+  // ==========================================
+  // レール生成ヘルパー（2本のカラフルサイドレール＋底板）
+  function buildRailTrack(points, railColor = 0xfef08a, tieColor = 0xd97706, radius = 0.13) {
+    const curve = new THREE.CatmullRomCurve3(points);
+    const g = new THREE.Group();
+    const len = points.length * 14;
+
+    [-0.46, 0.46].forEach(offset => {
+      const sidePts = [];
+      for (let i = 0; i <= len; i++) {
+        const t = i / len;
+        const p = curve.getPointAt(t);
+        const tan = curve.getTangentAt(t).normalize();
+        const side = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+        sidePts.push(p.clone().addScaledVector(side, offset).add(new THREE.Vector3(0, -0.15, 0)));
+      }
+      const sc = new THREE.CatmullRomCurve3(sidePts);
+      const mesh = new THREE.Mesh(
+        new THREE.TubeGeometry(sc, len, radius, 8, false),
+        new THREE.MeshStandardMaterial({ color: railColor, roughness: 0.3, metalness: 0.2 })
+      );
+      mesh.castShadow = true;
+      g.add(mesh);
+    });
+
+    // 枕木クロスバー
+    const tieGeo = new THREE.BoxGeometry(1.25, 0.12, 0.28);
+    const tieMat = new THREE.MeshStandardMaterial({ color: tieColor, roughness: 0.6 });
+    const tieCount = Math.floor(len / 3);
+    for (let i = 0; i <= tieCount; i++) {
+      const t = i / tieCount;
+      const p = curve.getPointAt(t);
+      const tan = curve.getTangentAt(t).normalize();
+      const tie = new THREE.Mesh(tieGeo, tieMat);
+      tie.position.copy(p).add(new THREE.Vector3(0, -0.32, 0));
+      tie.lookAt(tie.position.clone().add(tan));
+      g.add(tie);
+    }
+
+    worldGroup.add(g);
+    return curve;
+  }
+
+  // --- Stage 1: 上段スタートファンネル＆風車スロープ (-10.5, 18.8, -1.5) → (9.5, 14.2, -1.5) ---
+  const startFunnel = new THREE.Mesh(
+    new THREE.ConeGeometry(1.9, 1.8, 20, 1, true),
+    new THREE.MeshStandardMaterial({ color: 0xf43f5e, side: THREE.DoubleSide, roughness: 0.25 })
+  );
+  startFunnel.rotation.x = Math.PI;
+  startFunnel.position.set(-10.5, 19.2, -1.5);
+  worldGroup.add(startFunnel);
+
+  const stage1Curve = buildRailTrack([
+    new THREE.Vector3(-10.5, 18.5, -1.5),
+    new THREE.Vector3(-5.0, 17.3, -1.2),
+    new THREE.Vector3(1.5, 16.0, -1.5),
+    new THREE.Vector3(7.5, 14.8, -1.2),
+    new THREE.Vector3(9.5, 14.0, 0.5)
+  ], 0x38bdf8, 0xf59e0b);
+
+  // 🎡 2基のくるくる4枚羽根風車（ボールが通ると勢いよく回転！）
+  const windmills = [];
+  function createWindmill(x, y, z, color) {
+    const wg = new THREE.Group();
+    wg.position.set(x, y, z);
+    const hub = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.42, 0.42, 1.4, 12),
+      new THREE.MeshStandardMaterial({ color: 0xfacc15 })
+    );
+    hub.rotation.x = Math.PI / 2;
+    wg.add(hub);
+
+    const bladeMat = new THREE.MeshStandardMaterial({ color, roughness: 0.3 });
+    for (let i = 0; i < 4; i++) {
+      const bHolder = new THREE.Group();
+      bHolder.rotation.z = (i * Math.PI) / 2;
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.3, 1.15), bladeMat);
+      blade.position.y = 1.15;
+      bHolder.add(blade);
+      wg.add(bHolder);
+    }
+    worldGroup.add(wg);
+    windmills.push({ mesh: wg, x, y, z, angVel: 1.5 });
+  }
+  createWindmill(-3.8, 17.8, -1.3, 0xf43f5e);
+  createWindmill(3.2, 16.4, -1.4, 0x10b981);
+
+  // --- Stage 2: ⚖️ カッタン！シーソー橋 ＆ 🔀 分岐ゲート (9.5, 13.8, 0.5) → (-1.5, 11.2, 1.8) ---
+  const stage2Curve = buildRailTrack([
+    new THREE.Vector3(9.5, 14.0, 0.5),
+    new THREE.Vector3(6.0, 12.9, 1.8),
+    new THREE.Vector3(2.2, 12.1, 1.8),
+    new THREE.Vector3(-1.5, 11.2, 1.8)
+  ], 0xf472b6, 0x9333ea);
+
+  // ⚖️ シーソー本体 (x = 4.2, y = 12.5, z = 1.8)
+  const seesawGroup = new THREE.Group();
+  seesawGroup.position.set(4.2, 12.35, 1.8);
+  const seesawPlank = new THREE.Mesh(
+    new THREE.BoxGeometry(4.4, 0.28, 1.5),
+    new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.3 })
+  );
+  const seesawFulcrum = new THREE.Mesh(
+    new THREE.ConeGeometry(0.75, 1.1, 4),
+    new THREE.MeshStandardMaterial({ color: 0xef4444 })
+  );
+  seesawFulcrum.position.set(0, -0.65, 0);
+  seesawFulcrum.rotation.y = Math.PI / 4;
+  seesawGroup.add(seesawPlank);
+  worldGroup.add(seesawGroup);
+  const fulcrumStatic = seesawFulcrum.clone();
+  fulcrumStatic.position.set(4.2, 11.7, 1.8);
+  worldGroup.add(fulcrumStatic);
+  let seesawTargetAngle = -0.18;
+
+  // 🔀 3D分岐ポイント標識 (x = -1.5, y = 13.2, z = 1.8)
+  let activeBranch = 'loop'; // 'loop' (🎢ループ橋) | 'cannon' (💣びっくり大砲)
+  const switchSignGroup = new THREE.Group();
+  switchSignGroup.position.set(-1.5, 13.4, 1.8);
+  const signDisc = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.4, 1.4, 0.38, 20),
+    new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x064e3b })
+  );
+  signDisc.rotation.x = Math.PI / 2;
+  const signArrow = new THREE.Mesh(
+    new THREE.ConeGeometry(0.6, 1.25, 4),
+    new THREE.MeshBasicMaterial({ color: 0xfef08a })
+  );
+  signArrow.rotation.z = Math.PI / 3;
+  signArrow.position.z = 0.25;
+  switchSignGroup.add(signDisc, signArrow);
+  worldGroup.add(switchSignGroup);
+
+  // --- Stage 3A (Route A): 🎢 360度くるっとネオンループ橋 ---
+  // (-1.5, 11.2, 1.8) から急降下し、中心 (-6.2, 9.6, -0.5) 半径 2.4 の360度ループを回って (-9.8, 6.8, 2.0) へ！
+  const loopPts = [
+    new THREE.Vector3(-1.5, 11.2, 1.8),
+    new THREE.Vector3(-3.8, 9.2, 0.8),
+    new THREE.Vector3(-5.8, 7.3, -0.2)
+  ];
+  const loopCenter = new THREE.Vector3(-6.2, 9.7, -0.5);
+  const loopRadius = 2.35;
+  for (let i = 1; i <= 16; i++) {
+    const theta = -Math.PI / 2 + (i / 16) * Math.PI * 2;
+    loopPts.push(new THREE.Vector3(
+      loopCenter.x + Math.cos(theta) * loopRadius,
+      loopCenter.y + Math.sin(theta) * loopRadius,
+      loopCenter.z - (i / 16) * 0.9
+    ));
+  }
+  loopPts.push(
+    new THREE.Vector3(-8.4, 7.2, 0.8),
+    new THREE.Vector3(-9.8, 6.6, 2.2)
+  );
+  const routeLoopCurve = buildRailTrack(loopPts, 0x22d3ee, 0x0284c7, 0.14);
+
+  // ループ橋のネオンリング装飾
+  const neonLoopRing = new THREE.Mesh(
+    new THREE.TorusGeometry(loopRadius + 0.35, 0.12, 10, 32),
+    new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+  );
+  neonLoopRing.position.copy(loopCenter);
+  worldGroup.add(neonLoopRing);
+
+  // --- Stage 3B (Route B): 💣 ドカン！びっくり大砲ジャンプ ---
+  // (-1.5, 11.2, 1.8) → 大砲発射台 (-3.2, 9.6, 3.4) → 空中放物線ジャンプ → キャッチファンネル (-9.8, 6.6, 2.2)
+  const cannonApproachCurve = buildRailTrack([
+    new THREE.Vector3(-1.5, 11.2, 1.8),
+    new THREE.Vector3(-2.4, 10.3, 2.8),
+    new THREE.Vector3(-3.2, 9.6, 3.4)
+  ], 0xfbbf24, 0xb45309);
+
+  // 黄金の大砲モデル
+  const cannonGroup = new THREE.Group();
+  cannonGroup.position.set(-3.4, 9.6, 3.4);
+  cannonGroup.rotation.y = Math.PI * 0.88; // 左下奥のキャッチ漏斗 (-9.8, 6.6, 2.2) へ向ける
+  const cannonBarrel = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.68, 0.85, 2.6, 16),
+    new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.75, roughness: 0.2 })
+  );
+  cannonBarrel.rotation.z = -Math.PI / 3.1;
+  cannonBarrel.position.set(0.6, 0.5, 0);
+  const cannonWheelGeo = new THREE.CylinderGeometry(0.65, 0.65, 0.25, 14);
+  const cannonWheelMat = new THREE.MeshStandardMaterial({ color: 0x991b1b });
+  [-0.7, 0.7].forEach(wz => {
+    const w = new THREE.Mesh(cannonWheelGeo, cannonWheelMat);
+    w.rotation.x = Math.PI / 2;
+    w.position.set(0, 0, wz);
+    cannonGroup.add(w);
+  });
+  cannonGroup.add(cannonBarrel);
+  worldGroup.add(cannonGroup);
+  let cannonRecoil = 0;
+
+  // 大砲の着地キャッチファンネル (-9.8, 6.6, 2.2)
+  const catchFunnel = new THREE.Mesh(
+    new THREE.ConeGeometry(1.75, 1.5, 20, 1, true),
+    new THREE.MeshStandardMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, roughness: 0.2 })
+  );
+  catchFunnel.rotation.x = Math.PI;
+  catchFunnel.position.set(-9.8, 6.7, 2.2);
+  worldGroup.add(catchFunnel);
+
+  // --- Stage 4: 🎹 ポロロン♪ 虹色8段鉄琴の階段 (-8.2, 5.8, 2.2) → (+6.5, 1.3, 2.2) ---
+  const xylophoneSteps = [];
+  const rainbowColors = [
+    0xef4444, // 赤
+    0xf97316, // オレンジ
+    0xfacc15, // 黄
+    0x22c55e, // 緑
+    0x06b6d4, // 水色
+    0x3b82f6, // 青
+    0x8b5cf6, // 紫
+    0xec4899  // ピンク
+  ];
+
+  for (let i = 0; i < 8; i++) {
+    const sx = -7.2 + i * 1.95;
+    const sy = 5.4 - i * 0.58;
+    const sz = 2.2;
+
+    const plateMat = new THREE.MeshStandardMaterial({
+      color: rainbowColors[i],
+      metalness: 0.35,
+      roughness: 0.2,
+      emissive: rainbowColors[i],
+      emissiveIntensity: 0.08
+    });
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.28, 2.1), plateMat);
+    plate.position.set(sx, sy, sz);
+    plate.castShadow = true;
+    plate.receiveShadow = true;
+
+    // 金のビス飾り2個
+    [-0.65, 0.65].forEach(pz => {
+      const pin = new THREE.Mesh(
+        new THREE.SphereGeometry(0.11, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0xfef08a, metalness: 0.8 })
+      );
+      pin.position.set(0, 0.16, pz);
+      plate.add(pin);
+    });
+
+    worldGroup.add(plate);
+    xylophoneSteps.push({ mesh: plate, x: sx, baseY: sy, z: sz, glow: 0 });
+  }
+
+  // --- Stage 5: 🔔 ゴールベル＆スパイラル回収エレベーター (x = 9.2, y = 0.6, z = 2.2) ---
+  const goalArchGroup = new THREE.Group();
+  goalArchGroup.position.set(9.2, 0.5, 2.2);
+  [-1.2, 1.2].forEach(gz => {
+    const post = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.18, 0.18, 3.6, 10),
+      new THREE.MeshStandardMaterial({ color: 0xf43f5e })
+    );
+    post.position.set(0, 1.8, gz);
+    goalArchGroup.add(post);
+  });
+  const archTop = new THREE.Mesh(
+    new THREE.BoxGeometry(0.45, 0.45, 2.8),
+    new THREE.MeshStandardMaterial({ color: 0xfacc15 })
+  );
+  archTop.position.set(0, 3.6, 0);
+  goalArchGroup.add(archTop);
+
+  // 揺れる黄金のゴールベル
+  const bellPivot = new THREE.Group();
+  bellPivot.position.set(0, 3.4, 0);
+  const bellCone = new THREE.Mesh(
+    new THREE.ConeGeometry(0.72, 1.15, 16),
+    new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.85, roughness: 0.15 })
+  );
+  bellCone.position.y = -0.55;
+  bellPivot.add(bellCone);
+  goalArchGroup.add(bellPivot);
+  worldGroup.add(goalArchGroup);
+  let bellSwingVel = 0;
+  let bellSwingAngle = 0;
+
+  // 右奥から頂上へ戻るスパイラルエレベーターチューブ
+  const liftColumn = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.55, 0.55, 19.5, 14),
+    new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, roughness: 0.1 })
+  );
+  liftColumn.position.set(11.2, 9.2, -1.0);
+  worldGroup.add(liftColumn);
+
+  // ==========================================
+  // 6. 立体キャラクターマーブル（ボール）生成関数
+  // ==========================================
+  function createCharacterMarbleMesh(charSpec) {
+    const g = new THREE.Group();
+    const r = 0.56;
+    const bodyMat = new THREE.MeshPhysicalMaterial({
+      color: charSpec.color,
+      roughness: 0.16,
+      clearcoat: 0.95
+    });
+    const subMat = new THREE.MeshStandardMaterial({ color: charSpec.subColor, roughness: 0.3 });
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111827 });
+    const cheekMat = new THREE.MeshBasicMaterial({ color: 0xfb7185 });
+
+    // メインの丸いマーブル球体
+    const sphere = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 16), bodyMat);
+    sphere.castShadow = true;
+    g.add(sphere);
+
+    // お腹・顔パッチ
+    const patch = new THREE.Mesh(new THREE.SphereGeometry(r * 0.76, 12, 12), subMat);
+    patch.position.set(0, -0.06, r * 0.38);
+    g.add(patch);
+
+    // 瞳＋白ハイライト＋ピンクのほっぺ
+    [-0.19, 0.19].forEach(ex => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 8), eyeMat);
+      eye.position.set(ex, 0.12, r * 0.92);
+      const shine = new THREE.Mesh(new THREE.SphereGeometry(0.032, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      shine.position.set(ex + 0.025, 0.15, r * 0.99);
+      const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), cheekMat);
+      cheek.position.set(ex * 1.45, 0.0, r * 0.88);
+      g.add(eye, shine, cheek);
+    });
+
+    // キャラ別の立体耳・くちばし・王冠パーツ
+    if (charSpec.id === 'rabbit') {
+      [-0.22, 0.22].forEach(ex => {
+        const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.52, 8), bodyMat);
+        ear.position.set(ex, r + 0.16, 0);
+        g.add(ear);
+      });
+    } else if (charSpec.id === 'penguin') {
+      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.26, 8), subMat);
+      beak.rotation.x = Math.PI / 2;
+      beak.position.set(0, 0.04, r + 0.1);
+      g.add(beak);
+    } else if (charSpec.id === 'star') {
+      const crown = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.24, 0.18, 0.24, 6),
+        new THREE.MeshStandardMaterial({ color: 0xfef08a, metalness: 0.8 })
+      );
+      crown.position.set(0, r + 0.08, 0);
+      g.add(crown);
+    } else {
+      const earMat = charSpec.id === 'panda' ? new THREE.MeshStandardMaterial({ color: 0x1e293b }) : bodyMat;
+      [-0.34, 0.34].forEach(ex => {
+        const ear = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), earMat);
+        ear.position.set(ex, r * 0.85, 0);
+        g.add(ear);
+      });
+    }
+
+    return g;
+  }
+
+  // エフェクトパーティクル（音符・星・大砲煙）
+  const particles = [];
+  function spawnBurstParticles(pos, count, colorHex, speed = 0.14) {
+    for (let i = 0; i < count; i++) {
+      const pMesh = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.22, 0),
+        new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 1 })
+      );
+      pMesh.position.copy(pos);
+      const vel = new THREE.Vector3(
+        (Math.random() - 0.5) * speed * 2,
+        Math.random() * speed * 1.8 + 0.05,
+        (Math.random() - 0.5) * speed * 2
+      );
+      scene.add(pMesh);
+      particles.push({ mesh: pMesh, vel, life: 36, maxLife: 36 });
+    }
+  }
+
+  // ==========================================
+  // 7. マーブル物理進行＆からくりギミック連動エンジン
+  // ==========================================
+  const marbles = [];
+  let selectedCharId = 'random';
+  let goalTotal = 0;
+
+  function spawnMarble(offsetDelay = 0) {
+    // 画面上の最大ボール数を45個に保ち60fpsを維持
+    if (marbles.length >= 45) {
+      const oldest = marbles.shift();
+      scene.remove(oldest.mesh);
+    }
+
+    const spec = selectedCharId === 'random'
+      ? CHAR_TYPES[Math.floor(Math.random() * CHAR_TYPES.length)]
+      : (CHAR_TYPES.find(c => c.id === selectedCharId) || CHAR_TYPES[0]);
+
+    const mesh = createCharacterMarbleMesh(spec);
+    mesh.position.set(-10.5, 19.6 + offsetDelay * 0.4, -1.5);
+    scene.add(mesh);
+
+    marbles.push({
+      spec,
+      mesh,
+      phase: 'STAGE1', // STAGE1 -> STAGE2 -> LOOP / CANNON_LOAD / CANNON_FLY -> XYLOPHONE -> ELEVATOR
+      t: 0,
+      speed: 0.21 + (Math.random() - 0.5) * 0.015,
+      stepIndex: 0,
+      stepT: 0,
+      passedWindmill1: false,
+      passedWindmill2: false,
+      tiltedSeesaw: false
+    });
+  }
+
+  // 初期状態で3個転がしておく
+  spawnMarble(0);
+  setTimeout(() => spawnMarble(0), 600);
+
+  // ==========================================
+  // 8. スワイプ自由回転3Dカメラ＆スマホ縦画面オートフレーミング
+  // ==========================================
+  let cameraPreset = 'overview'; // 'overview' | 'chase' | 'xylophone' | 'action'
+  const camLabels = { overview: '全体', chase: '追跡', xylophone: '鉄琴', action: '大砲＆ループ' };
+
+  const presetConfigs = {
+    overview:  { look: new THREE.Vector3(0, 9.2, 0), yaw: 0.0, pitch: 0.16, dist: 31.0 },
+    chase:     { look: new THREE.Vector3(0, 9.2, 0), yaw: 0.25, pitch: 0.25, dist: 14.5 },
+    xylophone: { look: new THREE.Vector3(-0.5, 3.8, 2.2), yaw: 0.08, pitch: 0.22, dist: 17.5 },
+    action:    { look: new THREE.Vector3(-5.2, 9.5, 1.2), yaw: 0.18, pitch: 0.18, dist: 16.5 }
+  };
+
+  let targetYawOffset = 0;
+  let targetPitchOffset = 0;
+  let targetZoomScale = 1.0;
+  let curYaw = 0;
+  let curPitch = 0.16;
+  let curDist = 31.0;
+  const curLook = new THREE.Vector3(0, 9.2, 0);
+
+  function setCameraPreset(preset) {
+    cameraPreset = preset;
+    targetYawOffset = 0;
+    targetPitchOffset = 0;
+    targetZoomScale = 1.0;
+    document.getElementById('quick-cam-label').textContent = camLabels[preset];
+    document.querySelectorAll('#cam-grid .menu-chip').forEach(b => {
+      b.classList.toggle('selected', b.dataset.cam === preset);
+    });
+  }
+
+  // スワイプ／ドラッグで角度調整＆3D分岐標識の直接タップ判定
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  let isDragging = false;
+  let lastX = 0;
+  let lastY = 0;
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    isDragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+
+    // 3D空間の分岐標識をタップしたかチェック
+    pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+    const hits = raycaster.intersectObjects(switchSignGroup.children, true);
+    if (hits.length > 0) {
+      toggleBranchMode();
+    }
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    lastX = e.clientX;
+    lastY = e.clientY;
+
+    targetYawOffset = Math.max(-1.25, Math.min(1.25, targetYawOffset - dx * 0.0075));
+    targetPitchOffset = Math.max(-0.28, Math.min(0.65, targetPitchOffset + dy * 0.006));
+  });
+  window.addEventListener('pointerup', () => {
+    isDragging = false;
+  });
+  renderer.domElement.addEventListener('wheel', (e) => {
+    targetZoomScale = Math.max(0.7, Math.min(1.4, targetZoomScale + e.deltaY * 0.0008));
+  }, { passive: true });
+
+  function updateCameraSmooth() {
+    const aspect = window.innerWidth / window.innerHeight;
+    const isPortrait = aspect < 0.95;
+    // スマホ縦画面ではカメラを自動で引き、注視点Yを少し下げて下部ボタンの上にコースター全体を収める
+    const portraitZoom = isPortrait ? Math.min(1.72, 0.94 / aspect) : 1.0;
+    const portraitYShift = isPortrait ? -1.8 : 0.0;
+
+    const cfg = presetConfigs[cameraPreset];
+    let desiredLook = cfg.look.clone();
+    if (cameraPreset === 'chase' && marbles.length > 0) {
+      desiredLook.copy(marbles[marbles.length - 1].mesh.position);
+    } else {
+      desiredLook.y += portraitYShift;
+    }
+
+    curLook.lerp(desiredLook, 0.1);
+    const goalYaw = cfg.yaw + targetYawOffset;
+    const goalPitch = Math.max(0.05, Math.min(1.38, cfg.pitch + targetPitchOffset));
+    const goalDist = cfg.dist * portraitZoom * targetZoomScale;
+
+    curYaw += (goalYaw - curYaw) * 0.12;
+    curPitch += (goalPitch - curPitch) * 0.12;
+    curDist += (goalDist - curDist) * 0.12;
+
+    camera.position.set(
+      curLook.x + Math.sin(curYaw) * Math.cos(curPitch) * curDist,
+      curLook.y + Math.sin(curPitch) * curDist,
+      curLook.z + Math.cos(curYaw) * Math.cos(curPitch) * curDist
+    );
+    camera.lookAt(curLook);
+  }
+
+  // ==========================================
+  // 9. UIボタン・設定ドロワー連携
+  // ==========================================
+  function showToast(msg) {
+    const el = document.getElementById('toast-banner');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => el.classList.remove('show'), 2100);
+  }
+
+  // 1. ボール投入ボタン
+  document.getElementById('spawn-one-btn').addEventListener('click', () => {
+    sound.playWoodClack(540);
+    spawnMarble(0);
+  });
+
+  // 2. 15個大量シャワーボタン
+  function triggerMarbleShower() {
+    sound.playGoalBell(false);
+    showToast('🌈 カラフル15連シャワー放出！！');
+    for (let i = 0; i < 15; i++) {
+      setTimeout(() => spawnMarble(i * 0.1), i * 115);
+    }
+  }
+  document.getElementById('spawn-shower-btn').addEventListener('click', triggerMarbleShower);
+  document.getElementById('goal-pill').addEventListener('click', triggerMarbleShower);
+
+  // 3. 分岐切替ボタン（ループ橋 ⇔ びっくり大砲）
+  const branchBtn = document.getElementById('branch-switch-btn');
+  const branchMainTxt = document.getElementById('branch-main-txt');
+  const branchSubTxt = document.getElementById('branch-sub-txt');
+
+  function toggleBranchMode() {
+    activeBranch = activeBranch === 'loop' ? 'cannon' : 'loop';
+    sound.playSeesawTilt();
+    if (activeBranch === 'loop') {
+      branchBtn.classList.remove('cannon-mode');
+      branchMainTxt.textContent = '🔀 ループ橋🎢';
+      branchSubTxt.textContent = 'タップで大砲💣へ切替';
+      signDisc.material.color.setHex(0x10b981);
+      signArrow.rotation.z = Math.PI / 3;
+      showToast('🔀 分岐切替：🎢 360度ネオンループ橋ルート！');
+    } else {
+      branchBtn.classList.add('cannon-mode');
+      branchMainTxt.textContent = '🔀 大砲ジャンプ💣';
+      branchSubTxt.textContent = 'タップでループ橋🎢へ';
+      signDisc.material.color.setHex(0xf59e0b);
+      signArrow.rotation.z = -Math.PI / 3;
+      showToast('🔀 分岐切替：💣 ドカン！びっくり大砲ルート！');
+    }
+  }
+  branchBtn.addEventListener('click', toggleBranchMode);
+
+  // 左上メロディバッジタップで次の童謡へ切替
+  function selectSong(songKey) {
+    currentSongKey = songKey;
+    melodyCursor = 0;
+    const title = SONGS[songKey].title;
+    document.getElementById('song-name-label').textContent = title;
+    document.querySelectorAll('#song-grid .menu-chip').forEach(b => {
+      b.classList.toggle('selected', b.dataset.song === songKey);
+    });
+    showToast(`🎵 鉄琴のメロディ：${title}`);
+  }
+  document.getElementById('song-pill').addEventListener('click', () => {
+    const keys = Object.keys(SONGS);
+    const next = keys[(keys.indexOf(currentSongKey) + 1) % keys.length];
+    selectSong(next);
+  });
+
+  // 右上クイック視点ボタン
+  document.getElementById('quick-cam-btn').addEventListener('click', () => {
+    const order = ['overview', 'chase', 'xylophone', 'action'];
+    const next = order[(order.indexOf(cameraPreset) + 1) % order.length];
+    setCameraPreset(next);
+    showToast(`🎥 カメラ視点：${camLabels[next]}`);
+  });
+
+  // 右上ドロワー開閉
+  const drawerEl = document.getElementById('settings-drawer');
+  const openSettingsBtn = document.getElementById('open-settings-btn');
+  openSettingsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    drawerEl.classList.toggle('open');
+  });
+  document.getElementById('close-drawer-btn').addEventListener('click', () => drawerEl.classList.remove('open'));
+  window.addEventListener('pointerdown', (e) => {
+    if (!drawerEl.contains(e.target) && e.target !== openSettingsBtn && !openSettingsBtn.contains(e.target)) {
+      drawerEl.classList.remove('open');
+    }
+  });
+
+  // ドロワー内：キャラボール選択
+  document.querySelectorAll('#char-grid .menu-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#char-grid .menu-chip').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedCharId = btn.dataset.char;
+      spawnMarble(0);
+      drawerEl.classList.remove('open');
+      showToast(`🐾 ボール選択：${btn.textContent}`);
+    });
+  });
+
+  // ドロワー内：童謡メロディ選択
+  document.querySelectorAll('#song-grid .menu-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectSong(btn.dataset.song);
+      drawerEl.classList.remove('open');
+    });
+  });
+
+  // ドロワー内：カメラ選択
+  document.querySelectorAll('#cam-grid .menu-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setCameraPreset(btn.dataset.cam);
+      drawerEl.classList.remove('open');
+    });
+  });
+
+  // ドロワー内：オート連射モード切替
+  let autoSpawnEnabled = true;
+  let autoSpawnTimer = 0;
+  const autoSpawnBtn = document.getElementById('auto-spawn-btn');
+  autoSpawnBtn.addEventListener('click', () => {
+    autoSpawnEnabled = !autoSpawnEnabled;
+    autoSpawnBtn.classList.toggle('auto-on', autoSpawnEnabled);
+    autoSpawnBtn.textContent = `🔄 オート連射モード：${autoSpawnEnabled ? 'ON（自動で次々転がる）' : 'OFF'}`;
+  });
+
+  // サウンドON/OFF
+  const soundBtn = document.getElementById('sound-btn');
+  soundBtn.addEventListener('click', () => {
+    sound.enabled = !sound.enabled;
+    soundBtn.textContent = sound.enabled ? '🔊' : '🔇';
+  });
+
+  // ==========================================
+  // 10. メインアニメーション＆からくり物理更新ループ
+  // ==========================================
+  const clock = new THREE.Clock();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.04);
+    const elapsed = clock.getElapsedTime();
+
+    // オート連射タイマー
+    if (autoSpawnEnabled) {
+      autoSpawnTimer += dt;
+      if (autoSpawnTimer >= 1.35) {
+        autoSpawnTimer = 0;
+        if (marbles.length < 22) spawnMarble(0);
+      }
+    }
+
+    // バルーン＆分岐標識のふわふわアニメーション
+    floatingDecos.forEach(d => {
+      d.mesh.position.y = d.baseY + Math.sin(elapsed * 2.0 + d.phase) * 0.45;
+    });
+    switchSignGroup.position.y = 13.4 + Math.sin(elapsed * 3.5) * 0.22;
+
+    // 風車の回転減衰
+    windmills.forEach(w => {
+      w.mesh.rotation.z -= w.angVel * dt;
+      w.angVel = Math.max(1.2, w.angVel * 0.96);
+    });
+
+    // シーソーの滑らかな傾き補間
+    seesawGroup.rotation.z += (seesawTargetAngle - seesawGroup.rotation.z) * 0.14;
+
+    // 大砲のリコイル復帰
+    if (cannonRecoil > 0) {
+      cannonRecoil = Math.max(0, cannonRecoil - dt * 4.5);
+      cannonBarrel.position.x = 0.6 - cannonRecoil * 0.45;
+    }
+
+    // 鉄琴音板の沈み込み＆発光減衰
+    xylophoneSteps.forEach(st => {
+      if (st.glow > 0) {
+        st.glow = Math.max(0, st.glow - dt * 2.8);
+        st.mesh.position.y = st.baseY - st.glow * 0.16;
+        st.mesh.material.emissiveIntensity = 0.08 + st.glow * 0.75;
+      }
+    });
+
+    // ゴールベルの振り子揺れ
+    bellSwingVel += -bellSwingAngle * 28 * dt;
+    bellSwingVel *= 0.91;
+    bellSwingAngle += bellSwingVel * dt;
+    bellPivot.rotation.z = bellSwingAngle;
+
+    // 各キャラクターマーブルの進行＆ギミック発火
+    for (let i = marbles.length - 1; i >= 0; i--) {
+      const m = marbles[i];
+
+      if (m.phase === 'STAGE1') {
+        m.t += m.speed * dt;
+        const pos = stage1Curve.getPointAt(Math.min(1, m.t));
+        m.mesh.position.copy(pos).add(new THREE.Vector3(0, 0.42, 0));
+        m.mesh.rotation.z -= m.speed * 18 * dt;
+        m.mesh.rotation.x += m.speed * 6 * dt;
+
+        // 🎡 風車1・風車2との接触判定
+        if (!m.passedWindmill1 && m.t > 0.32) {
+          m.passedWindmill1 = true;
+          windmills[0].angVel = 14.0;
+          sound.playWoodClack(480);
+        }
+        if (!m.passedWindmill2 && m.t > 0.68) {
+          m.passedWindmill2 = true;
+          windmills[1].angVel = 14.0;
+          sound.playWoodClack(560);
+        }
+
+        if (m.t >= 1.0) {
+          m.phase = 'STAGE2';
+          m.t = 0;
+          seesawTargetAngle = 0.18; // ボールが来る側へシーソーを迎える
+        }
+      } else if (m.phase === 'STAGE2') {
+        m.t += m.speed * 1.15 * dt;
+        const pos = stage2Curve.getPointAt(Math.min(1, m.t));
+        m.mesh.position.copy(pos).add(new THREE.Vector3(0, 0.42, 0));
+        m.mesh.rotation.z += m.speed * 18 * dt;
+
+        // ⚖️ シーソー中央を通過したら「カッタン！」と傾く
+        if (!m.tiltedSeesaw && m.t > 0.48) {
+          m.tiltedSeesaw = true;
+          seesawTargetAngle = -0.22;
+          sound.playSeesawTilt();
+        }
+
+        // 🔀 分岐ポイント到達！
+        if (m.t >= 1.0) {
+          m.t = 0;
+          if (activeBranch === 'loop') {
+            m.phase = 'LOOP';
+            sound.playLoopWhoosh();
+          } else {
+            m.phase = 'CANNON_APPROACH';
+          }
+        }
+      } else if (m.phase === 'LOOP') {
+        // 🎢 360度ネオンループ橋を高速通過
+        m.t += m.speed * 1.35 * dt;
+        const pos = routeLoopCurve.getPointAt(Math.min(1, m.t));
+        m.mesh.position.copy(pos).add(new THREE.Vector3(0, 0.35, 0));
+        m.mesh.rotation.z += m.speed * 26 * dt;
+
+        if (Math.random() < 0.35) {
+          spawnBurstParticles(m.mesh.position, 1, 0x38bdf8, 0.05);
+        }
+
+        if (m.t >= 1.0) {
+          m.phase = 'XYLOPHONE';
+          m.stepIndex = 0;
+          m.stepT = 0;
+          triggerXylophoneStep(0);
+        }
+      } else if (m.phase === 'CANNON_APPROACH') {
+        m.t += m.speed * 1.8 * dt;
+        const pos = cannonApproachCurve.getPointAt(Math.min(1, m.t));
+        m.mesh.position.copy(pos).add(new THREE.Vector3(0, 0.35, 0));
+
+        if (m.t >= 1.0) {
+          // 💣 大砲発射！！
+          m.phase = 'CANNON_FLY';
+          m.t = 0;
+          cannonRecoil = 1.0;
+          sound.playCannonBoom();
+          spawnBurstParticles(new THREE.Vector3(-4.2, 10.2, 3.2), 10, 0xfef08a, 0.22);
+        }
+      } else if (m.phase === 'CANNON_FLY') {
+        // 💣 大砲 (-4.0, 10.2, 3.2) から キャッチファンネル (-9.8, 6.8, 2.2) へ高い放物線ジャンプ！
+        m.t += dt * 1.65;
+        const u = Math.min(1, m.t);
+        const startP = new THREE.Vector3(-4.0, 10.2, 3.2);
+        const endP = new THREE.Vector3(-9.8, 6.8, 2.2);
+        const curP = startP.clone().lerp(endP, u);
+        // 放物線アーチ高さ +4.2
+        curP.y += 4.2 * 4 * u * (1 - u);
+        m.mesh.position.copy(curP);
+        m.mesh.rotation.x += 12 * dt;
+        m.mesh.rotation.z += 12 * dt;
+
+        if (u >= 1.0) {
+          m.phase = 'XYLOPHONE';
+          m.stepIndex = 0;
+          m.stepT = 0;
+          triggerXylophoneStep(0);
+        }
+      } else if (m.phase === 'XYLOPHONE') {
+        // 🎹 8段の虹色鉄琴を1段ずつリズミカルに「ピョン・ピョン」と跳ねて童謡を奏でる
+        m.stepT += dt * 3.1;
+        const idx = m.stepIndex;
+        const curStep = xylophoneSteps[idx];
+        const nextPos = idx < 7
+          ? new THREE.Vector3(xylophoneSteps[idx + 1].x, xylophoneSteps[idx + 1].baseY + 0.65, xylophoneSteps[idx + 1].z)
+          : new THREE.Vector3(9.2, 1.1, 2.2); // ゴールベル位置
+
+        const startPos = new THREE.Vector3(curStep.x, curStep.baseY + 0.65, curStep.z);
+        const u = Math.min(1, m.stepT);
+        const pos = startPos.clone().lerp(nextPos, u);
+        pos.y += Math.sin(u * Math.PI) * 1.15; // 軽快なバウンス弧
+        m.mesh.position.copy(pos);
+        m.mesh.rotation.z -= 10 * dt;
+
+        if (m.stepT >= 1.0) {
+          m.stepT = 0;
+          m.stepIndex++;
+          if (m.stepIndex < 8) {
+            triggerXylophoneStep(m.stepIndex);
+          } else {
+            // 🔔 ゴールベル到達！
+            m.phase = 'ELEVATOR';
+            m.t = 0;
+            goalTotal++;
+            document.getElementById('goal-count').textContent = goalTotal;
+            bellSwingVel = 9.5;
+            const isMilestone = goalTotal % 10 === 0;
+            sound.playGoalBell(isMilestone);
+            spawnBurstParticles(new THREE.Vector3(9.2, 2.5, 2.2), isMilestone ? 18 : 6, 0xfacc15, 0.2);
+            if (isMilestone) {
+              showToast(`🎉 ゴール ${goalTotal}個達成！！ファンファーレ！`);
+            }
+          }
+        }
+      } else if (m.phase === 'ELEVATOR') {
+        // スパイラルエレベーターをくるくる昇って頂上へリサイクル
+        m.t += dt * 0.45;
+        const angle = m.t * Math.PI * 6;
+        const ey = 1.0 + m.t * 18.2;
+        m.mesh.position.set(
+          11.2 + Math.cos(angle) * 0.85,
+          ey,
+          -1.0 + Math.sin(angle) * 0.85
+        );
+        if (m.t >= 1.0) {
+          // 頂上から再スタート（または一定数以上なら消去）
+          if (marbles.length > 16) {
+            scene.remove(m.mesh);
+            marbles.splice(i, 1);
+          } else {
+            m.phase = 'STAGE1';
+            m.t = 0;
+            m.passedWindmill1 = false;
+            m.passedWindmill2 = false;
+            m.tiltedSeesaw = false;
+          }
+        }
+      }
+    }
+
+    // パーティクル更新
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.mesh.position.add(p.vel);
+      p.vel.y -= 0.005;
+      p.mesh.rotation.x += 0.1;
+      p.mesh.rotation.y += 0.1;
+      p.life--;
+      p.mesh.material.opacity = p.life / p.maxLife;
+      if (p.life <= 0) {
+        scene.remove(p.mesh);
+        particles.splice(i, 1);
+      }
+    }
+
+    updateCameraSmooth();
+    renderer.render(scene, camera);
+  }
+
+  // 🎹 鉄琴ステップ着地時のメロディ再生＆発光エフェクト
+  function triggerXylophoneStep(stepIdx) {
+    const st = xylophoneSteps[stepIdx];
+    if (!st) return;
+    st.glow = 1.0;
+
+    const song = SONGS[currentSongKey];
+    const noteName = song.notes[melodyCursor % song.notes.length];
+    melodyCursor++;
+    sound.playXylophoneNote(noteName);
+    spawnBurstParticles(new THREE.Vector3(st.x, st.baseY + 0.5, st.z), 3, rainbowColors[stepIdx], 0.12);
+  }
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  animate();
+})();
+</script>
+</body>
+</html>
