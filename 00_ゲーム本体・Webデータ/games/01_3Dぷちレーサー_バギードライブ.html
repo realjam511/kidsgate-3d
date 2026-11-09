@@ -53,17 +53,20 @@
             background: rgba(15, 23, 42, 0.75);
             color: #ffffff;
             border: 2px solid rgba(255, 255, 255, 0.3);
-            padding: 8px 14px;
-            border-radius: 999px;
+            width: 42px;
+            height: 42px;
+            min-width: 42px;
+            border-radius: 50%;
             font-weight: 900;
-            font-size: 0.9rem;
+            font-size: 1.15rem;
             cursor: pointer;
             text-decoration: none;
             backdrop-filter: blur(4px);
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            white-space: nowrap;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
         .score-pill {
@@ -214,6 +217,69 @@
             z-index: 101;
             pointer-events: auto;
         }
+    
+        /* 設定ボタン＆長押しリング */
+        #btn-debug {
+            position: fixed;
+            bottom: max(16px, env(safe-area-inset-bottom));
+            right: 14px;
+            z-index: 100;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: rgba(15, 23, 42, 0.8);
+            color: #ffffff;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+        }
+        .hold-ring-svg {
+            position: absolute;
+            inset: -2px;
+            width: calc(100% + 4px);
+            height: calc(100% + 4px);
+            pointer-events: none;
+            transform: rotate(-90deg);
+        }
+        .hold-ring-circle {
+            fill: none;
+            stroke: #38bdf8;
+            stroke-width: 4;
+            stroke-dasharray: 165;
+            stroke-dashoffset: 165;
+            transition: stroke-dashoffset 0.04s linear;
+        }
+        .game-toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 23, 42, 0.92);
+            color: #ffffff;
+            padding: 10px 18px;
+            border-radius: 999px;
+            font-weight: 800;
+            font-size: 0.88rem;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            z-index: 1000;
+            pointer-events: none;
+            transition: opacity 0.25s, transform 0.25s;
+            white-space: nowrap;
+        }
+        .game-toast.hidden {
+            opacity: 0;
+            transform: translate(-50%, -40%);
+            pointer-events: none;
+        }
+
     </style>
 </head>
 <body>
@@ -222,7 +288,7 @@
 
     <div class="hud-layer">
         <div class="hud-top">
-            <a href="javascript:history.back()" class="back-btn">◀ もどる</a>
+            <a href="javascript:history.back()" class="back-btn" aria-label="おわる" title="おわる">✕</a>
             
             <!-- 車種切り替えチップ -->
             <div class="vehicle-switcher">
@@ -249,7 +315,13 @@
         </div>
     </div>
 
-    <button id="btn-debug" onclick="toggleDebug()">⚙️ 診断</button>
+    <button id="btn-debug" class="hold-ring-btn" title="おとなのひとと 1びょう ながおし" aria-label="設定・診断">
+        ⚙️
+        <svg class="hold-ring-svg" viewBox="0 0 60 60">
+            <circle class="hold-ring-circle" id="debug-hold-circle" cx="30" cy="30" r="26"></circle>
+        </svg>
+    </button>
+    <div id="toast-overlay" class="game-toast hidden"></div>
     <div id="debug-panel"></div>
 
     <script>
@@ -262,6 +334,57 @@
             if (panel) panel.innerHTML = diagLogs.join('<br>');
             console.log(msg);
         }
+        
+        // ── 設定・診断ボタン：約1秒長押し機構 ──
+        const debugBtn = document.getElementById('btn-debug');
+        const debugHoldCircle = document.getElementById('debug-hold-circle');
+        const toastEl = document.getElementById('toast-overlay');
+        let toastTimer = null;
+
+        function showToast(msg) {
+            if (!toastEl) return;
+            toastEl.textContent = msg;
+            toastEl.classList.remove('hidden');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toastEl.classList.add('hidden');
+            }, 2200);
+        }
+
+        let debugHoldTimer = null;
+        let debugHoldStart = 0;
+        const DEBUG_HOLD_DURATION = 1000; // 1秒長押し
+
+        function startDebugHold(e) {
+            e.preventDefault();
+            debugHoldStart = performance.now();
+            clearInterval(debugHoldTimer);
+            debugHoldTimer = setInterval(() => {
+                const elapsed = performance.now() - debugHoldStart;
+                const p = Math.min(1, elapsed / DEBUG_HOLD_DURATION);
+                if (debugHoldCircle) debugHoldCircle.style.strokeDashoffset = String(165 * (1 - p));
+                if (p >= 1) {
+                    clearInterval(debugHoldTimer);
+                    if (debugHoldCircle) debugHoldCircle.style.strokeDashoffset = '165';
+                    toggleDebug();
+                }
+            }, 25);
+        }
+
+        function cancelDebugHold() {
+            clearInterval(debugHoldTimer);
+            const elapsed = performance.now() - debugHoldStart;
+            if (debugHoldCircle) debugHoldCircle.style.strokeDashoffset = '165';
+            if (elapsed > 40 && elapsed < DEBUG_HOLD_DURATION) {
+                showToast('⚙️ おとなのひとと 1びょう ながおししてね');
+            }
+        }
+
+        debugBtn.addEventListener('pointerdown', startDebugHold);
+        debugBtn.addEventListener('pointerup', cancelDebugHold);
+        debugBtn.addEventListener('pointerleave', cancelDebugHold);
+        debugBtn.addEventListener('pointercancel', cancelDebugHold);
+
         function toggleDebug() {
             const p = document.getElementById('debug-panel');
             p.style.display = p.style.display === 'block' ? 'none' : 'block';

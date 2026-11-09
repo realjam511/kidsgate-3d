@@ -580,10 +580,10 @@
     <!-- ゲームプレイ全画面モーダル (iframe) -->
     <div class="modal-clean-overlay" id="game-modal" style="display:none; padding:0;">
         <div style="width:100%; height:100%; display:flex; flex-direction:column; background:#000;">
-            <div style="background:#2C352D; color:#FFF; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid var(--wood-warm);">
-                <h4 id="modal-game-title" style="margin:0; font-size:0.95rem; font-weight:800; display:flex; align-items:center; gap:6px;">🎮 ゲーム</h4>
-                <button onclick="closeGameModal()" style="background:#BC6C25; color:#FFF; border:none; padding:6px 12px; border-radius:8px; font-weight:900; font-size:0.84rem; cursor:pointer;">
-                    ✕ おわる
+            <div style="background:#2C352D; color:#FFF; padding:6px 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid var(--wood-warm); gap:8px;">
+                <h4 id="modal-game-title" style="margin:0; font-size:0.95rem; font-weight:800; display:flex; align-items:center; gap:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; flex:1;">🎮 ゲーム</h4>
+                <button onclick="closeGameModal()" aria-label="おわる" title="おわる" style="background:#BC6C25; color:#FFF; border:none; width:38px; height:38px; min-width:38px; border-radius:50%; font-weight:900; font-size:1.15rem; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 2px 6px rgba(0,0,0,0.3); transition:transform 0.1s;">
+                    ✕
                 </button>
             </div>
             <iframe id="game-iframe" src="about:blank" style="flex:1; width:100%; height:100%; border:none; background:#FFF;" allow="autoplay"></iframe>
