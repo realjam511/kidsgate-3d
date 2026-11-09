@@ -83,70 +83,43 @@
     <!-- 3D WebGL Canvas Container -->
     <div id="canvas-container"></div>
 
-    <header class="ui-layer w-full p-2 sm:p-4 flex flex-col gap-2 items-center">
-        <div class="w-full max-w-5xl flex items-center justify-between gap-2">
-            
-            <!-- Knocked Down Pins Score Card -->
-            <div class="interactive flex items-center gap-2 sm:gap-3 bg-gradient-to-b from-amber-400 to-orange-500 text-white px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-3xl border-4 border-white shadow-xl">
-                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white/25 flex items-center justify-center text-2xl sm:text-3xl shadow-inner shrink-0">
-                    🎳
-                </div>
-                <div class="flex flex-col">
-                    <span class="text-[10px] sm:text-xs font-extrabold tracking-wider bg-amber-900/35 px-2 py-0.5 rounded-full">たおしたピン</span>
-                    <div class="flex items-baseline gap-1 mt-0.5">
-                        <span id="score-knocked" class="text-2xl sm:text-3xl font-black leading-none drop-shadow">0</span>
-                        <span class="text-xs sm:text-sm font-bold opacity-90">/</span>
-                        <span id="total-pins" class="text-lg sm:text-2xl font-black leading-none opacity-95">6</span>
-                        <span class="text-xs sm:text-sm font-bold opacity-90">ほん</span>
-                    </div>
+    <header class="ui-layer w-full p-2 flex flex-col gap-1 items-center z-20">
+        <div class="w-full max-w-xl flex items-center justify-between gap-1.5">
+            <!-- スコアカード（たおしたピン） -->
+            <div class="interactive flex items-center gap-1.5 bg-gradient-to-b from-amber-400 to-orange-500 text-white px-2.5 py-1 rounded-2xl border-2 border-white shadow-md shrink-0">
+                <span class="text-base">🎳</span>
+                <div class="flex items-baseline gap-0.5">
+                    <span id="score-knocked" class="text-lg font-black leading-none drop-shadow">0</span>
+                    <span class="text-[10px] font-bold opacity-80">/</span>
+                    <span id="total-pins" class="text-xs font-black leading-none opacity-90">6</span>
+                    <span class="text-[9px] font-bold opacity-80 ml-0.5">ほん</span>
                 </div>
             </div>
 
-            <!-- Center Status Banner & 2-Year-Old Mode Switch -->
-            <div class="flex flex-col items-center gap-1">
-                <div id="status-banner" class="interactive glass-panel px-3.5 sm:px-6 py-1.5 sm:py-2 rounded-full border-2 border-white shadow-lg flex items-center gap-2">
-                    <span id="status-emoji" class="text-lg sm:text-2xl animate-bounce">🐬</span>
-                    <span id="status-text" class="text-xs sm:text-lg font-black text-slate-800 whitespace-nowrap">タッチして ボールをころがそう！</span>
-                </div>
-                <button id="btn-quick-kidmode" onclick="toggleKidMode()" class="interactive bubble-btn text-[11px] sm:text-xs font-extrabold px-3 py-1 rounded-full bg-pink-500 text-white border-2 border-white flex items-center gap-1">
-                    <span>👶</span>
-                    <span id="label-kidmode">2さいモード: どこでもストライク ON</span>
+            <!-- 中央ステータスバナー -->
+            <div id="status-banner" class="interactive glass-panel px-2.5 py-1 rounded-full border border-white shadow-sm flex items-center gap-1 min-w-0">
+                <span id="status-emoji" class="text-sm shrink-0">🐬</span>
+                <span id="status-text" class="text-xs font-black text-slate-800 truncate">タッチして ころがそう！</span>
+            </div>
+
+            <!-- 右側コントロールボタングループ -->
+            <div class="flex items-center gap-1 shrink-0">
+                <!-- 視点切り替え -->
+                <button onclick="cycleCameraView()" class="interactive bubble-btn bg-white/90 text-slate-700 font-extrabold text-xs w-8 h-8 rounded-full border border-white flex items-center justify-center shrink-0 shadow-sm" title="カメラ視点">
+                    <span>🎥</span>
+                </button>
+                <!-- おと切り替え -->
+                <button onclick="toggleSound()" id="btn-sound" class="interactive bubble-btn bg-white/90 text-slate-700 font-extrabold text-xs w-8 h-8 rounded-full border border-white flex items-center justify-center shrink-0 shadow-sm" title="おと">
+                    <span>🔊</span>
+                </button>
+                <!-- ⚙️ 設定（きせかえ＆あそびかた設定・1秒長押し） -->
+                <button id="settings-btn" class="interactive bubble-btn relative w-9 h-9 bg-gradient-to-b from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white font-black rounded-full border-2 border-white flex items-center justify-center text-sm cursor-pointer shrink-0 shadow-sm overflow-hidden select-none" title="おとなのひとと 1びょう ながおし" aria-label="せってい">
+                    <span class="pointer-events-none select-none">⚙️</span>
+                    <svg class="absolute inset-0 w-full h-full pointer-events-none -rotate-90" viewBox="0 0 36 36">
+                        <circle id="settings-hold-circle" cx="18" cy="18" r="15" fill="none" stroke="#38bdf8" stroke-width="3" stroke-dasharray="94.2" stroke-dashoffset="94.2" style="transition: stroke-dashoffset 0.04s linear;"></circle>
+                    </svg>
                 </button>
             </div>
-
-            <!-- Total Strikes Counter Card -->
-            <div class="interactive hidden sm:flex items-center gap-2 bg-white/90 backdrop-blur-md px-4 py-2 rounded-3xl border-4 border-white shadow-xl min-w-[135px] justify-center">
-                <div class="flex flex-col items-center">
-                    <span class="text-[10px] font-extrabold text-slate-500">ストライク賞</span>
-                    <div class="flex items-center gap-1.5 mt-0.5">
-                        <span class="text-2xl animate-bounce">🏆</span>
-                        <span id="strike-count" class="text-xl font-black text-amber-500">0</span>
-                        <span class="text-xs font-bold text-slate-600">かい</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="w-full max-w-4xl flex flex-wrap items-center justify-center gap-1.5 sm:gap-2.5">
-            <button onclick="openCustomizeModal()" class="interactive bubble-btn bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-extrabold text-xs sm:text-sm px-3.5 py-2 rounded-2xl border-2 border-white flex items-center gap-1.5">
-                <span class="text-base sm:text-lg">🎨</span>
-                <span>きせかえ（ボール・ピン・コース）</span>
-            </button>
-
-            <button onclick="cyclePinCount()" class="interactive bubble-btn bg-gradient-to-r from-emerald-400 to-teal-600 text-white font-extrabold text-xs sm:text-sm px-3.5 py-2 rounded-2xl border-2 border-white flex items-center gap-1.5">
-                <span class="text-base sm:text-lg">🎳</span>
-                <span id="label-pin-count">ピン: 6ほん (かんたん)</span>
-            </button>
-
-            <button onclick="cycleCameraView()" class="interactive bubble-btn bg-white/90 text-slate-700 font-extrabold text-xs sm:text-sm px-3 py-2 rounded-2xl border-2 border-white flex items-center gap-1">
-                <span>🎥</span>
-                <span id="label-camera">追いかけ3D</span>
-            </button>
-
-            <button onclick="toggleSound()" id="btn-sound" class="interactive bubble-btn bg-white/90 text-slate-700 font-extrabold text-xs sm:text-sm px-3 py-2 rounded-2xl border-2 border-white flex items-center gap-1">
-                <span id="icon-sound">🔊</span>
-                <span class="hidden sm:inline" id="label-sound">おと・こえ ON</span>
-            </button>
         </div>
     </header>
 
@@ -187,7 +160,10 @@
         </p>
     </footer>
 
-    <div id="modal-customize" class="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-6">
+        <!-- 長押し案内用トースト -->
+    <div id="game-toast-overlay" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-900/95 text-white px-4 py-2.5 rounded-full font-black text-xs sm:text-sm shadow-2xl border border-white/20 pointer-events-none z-50 transition-opacity duration-200 opacity-0 hidden"></div>
+
+<div id="modal-customize" class="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-6">
         <div class="interactive bg-white rounded-3xl border-4 border-sky-300 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
             
             <!-- Modal Header -->
@@ -1245,7 +1221,7 @@
         function updateHUD() {
             document.getElementById('score-knocked').textContent = state.knockedCount;
             document.getElementById('total-pins').textContent = state.pinCount;
-            document.getElementById('strike-count').textContent = state.totalStrikes;
+            const strikeEl = document.getElementById('strike-count'); if (strikeEl) strikeEl.textContent = state.totalStrikes;
         }
 
         function setStatusBanner(emoji, text) {
@@ -1352,6 +1328,62 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
+        
+        // 設定ボタン（約1秒長押し機構）
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsHoldCircle = document.getElementById('settings-hold-circle');
+        const gameToastEl = document.getElementById('game-toast-overlay');
+        let gameToastTimer = null;
+
+        function showSettingsToast(msg) {
+            if (!gameToastEl) return;
+            gameToastEl.textContent = msg;
+            gameToastEl.classList.remove('hidden');
+            gameToastEl.style.opacity = '1';
+            clearTimeout(gameToastTimer);
+            gameToastTimer = setTimeout(() => {
+                gameToastEl.style.opacity = '0';
+                setTimeout(() => gameToastEl.classList.add('hidden'), 200);
+            }, 2000);
+        }
+
+        let settingsHoldTimer = null;
+        let settingsHoldStart = 0;
+        const SETTINGS_HOLD_DURATION = 1000; // 1秒長押し
+
+        function startSettingsHold(e) {
+            e.preventDefault();
+            settingsHoldStart = performance.now();
+            clearInterval(settingsHoldTimer);
+            settingsHoldTimer = setInterval(() => {
+                const elapsed = performance.now() - settingsHoldStart;
+                const p = Math.min(1, elapsed / SETTINGS_HOLD_DURATION);
+                if (settingsHoldCircle) settingsHoldCircle.style.strokeDashoffset = String(94.2 * (1 - p));
+                if (p >= 1) {
+                    clearInterval(settingsHoldTimer);
+                    if (settingsHoldCircle) settingsHoldCircle.style.strokeDashoffset = '94.2';
+                    openCustomizeModal();
+                }
+            }, 25);
+        }
+
+        function cancelSettingsHold() {
+            clearInterval(settingsHoldTimer);
+            const elapsed = performance.now() - settingsHoldStart;
+            if (settingsHoldCircle) settingsHoldCircle.style.strokeDashoffset = '94.2';
+            if (elapsed > 40 && elapsed < SETTINGS_HOLD_DURATION) {
+                showSettingsToast('⚙️ おとなのひとと 1びょう ながおししてね');
+            }
+        }
+
+        if (settingsBtn) {
+            settingsBtn.addEventListener('pointerdown', startSettingsHold);
+            settingsBtn.addEventListener('pointerup', cancelSettingsHold);
+            settingsBtn.addEventListener('pointerleave', cancelSettingsHold);
+            settingsBtn.addEventListener('pointercancel', cancelSettingsHold);
+            settingsBtn.addEventListener('click', (e) => e.preventDefault());
+        }
+
         function openCustomizeModal() {
             playSound('pop');
             const m = document.getElementById('modal-customize');
@@ -1440,7 +1472,7 @@
             playSound('pop');
             state.pinCount = count;
             const desc = count === 6 ? '6ほん (かんたん)' : (count === 10 ? '10ほん (ふつう)' : '15ほん (大パーティー)');
-            document.getElementById('label-pin-count').textContent = `ピン: ${desc}`;
+            const pinCountEl = document.getElementById('label-pin-count'); if (pinCountEl) pinCountEl.textContent = `ピン: ${desc}`;
 
             [6, 10, 15].forEach(c => {
                 const btn = document.getElementById(`modal-pins-${c}`);
@@ -1462,10 +1494,12 @@
             else label.textContent = 'ピンを近くで見る';
         }
 
-        function toggleSound() {
+                function toggleSound() {
             state.soundEnabled = !state.soundEnabled;
-            document.getElementById('icon-sound').textContent = state.soundEnabled ? '🔊' : '🔇';
-            document.getElementById('label-sound').textContent = state.soundEnabled ? 'おと・こえ ON' : 'おと OFF';
+            const iconSound = document.getElementById('icon-sound');
+            const labelSound = document.getElementById('label-sound');
+            if (iconSound) iconSound.textContent = state.soundEnabled ? '🔊' : '🔇';
+            if (labelSound) labelSound.textContent = state.soundEnabled ? 'おと・こえ ON' : 'おと OFF';
             if (state.soundEnabled) playSound('pop');
         }
 
