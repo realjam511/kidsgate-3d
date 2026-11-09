@@ -1,0 +1,31 @@
+{
+  "name": "すくすく北欧もくいくゲート - こども知育＆あそびスタジオ",
+  "short_name": "もくいくゲート",
+  "description": "自然のぬくもりで育む2歳〜幼児向け2D/3Dこども知育＆あそびポータル（全22本）",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAF7F0",
+  "theme_color": "#FEFAE0",
+  "icons": [
+    {
+      "src": "00_ゲーム本体・Webデータ/pwa/icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "00_ゲーム本体・Webデータ/pwa/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "00_ゲーム本体・Webデータ/pwa/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

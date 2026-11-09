@@ -5,11 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <!-- 検索エンジン除外（家族・個人利用保護） -->
     <meta name="robots" content="noindex, nofollow">
-    <!-- iPhone Web App (全画面アプリ化) 対応 -->
+    <!-- iPhone / Android PWA (ホーム画面に追加・全画面アプリ化) 対応 -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="もくいくゲート">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌲</text></svg>">
+    <meta name="theme-color" content="#FEFAE0">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" sizes="192x192" href="00_ゲーム本体・Webデータ/pwa/icon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="00_ゲーム本体・Webデータ/pwa/icon-180.png">
     
     <title>すくすく北欧もくいくゲート - こども知育＆あそびスタジオ</title>
     <link rel="stylesheet" href="00_ゲーム本体・Webデータ/css/kidsgate-themes.css">
@@ -608,6 +613,25 @@
                 </button>
             </div>
 
+            <!-- iPhone / スマホ ホーム画面に追加（PWAアプリ化）案内 -->
+            <div style="background:#FFFFFF; border:1px solid var(--wood-light); border-radius:12px; padding:12px; margin-bottom:12px;">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                    <img src="00_ゲーム本体・Webデータ/pwa/icon-180.png" alt="アプリアイコン" style="width:36px; height:36px; border-radius:8px; border:1px solid var(--wood-light);">
+                    <div>
+                        <h4 style="margin:0; font-size:0.88rem; font-weight:800; color:var(--main-green);">📲 ホーム画面に追加（アプリ化）</h4>
+                        <div id="pwa-status-badge" style="font-size:0.72rem; color:#588157; font-weight:700;">状態を確認中...</div>
+                    </div>
+                </div>
+                <ol style="margin:6px 0 0 18px; padding:0; font-size:0.75rem; color:#2C352D; line-height:1.55;">
+                    <li>iPhoneのSafariで <strong>共有ボタン（📤）</strong> をタップ</li>
+                    <li>メニューの <strong>「ホーム画面に追加 ➕」</strong> を選択</li>
+                    <li>右上の <strong>「追加」</strong> を押すと、アドレスバーなしの全画面アプリとしてすぐ遊べます！</li>
+                </ol>
+                <button id="btn-pwa-install" onclick="triggerPwaInstall()" style="display:none; margin-top:8px; width:100%; background:var(--main-green); color:#FFF; border:none; padding:8px; border-radius:8px; font-size:0.8rem; font-weight:800; cursor:pointer;">
+                    📲 ワンタップでホーム画面に追加する
+                </button>
+            </div>
+
             <!-- デバッグ・自己診断パネル -->
             <div style="border-top:1px dashed var(--wood-light); padding-top:10px;">
                 <div style="display:flex; align-items:center; justify-content:space-between;">
@@ -740,10 +764,42 @@
             return 'puzzle';
         }
 
+        let deferredPwaPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPwaPrompt = e;
+            const installBtn = document.getElementById('btn-pwa-install');
+            if (installBtn) installBtn.style.display = 'block';
+            logDiag('PWA beforeinstallprompt captured.');
+        });
+
+        function updatePwaStatusUI() {
+            const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+            const badge = document.getElementById('pwa-status-badge');
+            if (badge) {
+                badge.textContent = isStandalone
+                    ? '✅ 現在アプリモード（全画面）で起動中'
+                    : '📱 ブラウザ表示中（ホーム画面追加で全画面化）';
+            }
+            logDiag('PWA standalone mode: ' + isStandalone);
+        }
+
+        function triggerPwaInstall() {
+            if (!deferredPwaPrompt) return;
+            deferredPwaPrompt.prompt();
+            deferredPwaPrompt.userChoice.then((choice) => {
+                logDiag('PWA install choice: ' + choice.outcome);
+                deferredPwaPrompt = null;
+                const installBtn = document.getElementById('btn-pwa-install');
+                if (installBtn) installBtn.style.display = 'none';
+            });
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
             logDiag('System boot: ' + window.innerWidth + 'x' + window.innerHeight);
             checkAuth();
             loadGames();
+            updatePwaStatusUI();
             logDiag('Loaded games count: ' + registeredGames.length);
         });
 
