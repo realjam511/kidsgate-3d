@@ -286,5 +286,18 @@ window.KIDS_GAMES_REGISTRY = [
         file: "games/23_3Dシャボン玉めいろ！ふわりんのぼうけん.html",
         isHero: false,
         tag: "めいろ"
+    },
+    {
+        id: "game-3Dポチャン！みずきりかずかぞえ",
+        title: "3Dポチャン！みずきりかずかぞえ",
+        desc: "小ガエルのチャポンと一緒に池へ石を投げて水切りあそび！石がポチャンと跳ねるたびに大きな数字と音階が飛び出し、1から10までの数を楽しく数えられる幼児〜低学年向け3D知育ゲーム。",
+        icon: "🐸",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "number",
+        categoryLabel: "かず・すうじ",
+        file: "games/24_3Dポチャン！みずきりかずかぞえ.html",
+        isHero: false,
+        tag: "かぞえ"
     }
 ];

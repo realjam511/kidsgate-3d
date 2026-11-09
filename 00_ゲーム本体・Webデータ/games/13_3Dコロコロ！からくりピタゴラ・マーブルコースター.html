@@ -43,7 +43,8 @@
     left: 10px;
     z-index: 20;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
     gap: 6px;
     flex-wrap: wrap;
   }
@@ -102,6 +103,9 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 56vw;
   }
   .tr-btn {
     background: rgba(15, 23, 42, 0.68);
@@ -124,8 +128,8 @@
     transform: scale(0.94);
   }
   .tr-btn.icon-only {
-    padding: 6px 9px;
-    font-size: 13px;
+    padding: 8px 11px;
+    font-size: 15px;
   }
 
   /* 右上：コンパクト収納設定ドロワー */
@@ -357,8 +361,8 @@
   <button class="tr-btn" id="quick-cam-btn" title="カメラアングルを順番に切り替え">
     🎥 <span id="quick-cam-label">全体</span>
   </button>
-  <button class="tr-btn" id="open-settings-btn">
-    ⚙️ 設定 ▾
+  <button class="tr-btn icon-only" id="open-settings-btn" title="設定（おたすけ設定をひらく）">
+    ⚙️
   </button>
   <button class="tr-btn icon-only" id="sound-btn" title="サウンドON/OFF">🔊</button>
 </div>

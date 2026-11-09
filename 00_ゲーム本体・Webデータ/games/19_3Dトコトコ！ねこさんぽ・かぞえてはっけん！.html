@@ -104,7 +104,8 @@
     left: 10px;
     z-index: 20;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
     gap: 6px;
     flex-wrap: wrap;
     transition: opacity 0.25s, transform 0.25s;
@@ -137,6 +138,9 @@
     display: flex;
     align-items: center;
     gap: 5px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 56vw;
   }
   .tr-pill-btn {
     background: linear-gradient(180deg, #475569 0%, #1e293b 100%);
@@ -662,8 +666,8 @@
   <button class="pokkori-btn tr-pill-btn" id="quick-cam-btn" title="カメラ視点を切り替え">
     🎥 <span id="cam-label">さんぽ</span>
   </button>
-  <button class="pokkori-btn tr-pill-btn" id="open-settings-btn">
-    ⚙️ 設定 ▾
+  <button class="pokkori-btn tr-pill-btn" id="open-settings-btn" title="設定（おたすけ設定をひらく）">
+    ⚙️
   </button>
   <button class="pokkori-btn tr-pill-btn icon-only" id="sound-toggle-btn" title="音声・効果音ON/OFF">🔊</button>
   <button class="pokkori-btn tr-pill-btn icon-only" id="ui-min-btn" title="すっきり表示（UI最小化）">👁️</button>

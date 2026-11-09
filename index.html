@@ -731,6 +731,7 @@
             if (t.includes('かくれんぼ') || t.includes('みーつけた')) return 'どうぶつかくれんぼ';
             if (t.includes('たから島') || t.includes('探知機')) return 'たから島たんけん';
             if (t.includes('シャボン玉') || t.includes('ふわりん')) return 'シャボン玉めいろ';
+            if (t.includes('みずきり') || t.includes('ポチャン')) return 'みずきりかずかぞえ';
             return t.replace(/^★\s*|\s*★$/g, '').slice(0, 8);
         }
 
@@ -746,7 +747,8 @@
                 t.includes('レーサー') || t.includes('バギー') || t.includes('たしざん') ||
                 t.includes('ジオラマ') || t.includes('特急') || t.includes('くるま') ||
                 t.includes('とけい') || t.includes('新幹線') || t.includes('ステーション') ||
-                t.includes('ねこさんぽ') || t.includes('かぞえて')) {
+                t.includes('ねこさんぽ') || t.includes('かぞえて') ||
+                t.includes('みずきり') || t.includes('ポチャン')) {
                 return 'vehicle';
             }
             if (g.category === 'puzzle' ||
