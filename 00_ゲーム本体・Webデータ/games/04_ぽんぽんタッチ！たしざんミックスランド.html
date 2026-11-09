@@ -112,11 +112,11 @@
             </div>
         </div>
 
-        <!-- Right: Single Small Settings Gear Button -->
-        <button onclick="openSettingsModal()" aria-label="設定" class="toy-btn w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white/95 border-2 border-slate-200 flex items-center justify-center text-slate-600 hover:text-slate-900 shrink-0">
-            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        <!-- Right: Single Small Settings Gear Button (1s hold) -->
+        <button id="settings-btn" aria-label="せってい" class="toy-btn relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/95 border-2 border-slate-200 flex items-center justify-center text-slate-600 hover:text-slate-900 shrink-0 overflow-hidden select-none" title="おとなのひとと 1びょう ながおし">
+            <span class="pointer-events-none select-none text-base">⚙️</span>
+            <svg class="absolute inset-0 w-full h-full pointer-events-none -rotate-90" viewBox="0 0 36 36">
+                <circle id="settings-hold-circle" cx="18" cy="18" r="15" fill="none" stroke="#38bdf8" stroke-width="3" stroke-dasharray="94.2" stroke-dashoffset="94.2" style="transition: stroke-dashoffset 0.04s linear;"></circle>
             </svg>
         </button>
     </header>
@@ -234,7 +234,10 @@
     </footer>
 
     <!-- ================= SETTINGS MODAL (Opened ONLY via the Top-Right Gear Icon ⚙️) ================= -->
-    <div id="settings-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <!-- 長押し案内用トースト -->
+    <div id="game-toast-overlay" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-900/95 text-white px-4 py-2.5 rounded-full font-black text-xs sm:text-sm shadow-2xl border border-white/20 pointer-events-none z-50 transition-opacity duration-200 opacity-0 hidden"></div>
+
+<div id="settings-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
         <div class="bg-white rounded-3xl border-4 border-amber-300 shadow-2xl w-full max-w-md max-h-[88dvh] flex flex-col overflow-hidden">
             
             <!-- Modal Header -->
@@ -1025,6 +1028,62 @@
         }
 
         // ================= SETTINGS MODAL FUNCTIONS (Gear Button ⚙️) =================
+        
+        // 設定ボタン（約1秒長押し機構）
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsHoldCircle = document.getElementById('settings-hold-circle');
+        const gameToastEl = document.getElementById('game-toast-overlay');
+        let gameToastTimer = null;
+
+        function showSettingsToast(msg) {
+            if (!gameToastEl) return;
+            gameToastEl.textContent = msg;
+            gameToastEl.classList.remove('hidden');
+            gameToastEl.style.opacity = '1';
+            clearTimeout(gameToastTimer);
+            gameToastTimer = setTimeout(() => {
+                gameToastEl.style.opacity = '0';
+                setTimeout(() => gameToastEl.classList.add('hidden'), 200);
+            }, 2000);
+        }
+
+        let settingsHoldTimer = null;
+        let settingsHoldStart = 0;
+        const SETTINGS_HOLD_DURATION = 1000; // 1秒長押し
+
+        function startSettingsHold(e) {
+            e.preventDefault();
+            settingsHoldStart = performance.now();
+            clearInterval(settingsHoldTimer);
+            settingsHoldTimer = setInterval(() => {
+                const elapsed = performance.now() - settingsHoldStart;
+                const p = Math.min(1, elapsed / SETTINGS_HOLD_DURATION);
+                if (settingsHoldCircle) settingsHoldCircle.style.strokeDashoffset = String(94.2 * (1 - p));
+                if (p >= 1) {
+                    clearInterval(settingsHoldTimer);
+                    if (settingsHoldCircle) settingsHoldCircle.style.strokeDashoffset = '94.2';
+                    openSettingsModal();
+                }
+            }, 25);
+        }
+
+        function cancelSettingsHold() {
+            clearInterval(settingsHoldTimer);
+            const elapsed = performance.now() - settingsHoldStart;
+            if (settingsHoldCircle) settingsHoldCircle.style.strokeDashoffset = '94.2';
+            if (elapsed > 40 && elapsed < SETTINGS_HOLD_DURATION) {
+                showSettingsToast('⚙️ おとなのひとと 1びょう ながおししてね');
+            }
+        }
+
+        if (settingsBtn) {
+            settingsBtn.addEventListener('pointerdown', startSettingsHold);
+            settingsBtn.addEventListener('pointerup', cancelSettingsHold);
+            settingsBtn.addEventListener('pointerleave', cancelSettingsHold);
+            settingsBtn.addEventListener('pointercancel', cancelSettingsHold);
+            settingsBtn.addEventListener('click', (e) => e.preventDefault());
+        }
+
         function openSettingsModal() {
             playTone('pop');
             const m = document.getElementById('settings-modal');
