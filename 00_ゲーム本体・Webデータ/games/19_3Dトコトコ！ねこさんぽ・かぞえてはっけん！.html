@@ -1,0 +1,2209 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>3Dトコトコ！ねこさんぽ・かぞえてはっけん！</title>
+<meta name="description" content="ワンボタンでこねこと一緒におさんぽ！道で見つけたりんごや蝶々をタッチして「いち、に、さん」と数える、幼児〜低学年向けの癒し系3D数かぞえ・観察ゲーム。" />
+<meta name="game-icon" content="🐱" />
+<meta name="game-category" content="math" />
+<meta name="game-age" content="baby" />
+<meta name="game-tag" content="かぞえ" />
+
+<!-- Google Fonts: 丸ゴシック体 (M PLUS Rounded 1c / Zen Maru Gothic) -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Zen+Maru+Gothic:wght@700;900&display=swap" rel="stylesheet" />
+
+<style>
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    margin: 0;
+    padding: 0;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    /* 空から草原へのやさしい多段グラデーション背景 */
+    background: linear-gradient(180deg, #38bdf8 0%, #93c5fd 34%, #fef9c3 72%, #bbf7d0 100%);
+    font-family: 'M PLUS Rounded 1c', "Hiragino Maru Gothic ProN", sans-serif;
+    touch-action: none;
+  }
+
+  /* 背景のインラインSVG模様レイヤー（雲・お花・太陽・草のやさしい透かし模様） */
+  #bg-svg-pattern {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.18;
+    background-image: url("data:image/svg+xml,%3Csvg width='160' height='160' viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff'%3E%3Cpath d='M45 38c0-7 6-13 13-13 5 0 10 3 12 8 2-1 4-2 7-2 6 0 11 5 11 11s-5 11-11 11H48c-6 0-11-5-11-11 0-2 1-3 2-4z'/%3E%3Ccircle cx='125' cy='35' r='10' fill='%23fef08a'/%3E%3Ccircle cx='32' cy='115' r='6' fill='%23fbcfe8'/%3E%3Ccircle cx='32' cy='105' r='5'/%3E%3Ccircle cx='32' cy='125' r='5'/%3E%3Ccircle cx='22' cy='115' r='5'/%3E%3Ccircle cx='42' cy='115' r='5'/%3E%3Ccircle cx='118' cy='118' r='6' fill='%23fde047'/%3E%3Ccircle cx='118' cy='108' r='5'/%3E%3Ccircle cx='118' cy='128' r='5'/%3E%3Ccircle cx='108' cy='118' r='5'/%3E%3Ccircle cx='128' cy='118' r='5'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 160px 160px;
+  }
+
+  #canvas-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    z-index: 2;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+  canvas:active {
+    cursor: grabbing;
+  }
+
+  /* 共通テキスト白フチ装飾クラス */
+  .outlined-text {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-weight: 900;
+    text-shadow:
+      0 2px 0 rgba(0, 0, 0, 0.28),
+      -1.5px -1.5px 0 rgba(255, 255, 255, 0.35),
+      1.5px -1.5px 0 rgba(255, 255, 255, 0.35);
+  }
+
+  /* =========================================================
+     ぽっこり立体ボタン共通スタイル（2色グラデ＋底面シャドウ＋押すと沈む）
+     ========================================================= */
+  .pokkori-btn {
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    border-radius: 999px;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-weight: 900;
+    color: #ffffff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    text-shadow: 0 1.5px 2px rgba(0, 0, 0, 0.38);
+    transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.15s ease;
+    position: relative;
+  }
+  .pokkori-btn:active {
+    transform: translateY(4px) !important;
+  }
+  .pokkori-btn:disabled {
+    opacity: 0.42;
+    pointer-events: none;
+  }
+
+  /* 左上：現在レベル＆さんぽずかんボタン */
+  #top-left-hud {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  #level-badge-btn {
+    background: linear-gradient(180deg, #fb923c 0%, #ea580c 100%);
+    box-shadow: 0 4px 0 #9a3412, 0 6px 12px rgba(0, 0, 0, 0.22);
+    padding: 5px 12px;
+    font-size: 12px;
+  }
+  #level-badge-btn:active {
+    box-shadow: 0 1px 0 #9a3412;
+  }
+  #zukan-open-btn {
+    background: linear-gradient(180deg, #f472b6 0%, #db2777 100%);
+    box-shadow: 0 4px 0 #9d174d, 0 6px 12px rgba(0, 0, 0, 0.22);
+    padding: 5px 12px;
+    font-size: 12px;
+  }
+  #zukan-open-btn:active {
+    box-shadow: 0 1px 0 #9d174d;
+  }
+
+  /* 右上：視点・設定メニュー・音量・UI最小化 */
+  #top-right-hud {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .tr-pill-btn {
+    background: linear-gradient(180deg, #475569 0%, #1e293b 100%);
+    box-shadow: 0 4px 0 #0f172a, 0 6px 12px rgba(0, 0, 0, 0.22);
+    padding: 5px 11px;
+    font-size: 12px;
+  }
+  .tr-pill-btn:active {
+    box-shadow: 0 1px 0 #0f172a;
+  }
+  .tr-pill-btn.icon-only {
+    padding: 5px 9px;
+    font-size: 13px;
+  }
+  .tr-pill-btn.active-toggle {
+    background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+    box-shadow: 0 4px 0 #1e3a8a;
+  }
+
+  /* 右上：収納設定ドロワー */
+  #settings-drawer {
+    position: fixed;
+    top: 50px;
+    right: 10px;
+    z-index: 35;
+    width: 288px;
+    max-height: 82vh;
+    overflow-y: auto;
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 20px;
+    padding: 12px;
+    color: #fff;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.52);
+    display: none;
+  }
+  #settings-drawer.open {
+    display: block;
+  }
+  .drawer-section {
+    margin-bottom: 10px;
+  }
+  .drawer-section:last-child {
+    margin-bottom: 0;
+  }
+  .drawer-title {
+    font-size: 11px;
+    color: #fde047;
+    font-weight: 800;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+  }
+  .menu-chip {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1.5px solid rgba(255, 255, 255, 0.24);
+    color: #f8fafc;
+    border-radius: 12px;
+    padding: 7px 6px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-family: 'M PLUS Rounded 1c', sans-serif;
+  }
+  .menu-chip.selected {
+    background: linear-gradient(135deg, #ec4899, #f97316);
+    border-color: #fde047;
+    box-shadow: 0 0 10px rgba(236, 72, 153, 0.45);
+  }
+
+  /* =========================================================
+     上部中央：おさんぽ進捗＆お題ガイドカード（390px幅でも折り返し崩れなし）
+     ========================================================= */
+  #walk-header-card {
+    position: fixed;
+    top: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 18;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(254, 249, 195, 0.94) 100%);
+    border: 3px solid #f59e0b;
+    border-radius: 22px;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    box-shadow: 0 5px 0 #d97706, 0 8px 20px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    width: min(94vw, 430px);
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  #spot-target-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #fef08a, #facc15);
+    border: 2px solid #ea580c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.8);
+  }
+  .header-texts {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  #header-main-msg {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 13.5px;
+    font-weight: 900;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .step-dots-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 2px;
+  }
+  #header-sub-msg {
+    font-size: 11px;
+    font-weight: 800;
+    color: #c2410c;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #sun-stamp-dots {
+    display: flex;
+    gap: 3px;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+
+  /* 画面中央：カウント時の特大ポップ数字＆「はっけん！」バッジ（GSAP制御） */
+  #center-pop-layer {
+    position: fixed;
+    top: 36%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 25;
+    pointer-events: none;
+    text-align: center;
+  }
+  #big-count-number {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 76px;
+    font-weight: 900;
+    color: #fde047;
+    -webkit-text-stroke: 4px #b91c1c;
+    text-shadow: 0 6px 0 #7f1d1d, 0 10px 24px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transform: scale(0.2);
+    line-height: 1;
+  }
+  #discovery-ribbon {
+    background: linear-gradient(135deg, #ec4899, #f97316);
+    border: 3px solid #fde047;
+    color: #fff;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 18px;
+    font-weight: 900;
+    padding: 6px 20px;
+    border-radius: 999px;
+    box-shadow: 0 5px 0 #9d174d, 0 8px 20px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    transform: scale(0.3);
+    white-space: nowrap;
+    margin-top: 6px;
+  }
+
+  /* =========================================================
+     最下部：ワンボタンおさんぽ＆3択数かぞえエリア（ぽっこり立体ボタン）
+     ========================================================= */
+  #bottom-ui-area {
+    position: fixed;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    width: min(95vw, 440px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+  }
+
+  /* 発見クイズ時のみ出る3択ぽっこり数字ボタン */
+  #quiz-choice-row {
+    pointer-events: auto;
+    display: none;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 9px;
+    width: 100%;
+  }
+  #quiz-choice-row.active {
+    display: grid;
+  }
+  .choice-pokkori-btn {
+    height: 60px;
+    border-radius: 20px;
+    background: linear-gradient(180deg, #f472b6 0%, #db2777 100%);
+    border: 2.5px solid #fef08a;
+    box-shadow: 0 6px 0 #831843, 0 8px 18px rgba(0, 0, 0, 0.3);
+    color: #ffffff;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 25px;
+    font-weight: 900;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    text-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+  }
+  .choice-pokkori-btn small {
+    font-size: 12.5px;
+    font-weight: 800;
+  }
+  .choice-pokkori-btn:active {
+    transform: translateY(5px);
+    box-shadow: 0 1px 0 #831843;
+  }
+
+  /* メインのスリム操作バー（主役の「🐾 すすむ」ワンボタン＋ヒント・読み上げ） */
+  #main-control-bar {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+    background: rgba(15, 23, 42, 0.42);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    padding: 6px 8px;
+    border-radius: 999px;
+    border: 1.5px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  }
+
+  /* 主役：ワンボタン「🐾 トコトコ すすむ！」 */
+  #one-step-btn {
+    flex: 1;
+    height: 54px;
+    font-size: 16.5px;
+    background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+    border: 2.5px solid #fef08a;
+    box-shadow: 0 6px 0 #14532d, 0 8px 18px rgba(22, 163, 74, 0.45);
+    letter-spacing: 0.5px;
+  }
+  #one-step-btn:active {
+    box-shadow: 0 1px 0 #14532d;
+  }
+  #one-step-btn.counting-mode {
+    background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+    box-shadow: 0 6px 0 #78350f, 0 8px 18px rgba(245, 158, 11, 0.45);
+  }
+  #one-step-btn.counting-mode:active {
+    box-shadow: 0 1px 0 #78350f;
+  }
+
+  .sub-ctrl-btn {
+    height: 48px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+  .sub-ctrl-btn.hint-style {
+    background: linear-gradient(180deg, #eab308 0%, #ca8a04 100%);
+    box-shadow: 0 5px 0 #713f12;
+  }
+  .sub-ctrl-btn.hint-style:active {
+    box-shadow: 0 1px 0 #713f12;
+  }
+  .sub-ctrl-btn.voice-style {
+    background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+    box-shadow: 0 5px 0 #0c4a6e;
+  }
+  .sub-ctrl-btn.voice-style:active {
+    box-shadow: 0 1px 0 #0c4a6e;
+  }
+
+  /* UI最小化モード（👁️ ON時） */
+  body.ui-minimized #top-left-hud {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-10px);
+  }
+  body.ui-minimized #walk-header-card {
+    transform: translateX(-50%) scale(0.86);
+    top: 10px;
+  }
+  body.ui-minimized .sub-ctrl-btn .btn-lbl {
+    display: none;
+  }
+
+  /* =========================================================
+     モーダル1：☀️ おひさまスタンプ獲得ごほうびカード
+     ========================================================= */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+    color: #fff;
+  }
+  .modal-overlay.active {
+    display: flex;
+  }
+  .stamp-reward-card {
+    width: min(92vw, 370px);
+    background: linear-gradient(180deg, #fef9c3 0%, #fde68a 100%);
+    border: 4px solid #f59e0b;
+    border-radius: 28px;
+    padding: 20px 16px;
+    text-align: center;
+    color: #1e293b;
+    box-shadow: 0 12px 0 #b45309, 0 20px 45px rgba(0, 0, 0, 0.55);
+  }
+  .stamp-title {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 20px;
+    font-weight: 900;
+    color: #c2410c;
+  }
+  #sun-stamp-seal {
+    width: 118px;
+    height: 118px;
+    margin: 12px auto;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fef08a 0%, #f97316 100%);
+    border: 4px dashed #dc2626;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-weight: 900;
+    color: #ffffff;
+    box-shadow: 0 6px 18px rgba(234, 88, 12, 0.45);
+  }
+  #sun-stamp-seal .s-ico {
+    font-size: 46px;
+    line-height: 1;
+  }
+  #sun-stamp-seal .s-txt {
+    font-size: 12px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  }
+  .stamp-sub {
+    font-size: 13px;
+    font-weight: 800;
+    color: #475569;
+    margin-bottom: 14px;
+  }
+  #next-walk-btn {
+    background: linear-gradient(180deg, #ec4899 0%, #db2777 100%);
+    box-shadow: 0 5px 0 #831843;
+    padding: 11px 28px;
+    font-size: 15.5px;
+  }
+
+  /* =========================================================
+     モーダル2：📒 さんぽずかん（見つけたものコレクション）
+     ========================================================= */
+  .zukan-card {
+    width: min(95vw, 500px);
+    max-height: 88vh;
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    border: 3px solid #fde047;
+    border-radius: 26px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+    overflow: hidden;
+  }
+  .zukan-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .zukan-header h2 {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 16px;
+    color: #fde047;
+    font-weight: 900;
+  }
+  #zukan-preview-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.09);
+    border: 1.5px solid rgba(255, 255, 255, 0.22);
+    border-radius: 16px;
+    padding: 8px 12px;
+  }
+  #zukan-3d-stage {
+    width: 100px;
+    height: 100px;
+    border-radius: 14px;
+    background: radial-gradient(circle, #38bdf8 0%, #1e3a8a 100%);
+    flex-shrink: 0;
+    cursor: grab;
+  }
+  .zukan-info {
+    flex: 1;
+  }
+  #zukan-item-title {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 18px;
+    font-weight: 900;
+    color: #fde047;
+  }
+  #zukan-item-desc {
+    font-size: 12px;
+    font-weight: 700;
+    color: #f8fafc;
+    margin-top: 3px;
+    line-height: 1.35;
+  }
+  .zukan-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    overflow-y: auto;
+    padding: 2px;
+  }
+  .zukan-cell {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1.5px solid rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+    padding: 7px 4px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 10.5px;
+    font-weight: 800;
+    color: #cbd5e1;
+  }
+  .zukan-cell.unlocked {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.32), rgba(14, 165, 233, 0.32));
+    border-color: #fde047;
+    color: #fff;
+  }
+  .zukan-cell.active-cell {
+    border-color: #ffffff;
+    box-shadow: 0 0 10px rgba(253, 224, 71, 0.65);
+  }
+  .zukan-cell .z-emo {
+    font-size: 21px;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  /* 390px幅スマホ向けの細部レスポンシブ調整 */
+  @media (max-width: 400px) {
+    #header-main-msg {
+      font-size: 12.5px;
+    }
+    #one-step-btn {
+      font-size: 15px;
+      height: 50px;
+    }
+    .choice-pokkori-btn {
+      height: 54px;
+      font-size: 22px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- 背景のインラインSVG模様（雲・お花・太陽） -->
+<div id="bg-svg-pattern"></div>
+
+<div id="canvas-container"></div>
+
+<!-- 左上：現在レベル＆さんぽずかんボタン -->
+<div id="top-left-hud">
+  <button class="pokkori-btn" id="level-badge-btn" title="タップでレベル切り替え">
+    🐱 <span id="current-level-label">Lv.1 1〜3こ</span>
+  </button>
+  <button class="pokkori-btn" id="zukan-open-btn" title="見つけたものコレクションを開く">
+    📒 さんぽずかん <span id="stamp-count-label">☀️0</span>
+  </button>
+</div>
+
+<!-- 右上：視点・設定メニュー・音量・UI最小化 -->
+<div id="top-right-hud">
+  <button class="pokkori-btn tr-pill-btn" id="quick-cam-btn" title="カメラ視点を切り替え">
+    🎥 <span id="cam-label">さんぽ</span>
+  </button>
+  <button class="pokkori-btn tr-pill-btn" id="open-settings-btn">
+    ⚙️ 設定 ▾
+  </button>
+  <button class="pokkori-btn tr-pill-btn icon-only" id="sound-toggle-btn" title="音声・効果音ON/OFF">🔊</button>
+  <button class="pokkori-btn tr-pill-btn icon-only" id="ui-min-btn" title="すっきり表示（UI最小化）">👁️</button>
+</div>
+
+<!-- 右上：収納設定ドロワー -->
+<div id="settings-drawer">
+  <div class="drawer-section">
+    <div class="drawer-title">
+      <span>⭐ レベル選択（数かぞえ・観察ステップ）</span>
+      <span style="cursor:pointer;color:#cbd5e1;font-size:14px;" id="close-drawer-btn">✕</span>
+    </div>
+    <div class="grid-2" id="level-select-grid">
+      <button class="menu-chip selected" data-lv="1">Lv.1 1〜3こ入門</button>
+      <button class="menu-chip" data-lv="2">Lv.2 2〜5こ</button>
+      <button class="menu-chip" data-lv="3">Lv.3 いろ観察(〜6こ)</button>
+      <button class="menu-chip" data-lv="4">Lv.4 5〜8こ</button>
+      <button class="menu-chip" data-lv="5" style="grid-column: span 2;">Lv.5 10まで＆いろ観察マスター</button>
+    </div>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-title"><span>🐱 こねこの毛色チェンジ</span></div>
+    <div class="grid-3" id="cat-coat-grid">
+      <button class="menu-chip selected" data-coat="mike">🐱 みけねこ</button>
+      <button class="menu-chip" data-coat="tora">🐯 茶トラ</button>
+      <button class="menu-chip" data-coat="kuro">🐈‍⬛ くろねこ</button>
+    </div>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-title"><span>🎥 カメラ視点（スワイプで微調整OK）</span></div>
+    <div class="grid-3" id="cam-select-grid">
+      <button class="menu-chip selected" data-cam="walk">🎥 さんぽ</button>
+      <button class="menu-chip" data-cam="closeup">🔍 観察アップ</button>
+      <button class="menu-chip" data-cam="side">📐 よこから</button>
+    </div>
+  </div>
+</div>
+
+<!-- 上部中央：おさんぽガイド＆スタンプ進捗カード -->
+<div id="walk-header-card" title="タップするとお題をもう一度読み上げます">
+  <div id="spot-target-badge">🐾</div>
+  <div class="header-texts">
+    <div id="header-main-msg">「すすむ」を押して おさんぽしよう！</div>
+    <div class="step-dots-row">
+      <div id="header-sub-msg">👆 ワンボタンでトコトコ歩くよ♪</div>
+      <div id="sun-stamp-dots">⚪⚪⚪</div>
+    </div>
+  </div>
+</div>
+
+<!-- 画面中央：特大カウント数字＆「はっけん！」リボン（GSAPアニメーション用） -->
+<div id="center-pop-layer">
+  <div id="big-count-number" class="outlined-text">1</div>
+  <div id="discovery-ribbon">✨ はっけん！かぞえてみよう！</div>
+</div>
+
+<!-- 最下部：ぽっこり立体ボタン操作エリア -->
+<div id="bottom-ui-area">
+  <!-- 発見スポットで表示される3択ぽっこり数字ボタン -->
+  <div id="quiz-choice-row">
+    <button class="choice-pokkori-btn" data-idx="0">1<small>こ</small></button>
+    <button class="choice-pokkori-btn" data-idx="1">2<small>こ</small></button>
+    <button class="choice-pokkori-btn" data-idx="2">3<small>こ</small></button>
+  </div>
+
+  <!-- 常時表示のスリム操作バー（ワンボタン「🐾 すすむ」＋ヒント＋よみあげ） -->
+  <div id="main-control-bar">
+    <button class="pokkori-btn" id="one-step-btn">
+      🐾 トコトコ すすむ！
+    </button>
+    <button class="pokkori-btn sub-ctrl-btn hint-style" id="hint-count-btn" title="1つずつキラキラ光らせて一緒に数える">
+      💡<span class="btn-lbl">ヒント</span>
+    </button>
+    <button class="pokkori-btn sub-ctrl-btn voice-style" id="speak-again-btn" title="音声でもう一度読み上げる">
+      🗣️<span class="btn-lbl">きく</span>
+    </button>
+  </div>
+</div>
+
+<!-- モーダル1：☀️ おひさまスタンプごほうび画面 -->
+<div class="modal-overlay" id="stamp-modal">
+  <div class="stamp-reward-card" id="stamp-card-inner">
+    <div class="stamp-title">🎉 おさんぽ ゴール！！</div>
+    <div id="sun-stamp-seal">
+      <span class="s-ico">☀️</span>
+      <span class="s-txt">たいへんよくできました</span>
+    </div>
+    <div class="stamp-sub" id="stamp-reward-text">
+      おひさまスタンプを ゲットしたよ！<br />見つけたものが「さんぽずかん」に増えたよ♪
+    </div>
+    <button class="pokkori-btn" id="next-walk-btn">🐾 つぎのおさんぽへ！</button>
+  </div>
+</div>
+
+<!-- モーダル2：📒 さんぽずかん（見つけたものコレクション） -->
+<div class="modal-overlay" id="zukan-modal">
+  <div class="zukan-card">
+    <div class="zukan-header">
+      <h2>📒 こねこの さんぽずかん（360°回転）</h2>
+      <button class="pokkori-btn tr-pill-btn" id="close-zukan-btn">✕ とじる</button>
+    </div>
+
+    <div id="zukan-preview-bar">
+      <div id="zukan-3d-stage" title="ドラッグで回転できます"></div>
+      <div class="zukan-info">
+        <div id="zukan-item-title">🍎 あかいりんご</div>
+        <div id="zukan-item-desc">木の上から コロンと 落ちてくる 甘くて 赤い りんご。</div>
+      </div>
+    </div>
+
+    <div class="zukan-grid" id="zukan-grid"></div>
+  </div>
+</div>
+
+<!-- Three.js / Cannon.js / GSAP / canvas-confetti (CDN) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+<script>
+(() => {
+  // ==========================================
+  // 1. さんぽずかん全8種マスターデータ＆レベル定義
+  // ==========================================
+  const DISCOVERY_CATALOG = [
+    {
+      id: 'red_apple', name: 'あかいりんご', emoji: '🍎', unit: 'こ', category: 'apple', color: 0xef4444,
+      desc: 'おひさまの 光を 浴びて まっかに 実った りんご。木から コロンと 落ちてくるよ！'
+    },
+    {
+      id: 'green_apple', name: 'あおりんご', emoji: '🍏', unit: 'こ', category: 'apple', color: 0x84cc16,
+      desc: 'さわやかな みどり色の あおりんご。シャキシャキして おいしそうだね！'
+    },
+    {
+      id: 'yellow_butterfly', name: 'きいろのちょうちょ', emoji: '🦋', unit: 'わ', category: 'butterfly', color: 0xfacc15,
+      desc: 'お花の まわりを ひらひら 飛ぶ きいろの ちょうちょ。春が だいすき！'
+    },
+    {
+      id: 'pink_butterfly', name: 'ピンクのちょうちょ', emoji: '🩷', unit: 'わ', category: 'butterfly', color: 0xf472b6,
+      desc: '桃色の はねを パタパタ させる かわいい ちょうちょ。'
+    },
+    {
+      id: 'blue_butterfly', name: 'あおいちょうちょ', emoji: '💠', unit: 'わ', category: 'butterfly', color: 0x38bdf8,
+      desc: '見つけると うれしくなる キラキラ あおい はねの ちょうちょ。'
+    },
+    {
+      id: 'red_tulip', name: 'あかいチューリップ', emoji: '🌷', unit: 'ほん', category: 'flower', color: 0xf43f5e,
+      desc: 'さんぽ道に 並んで 咲いている まっかな チューリップの お花。'
+    },
+    {
+      id: 'yellow_tulip', name: 'きいろのチューリップ', emoji: '🌼', unit: 'ほん', category: 'flower', color: 0xfde047,
+      desc: 'おひさまみたいに 明るい きいろの チューリップの お花。'
+    },
+    {
+      id: 'ladybug', name: 'てんとうむし', emoji: '🐞', unit: 'ひき', category: 'bug', color: 0xdc2626,
+      desc: '赤い 背中に 黒い ほし模様が ついた ちいさな てんとうむし。'
+    }
+  ];
+
+  const ITEM_MAP = {};
+  DISCOVERY_CATALOG.forEach(d => { ITEM_MAP[d.id] = d; });
+
+  const LEVEL_SPECS = {
+    1: { label: 'Lv.1 1〜3こ', minCount: 1, maxCount: 3, colorFilterQuiz: false },
+    2: { label: 'Lv.2 2〜5こ', minCount: 2, maxCount: 5, colorFilterQuiz: false },
+    3: { label: 'Lv.3 いろ観察(〜6こ)', minCount: 2, maxCount: 5, colorFilterQuiz: true },
+    4: { label: 'Lv.4 5〜8こ', minCount: 5, maxCount: 8, colorFilterQuiz: false },
+    5: { label: 'Lv.5 10まで＆観察', minCount: 6, maxCount: 10, colorFilterQuiz: true }
+  };
+
+  // ローカルストレージ保存管理
+  const STORAGE_KEY = 'cat_walk_counting_v1';
+  let saveState = { stamps: 0, foundCounts: {} };
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    if (raw && typeof raw === 'object') {
+      saveState.stamps = raw.stamps || 0;
+      saveState.foundCounts = raw.foundCounts || {};
+    }
+  } catch (e) {}
+
+  function persistSave() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saveState));
+    } catch (e) {}
+    document.getElementById('stamp-count-label').textContent = `☀️${saveState.stamps}`;
+  }
+  persistSave();
+
+  // ==========================================
+  // 2. Web Speech API（読み上げ）＆ Web Audio API（足音・発見・ファンファーレ合成）
+  // ==========================================
+  const NUM_READINGS = {
+    1: 'いち', 2: 'に', 3: 'さん', 4: 'よん', 5: 'ご',
+    6: 'ろく', 7: 'なな', 8: 'はち', 9: 'きゅう', 10: 'じゅう'
+  };
+
+  class WalkAudio {
+    constructor() {
+      this.ctx = null;
+      this.enabled = true;
+    }
+    init() {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) this.ctx = new AudioCtx();
+      }
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+    }
+    speak(text, rate = 0.96, pitch = 1.15) {
+      if (!this.enabled || !('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'ja-JP';
+        u.rate = rate;
+        u.pitch = pitch;
+        window.speechSynthesis.speak(u);
+      } catch (e) {}
+    }
+    playTone(freq, dur = 0.14, type = 'triangle', vol = 0.16) {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, now);
+      g.gain.setValueAtTime(vol, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      o.connect(g).connect(this.ctx.destination);
+      o.start(now);
+      o.stop(now + dur);
+    }
+    playFootstep(stepIndex) {
+      // トコ・トコ♪と交互に高さが変わるかわいい木琴足音
+      const f = stepIndex % 2 === 0 ? 392.0 : 493.88;
+      this.playTone(f, 0.09, 'triangle', 0.14);
+    }
+    playMeow() {
+      // こねこの「にゃー♪」シンセ音
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(620, now);
+      o.frequency.exponentialRampToValueAtTime(920, now + 0.12);
+      o.frequency.exponentialRampToValueAtTime(540, now + 0.34);
+      g.gain.setValueAtTime(0.15, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+      o.connect(g).connect(this.ctx.destination);
+      o.start(now);
+      o.stop(now + 0.37);
+    }
+    playDiscoveryChime() {
+      // 「はっけん！」キラキラチャイム
+      [587.33, 880.0, 1174.66].forEach((f, i) => {
+        setTimeout(() => this.playTone(f, 0.2, 'triangle', 0.17), i * 75);
+      });
+    }
+    playCountPop(num) {
+      // 1〜10まで数えるたびにドレミファソラシドで上がるマリンバ音
+      const scale = [523.25, 587.33, 659.25, 698.46, 783.99, 880.0, 987.77, 1046.5, 1174.66, 1318.5];
+      const f = scale[(num - 1) % scale.length];
+      this.playTone(f, 0.2, 'triangle', 0.2);
+    }
+    playFanfare() {
+      const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5];
+      notes.forEach((f, i) => {
+        setTimeout(() => this.playTone(f, 0.28, 'triangle', 0.2), i * 95);
+      });
+    }
+  }
+  const audio = new WalkAudio();
+
+  // ==========================================
+  // 3. Three.js + Cannon.js 3Dおさんぽ並木道＆物理ワールド構築
+  // ==========================================
+  const container = document.getElementById('canvas-container');
+  const scene = new THREE.Scene();
+  // 奥行きを出す暖色寄りのやさしいフォグ
+  scene.fog = new THREE.FogExp2(0xbae6fd, 0.014);
+
+  const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 180);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  container.appendChild(renderer.domElement);
+
+  // 暖色寄りの2灯ライティング（環境光＋影付き主光源）
+  scene.add(new THREE.AmbientLight(0xfffbeb, 0.85));
+  const sunLight = new THREE.DirectionalLight(0xfff7ed, 0.95);
+  sunLight.position.set(12, 26, 16);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.width = 1024;
+  sunLight.shadow.mapSize.height = 1024;
+  sunLight.shadow.camera.near = 2;
+  sunLight.shadow.camera.far = 90;
+  const d = 22;
+  sunLight.shadow.camera.left = -d;
+  sunLight.shadow.camera.right = d;
+  sunLight.shadow.camera.top = d;
+  sunLight.shadow.camera.bottom = -d;
+  scene.add(sunLight);
+
+  // Cannon.js 物理ワールド（木から落ちるりんごのバウンス用）
+  const world = new CANNON.World();
+  world.gravity.set(0, -22, 0);
+  const stdPhysMat = new CANNON.Material('std');
+  world.addContactMaterial(new CANNON.ContactMaterial(stdPhysMat, stdPhysMat, {
+    friction: 0.4,
+    restitution: 0.38
+  }));
+
+  const groundBody = new CANNON.Body({ mass: 0, material: stdPhysMat });
+  groundBody.addShape(new CANNON.Box(new CANNON.Vec3(30, 0.5, 120)));
+  groundBody.position.set(0, -0.5, -40);
+  world.addBody(groundBody);
+
+  // おさんぽコース環境グループ（Z軸マイナス方向へ向かって歩く）
+  const worldGroup = new THREE.Group();
+  scene.add(worldGroup);
+
+  // 芝生大地（左右に広がるグリーンの草原）
+  const grassGeo = new THREE.BoxGeometry(50, 0.6, 160);
+  const grassMat = new THREE.MeshStandardMaterial({ color: 0x86efac, roughness: 0.85 });
+  const grassMesh = new THREE.Mesh(grassGeo, grassMat);
+  grassMesh.position.set(0, -0.35, -55);
+  grassMesh.receiveShadow = true;
+  worldGroup.add(grassMesh);
+
+  // レンガタイル模様の小道（場面の手がかり）
+  const pathGeo = new THREE.BoxGeometry(4.6, 0.14, 150);
+  const pathMat = new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.6 });
+  const pathMesh = new THREE.Mesh(pathGeo, pathMat);
+  pathMesh.position.set(0, -0.02, -55);
+  pathMesh.receiveShadow = true;
+  worldGroup.add(pathMesh);
+
+  // 小道の上に並ぶパステルカラーの飛び石（1歩＝3.2ユニット間隔）
+  const STEP_DIST = 3.2;
+  const TOTAL_STEPS = 12; // 3歩・6歩・9歩目が発見スポット、12歩目がゴールゲート
+  const stoneColors = [0xfde68a, 0xfbcfe8, 0xbae6fd, 0xd9f99d];
+
+  for (let s = 0; s <= TOTAL_STEPS + 2; s++) {
+    const zPos = -s * STEP_DIST;
+    const isSpot = (s === 3 || s === 6 || s === 9 || s === 12);
+    const stone = new THREE.Mesh(
+      new THREE.CylinderGeometry(isSpot ? 1.45 : 0.9, isSpot ? 1.55 : 0.98, 0.16, 24),
+      new THREE.MeshStandardMaterial({
+        color: isSpot ? 0xfacc15 : stoneColors[s % stoneColors.length],
+        roughness: 0.4
+      })
+    );
+    stone.position.set(0, 0.06, zPos);
+    stone.receiveShadow = true;
+    worldGroup.add(stone);
+  }
+
+  // 道の両脇の木製柵・街灯・りんごの木を配置
+  function createAppleTree(x, z) {
+    const tree = new THREE.Group();
+    tree.position.set(x, 0, z);
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.42, 0.58, 2.6, 10),
+      new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 })
+    );
+    trunk.position.y = 1.3;
+    trunk.castShadow = true;
+    const foliage = new THREE.Mesh(
+      new THREE.SphereGeometry(2.1, 14, 14),
+      new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.65 })
+    );
+    foliage.position.y = 3.5;
+    foliage.castShadow = true;
+    tree.add(trunk, foliage);
+    worldGroup.add(tree);
+  }
+
+  for (let i = 0; i < 16; i++) {
+    const tz = -i * 6.5 + 2;
+    createAppleTree(i % 2 === 0 ? -5.2 : -6.4, tz);
+    createAppleTree(i % 2 === 0 ? 5.6 : 4.8, tz - 3.0);
+
+    // 白い木製ミニフェンス
+    [-3.1, 3.1].forEach(fx => {
+      const post = new THREE.Mesh(
+        new THREE.BoxGeometry(0.22, 0.95, 0.22),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 })
+      );
+      post.position.set(fx, 0.45, tz);
+      worldGroup.add(post);
+    });
+  }
+
+  // 12歩目（z = -38.4）の「☀️ おひさまゴールアーチ」
+  const goalArchGroup = new THREE.Group();
+  goalArchGroup.position.set(0, 0, -TOTAL_STEPS * STEP_DIST);
+  const archPillarMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.3 });
+  [-2.4, 2.4].forEach(px => {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.36, 4.8, 14), archPillarMat);
+    p.position.set(px, 2.4, 0);
+    goalArchGroup.add(p);
+  });
+  const archBeam = new THREE.Mesh(
+    new THREE.TorusGeometry(2.4, 0.34, 12, 28, Math.PI),
+    new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.25 })
+  );
+  archBeam.position.y = 4.6;
+  const sunEmblem = new THREE.Mesh(
+    new THREE.SphereGeometry(0.75, 16, 16),
+    new THREE.MeshStandardMaterial({ color: 0xfde047, emissive: 0xf59e0b, emissiveIntensity: 0.4 })
+  );
+  sunEmblem.position.set(0, 7.0, 0);
+  goalArchGroup.add(archBeam, sunEmblem);
+  worldGroup.add(goalArchGroup);
+
+  // ==========================================
+  // 4. 顔・表情・ひげ・足元の楕円影つきの「3Dこねこ」モデル構築
+  // ==========================================
+  const COAT_PALETTES = {
+    mike: { main: 0xffffff, sub: 0xf97316, patch: 0x1e293b, earInner: 0xfda4af },
+    tora: { main: 0xfbbf24, sub: 0xd97706, patch: 0x92400e, earInner: 0xfda4af },
+    kuro: { main: 0x1e293b, sub: 0x334155, patch: 0x0f172a, earInner: 0xf472b6 }
+  };
+
+  let currentCoatKey = 'mike';
+  let catRoot = null;
+
+  function buildCuteKitten3D(coatKey) {
+    const pal = COAT_PALETTES[coatKey] || COAT_PALETTES.mike;
+    const root = new THREE.Group();
+
+    const mainMat = new THREE.MeshStandardMaterial({ color: pal.main, roughness: 0.38 });
+    const subMat = new THREE.MeshStandardMaterial({ color: pal.sub, roughness: 0.4 });
+    const patchMat = new THREE.MeshStandardMaterial({ color: pal.patch, roughness: 0.45 });
+    const pinkMat = new THREE.MeshStandardMaterial({ color: pal.earInner, roughness: 0.35 });
+    const darkMat = new THREE.MeshBasicMaterial({ color: 0x111827 });
+
+    // ① 足元の楕円形ドロップシャドウ（浮遊感を完全に防止）
+    const dropShadow = new THREE.Mesh(
+      new THREE.CircleGeometry(1.05, 28),
+      new THREE.MeshBasicMaterial({ color: 0x0f172a, transparent: true, opacity: 0.28 })
+    );
+    dropShadow.rotation.x = -Math.PI / 2;
+    dropShadow.scale.set(1.0, 1.15, 1.0);
+    dropShadow.position.y = 0.08;
+    root.add(dropShadow);
+
+    // 身体全体を揺らすインナーグループ
+    const bodyPivot = new THREE.Group();
+    root.add(bodyPivot);
+
+    // ② 胴体＆三毛模様パッチ＆赤い首輪と金の鈴
+    const torso = new THREE.Mesh(new THREE.SphereGeometry(0.75, 18, 16), mainMat);
+    torso.scale.set(0.95, 0.92, 1.15);
+    torso.position.set(0, 0.82, 0);
+    torso.castShadow = true;
+    bodyPivot.add(torso);
+
+    const spot1 = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 12), subMat);
+    spot1.position.set(0.32, 0.95, -0.15);
+    const spot2 = new THREE.Mesh(new THREE.SphereGeometry(0.36, 12, 12), patchMat);
+    spot2.position.set(-0.3, 0.88, 0.2);
+    bodyPivot.add(spot1, spot2);
+
+    // 赤い首輪＆ゴールドの鈴
+    const collar = new THREE.Mesh(
+      new THREE.TorusGeometry(0.54, 0.08, 10, 24),
+      new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3 })
+    );
+    collar.rotation.x = Math.PI / 2;
+    collar.position.set(0, 1.25, -0.12);
+    const bell = new THREE.Mesh(
+      new THREE.SphereGeometry(0.15, 12, 12),
+      new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.7, roughness: 0.2 })
+    );
+    bell.position.set(0, 1.18, -0.68);
+    const bellFront = new THREE.Mesh(
+      new THREE.SphereGeometry(0.15, 12, 12),
+      new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.7, roughness: 0.2 })
+    );
+    bellFront.position.set(0, 1.18, 0.48);
+    bodyPivot.add(collar, bell, bellFront);
+
+    // ③ 4本の足（歩くときに前後に動く）
+    const legs = [];
+    [[-0.36, -0.35], [0.36, -0.35], [-0.36, 0.35], [0.36, 0.35]].forEach(([lx, lz]) => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.65, 10), mainMat);
+      leg.position.set(lx, 0.32, lz);
+      leg.castShadow = true;
+      bodyPivot.add(leg);
+      legs.push(leg);
+    });
+
+    // ④ ピンと立ったしっぽ（先っぽ色付き）
+    const tailPivot = new THREE.Group();
+    tailPivot.position.set(0, 0.95, 0.72);
+    const tailShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.95, 10), subMat);
+    tailShaft.position.set(0, 0.45, 0.22);
+    tailShaft.rotation.x = 0.48;
+    const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 10), patchMat);
+    tailTip.position.set(0, 0.88, 0.42);
+    tailPivot.add(tailShaft, tailTip);
+    bodyPivot.add(tailPivot);
+
+    // ⑤ 大きな頭部（前方のカメラ側 +Z と、進行方向 -Z のどちらから見ても可愛いよう正面 +Z に顔パーツを配置し、振り返りアニメーションでカメラに笑顔を見せる設計）
+    const headGroup = new THREE.Group();
+    headGroup.position.set(0, 1.78, -0.1);
+    bodyPivot.add(headGroup);
+
+    const headSphere = new THREE.Mesh(new THREE.SphereGeometry(0.76, 20, 18), mainMat);
+    headSphere.scale.set(1.08, 0.95, 0.98);
+    headSphere.castShadow = true;
+    headGroup.add(headSphere);
+
+    // 耳（外耳＋ピンクの内耳）
+    [-0.48, 0.48].forEach((ex, idx) => {
+      const earMat = idx === 0 ? subMat : patchMat;
+      const outerEar = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.56, 4), earMat);
+      outerEar.position.set(ex, 0.72, 0);
+      outerEar.rotation.y = Math.PI / 4;
+      outerEar.rotation.z = idx === 0 ? 0.28 : -0.28;
+
+      const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.36, 4), pinkMat);
+      innerEar.position.set(ex * 0.98, 0.68, 0.1);
+      innerEar.rotation.y = Math.PI / 4;
+      innerEar.rotation.z = idx === 0 ? 0.28 : -0.28;
+
+      headGroup.add(outerEar, innerEar);
+    });
+
+    // ⑥ 顔パーツ（通常目・キラキラ喜び目・ピンクほっぺ・鼻・ω口・左右6本のひげ）
+    const normalEyesGroup = new THREE.Group();
+    const happyEyesGroup = new THREE.Group();
+    happyEyesGroup.visible = false;
+    headGroup.add(normalEyesGroup, happyEyesGroup);
+
+    [-0.3, 0.3].forEach(ex => {
+      // 通常の大きな黒目＋白ハイライト
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 12), darkMat);
+      eye.position.set(ex, 0.1, 0.68);
+      const shine = new THREE.Mesh(new THREE.SphereGeometry(0.048, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      shine.position.set(ex + 0.04, 0.15, 0.78);
+      normalEyesGroup.add(eye, shine);
+
+      // うれしい時のにっこりキラキラ星目（⭐）
+      const starEye = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.16, 0),
+        new THREE.MeshBasicMaterial({ color: 0xfde047 })
+      );
+      starEye.position.set(ex, 0.12, 0.71);
+      happyEyesGroup.add(starEye);
+
+      // ピンクの楕円ほっぺ
+      const cheek = new THREE.Mesh(
+        new THREE.SphereGeometry(0.13, 10, 10),
+        new THREE.MeshBasicMaterial({ color: 0xfb7185 })
+      );
+      cheek.scale.set(1.3, 0.75, 0.5);
+      cheek.position.set(ex * 1.52, -0.08, 0.64);
+      headGroup.add(cheek);
+    });
+
+    // ピンクの三角鼻＆ω口
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.1, 3), pinkMat);
+    nose.rotation.x = Math.PI;
+    nose.position.set(0, -0.02, 0.76);
+    headGroup.add(nose);
+
+    [-0.07, 0.07].forEach(mx => {
+      const mouthArc = new THREE.Mesh(
+        new THREE.TorusGeometry(0.07, 0.022, 8, 12, Math.PI),
+        darkMat
+      );
+      mouthArc.rotation.x = Math.PI;
+      mouthArc.position.set(mx, -0.1, 0.74);
+      headGroup.add(mouthArc);
+    });
+
+    // 左右3本ずつの「ひげ」
+    [-1, 1].forEach(side => {
+      [-0.12, 0, 0.12].forEach((wy, idx) => {
+        const whisker = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.015, 0.015, 0.45, 6),
+          darkMat
+        );
+        whisker.rotation.z = Math.PI / 2 + side * (idx - 1) * 0.18;
+        whisker.rotation.y = -side * 0.25;
+        whisker.position.set(side * 0.62, -0.06 + wy * 0.6, 0.56);
+        headGroup.add(whisker);
+      });
+    });
+
+    // 頭上の「❗ はっけん！」3Dマーカー（発見時にポップアップ）
+    const exclGroup = new THREE.Group();
+    exclGroup.position.set(0, 1.35, 0);
+    exclGroup.scale.set(0, 0, 0);
+    const exBar = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.08, 0.55, 10), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+    exBar.position.y = 0.25;
+    const exDot = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 10), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+    exDot.position.y = -0.18;
+    exclGroup.add(exBar, exDot);
+    headGroup.add(exclGroup);
+
+    root.userData = {
+      bodyPivot,
+      headGroup,
+      tailPivot,
+      legs,
+      normalEyesGroup,
+      happyEyesGroup,
+      exclGroup,
+      dropShadow
+    };
+    return root;
+  }
+
+  function respawnCatMesh(coatKey) {
+    currentCoatKey = coatKey;
+    const prevPos = catRoot ? catRoot.position.clone() : new THREE.Vector3(0, 0, 0);
+    if (catRoot) scene.remove(catRoot);
+    catRoot = buildCuteKitten3D(coatKey);
+    catRoot.position.copy(prevPos);
+    scene.add(catRoot);
+  }
+  respawnCatMesh('mike');
+
+  // こねこの表情切り替え関数（'normal' | 'happy'）
+  function setCatExpression(mode) {
+    if (!catRoot) return;
+    const ud = catRoot.userData;
+    const isHappy = mode === 'happy';
+    ud.normalEyesGroup.visible = !isHappy;
+    ud.happyEyesGroup.visible = isHappy;
+  }
+
+  // ==========================================
+  // 5. 道中で見つける3Dオブジェクト（りんご・蝶々・お花・てんとうむし）生成
+  // ==========================================
+  function createDiscoveryObject3D(spec) {
+    const g = new THREE.Group();
+    const mainMat = new THREE.MeshStandardMaterial({ color: spec.color, roughness: 0.25 });
+
+    if (spec.category === 'apple') {
+      const apple = new THREE.Mesh(new THREE.SphereGeometry(0.48, 16, 14), mainMat);
+      apple.position.y = 0.46;
+      apple.castShadow = true;
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.24, 6), new THREE.MeshStandardMaterial({ color: 0x78350f }));
+      stem.position.y = 0.96;
+      const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), new THREE.MeshStandardMaterial({ color: 0x22c55e }));
+      leaf.scale.set(1.6, 0.4, 0.8);
+      leaf.position.set(0.15, 0.98, 0);
+      g.add(apple, stem, leaf);
+    } else if (spec.category === 'butterfly') {
+      // パタパタ羽ばたく左右の羽を持つ3Dちょうちょ
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.55, 8), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+      body.rotation.x = Math.PI / 2;
+      const leftWing = new THREE.Mesh(new THREE.SphereGeometry(0.38, 12, 10), mainMat);
+      leftWing.scale.set(1.2, 0.12, 1.4);
+      leftWing.position.set(-0.34, 0, 0);
+      const rightWing = new THREE.Mesh(new THREE.SphereGeometry(0.38, 12, 10), mainMat);
+      rightWing.scale.set(1.2, 0.12, 1.4);
+      rightWing.position.set(0.34, 0, 0);
+      g.add(body, leftWing, rightWing);
+      g.userData.wings = { leftWing, rightWing };
+    } else if (spec.category === 'flower') {
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.75, 8), new THREE.MeshStandardMaterial({ color: 0x22c55e }));
+      stem.position.y = 0.38;
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.22, 0.48, 12), mainMat);
+      cup.position.y = 0.85;
+      g.add(stem, cup);
+    } else {
+      // てんとうむし
+      const shell = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.6), mainMat);
+      shell.position.y = 0.15;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 10), new THREE.MeshStandardMaterial({ color: 0x111827 }));
+      head.position.set(0, 0.22, 0.36);
+      [-0.18, 0.18].forEach(dx => {
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), new THREE.MeshBasicMaterial({ color: 0x111827 }));
+        dot.position.set(dx, 0.52, -0.05);
+        g.add(dot);
+      });
+      g.add(shell, head);
+    }
+
+    // 足元のキラキラハイライトリング
+    const glowRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.52, 0.72, 24),
+      new THREE.MeshBasicMaterial({ color: 0xfde047, side: THREE.DoubleSide, transparent: true, opacity: 0.0 })
+    );
+    glowRing.rotation.x = -Math.PI / 2;
+    glowRing.position.y = 0.05;
+    g.add(glowRing);
+    g.userData.glowRing = glowRing;
+
+    return g;
+  }
+
+  // 数えたときに頭上に浮かぶ番号バッジスプライト
+  function createNumberSprite(num) {
+    const c = document.createElement('canvas');
+    c.width = 128;
+    c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.beginPath();
+    ctx.arc(64, 64, 52, 0, Math.PI * 2);
+    ctx.fillStyle = '#ea580c';
+    ctx.fill();
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = '#fef08a';
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 66px "Zen Maru Gothic", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(num), 64, 68);
+
+    const tex = new THREE.CanvasTexture(c);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+    sp.scale.set(1.25, 1.25, 1);
+    return sp;
+  }
+
+  // ==========================================
+  // 6. ゲーム進行管理（ワンボタン歩行 → 発見 → カウント＆3択クイズ → スタンプ）
+  // ==========================================
+  let currentLevel = 1;
+  let currentStep = 0;       // 0 〜 12歩
+  let completedSpots = 0;    // 0 〜 3箇所
+  let gameState = 'WALKING'; // 'WALKING' | 'STEPPING' | 'DISCOVERY' | 'GOAL'
+
+  // 現在の発見スポットにあるオブジェクト配列
+  // { spec, mesh, body, basePos, isTarget, counted, numberSprite, phase }
+  const spotObjects = [];
+  let currentQuizTargetSpec = null;
+  let currentTargetAnswer = 3;
+  let countedSoFar = 0;
+
+  function clearSpotObjects() {
+    spotObjects.forEach(obj => {
+      scene.remove(obj.mesh);
+      if (obj.numberSprite) scene.remove(obj.numberSprite);
+      if (obj.body) world.removeBody(obj.body);
+    });
+    spotObjects.length = 0;
+  }
+
+  function updateHeaderProgressUI() {
+    const dots = ['⚪', '⚪', '⚪'];
+    for (let i = 0; i < completedSpots; i++) dots[i] = '☀️';
+    document.getElementById('sun-stamp-dots').textContent = dots.join('');
+  }
+
+  // GSAPで中央の特大カウント数字をポップ表示
+  function popBigNumberUI(numText) {
+    const el = document.getElementById('big-count-number');
+    el.textContent = String(numText);
+    gsap.killTweensOf(el);
+    gsap.fromTo(
+      el,
+      { opacity: 1, scale: 0.2, y: 20 },
+      {
+        opacity: 1,
+        scale: 1.15,
+        y: 0,
+        duration: 0.38,
+        ease: 'back.out(2.2)',
+        onComplete: () => {
+          gsap.to(el, { opacity: 0, scale: 0.7, duration: 0.35, delay: 0.45 });
+        }
+      }
+    );
+  }
+
+  function popDiscoveryRibbonUI(text) {
+    const el = document.getElementById('discovery-ribbon');
+    el.textContent = text;
+    gsap.killTweensOf(el);
+    gsap.fromTo(
+      el,
+      { opacity: 1, scale: 0.3 },
+      {
+        opacity: 1,
+        scale: 1.0,
+        duration: 0.42,
+        ease: 'elastic.out(1, 0.6)',
+        onComplete: () => {
+          gsap.to(el, { opacity: 0, scale: 0.8, duration: 0.3, delay: 1.2 });
+        }
+      }
+    );
+  }
+
+  // confetti（紙吹雪）発火ヘルパー
+  function fireConfettiBurst(particleCount = 55) {
+    if (typeof confetti === 'function') {
+      confetti({
+        particleCount,
+        spread: 75,
+        origin: { y: 0.6 },
+        colors: ['#f43f5e', '#facc15', '#38bdf8', '#4ade80', '#e879f9']
+      });
+    }
+  }
+
+  // 新しいおさんぽコースを開始
+  function startNewWalkCourse(speakNow = true) {
+    clearSpotObjects();
+    currentStep = 0;
+    completedSpots = 0;
+    gameState = 'WALKING';
+
+    const lvSpec = LEVEL_SPECS[currentLevel];
+    document.getElementById('current-level-label').textContent = lvSpec.label;
+    updateHeaderProgressUI();
+
+    if (catRoot) {
+      catRoot.position.set(0, 0, 0);
+      catRoot.rotation.y = Math.PI; // 奥（-Z方向）を向いて歩く準備
+      setCatExpression('normal');
+    }
+
+    document.getElementById('quiz-choice-row').classList.remove('active');
+    const mainBtn = document.getElementById('one-step-btn');
+    mainBtn.classList.remove('counting-mode');
+    mainBtn.textContent = '🐾 トコトコ すすむ！';
+
+    document.getElementById('spot-target-badge').textContent = '🐾';
+    document.getElementById('header-main-msg').textContent = '「すすむ」を押して おさんぽしよう！';
+    document.getElementById('header-sub-msg').textContent = '👆 ワンボタンでこねこが1歩ずつ歩くよ♪';
+
+    if (speakNow) {
+      audio.playMeow();
+      audio.speak('こねこと いっしょに おさんぽへ 出発しよう！ すすむボタンを 押してね！');
+    }
+  }
+
+  // 🐾 ワンボタン「すすむ！」または「1つずつかぞえる！」のメインアクション
+  function handleMainOneButtonAction() {
+    // ぽっこりボタンのGSAPバウンス反応
+    const btn = document.getElementById('one-step-btn');
+    gsap.fromTo(btn, { scale: 0.94 }, { scale: 1.0, duration: 0.22, ease: 'back.out(2)' });
+
+    if (gameState === 'WALKING') {
+      takeOneStepForward();
+    } else if (gameState === 'DISCOVERY') {
+      // 発見スポット滞在中は、メインボタンを押すだけでも1つずつ順番に数えられるワンボタン親切設計！
+      countNextUncountedTarget();
+    }
+  }
+
+  function takeOneStepForward() {
+    if (gameState !== 'WALKING') return;
+    gameState = 'STEPPING';
+    currentStep++;
+    audio.playFootstep(currentStep);
+
+    const targetZ = -currentStep * STEP_DIST;
+    // こねこが正面奥(-Z)を向いてピョンと1歩進むGSAPアニメーション
+    gsap.to(catRoot.rotation, { y: Math.PI, duration: 0.15 });
+    gsap.to(catRoot.position, {
+      z: targetZ,
+      duration: 0.36,
+      ease: 'power2.out',
+      onUpdate: () => {
+        // 1歩ジャンプの放物線
+        const progress = 1 - Math.abs(catRoot.position.z - targetZ) / STEP_DIST;
+        catRoot.userData.bodyPivot.position.y = Math.sin(progress * Math.PI) * 0.55;
+      },
+      onComplete: () => {
+        catRoot.userData.bodyPivot.position.y = 0;
+        // 3歩・6歩・9歩目は「はっけんスポット」！ 12歩目は「ゴールゲート」！
+        if (currentStep === 3 || currentStep === 6 || currentStep === 9) {
+          triggerDiscoverySpot(targetZ);
+        } else if (currentStep >= TOTAL_STEPS) {
+          triggerWalkGoal();
+        } else {
+          gameState = 'WALKING';
+          const stepsToSpot = 3 - (currentStep % 3);
+          document.getElementById('header-sub-msg').textContent =
+            `🐾 トコトコ… つぎの「はっけん」まで あと ${stepsToSpot}ぽ！`;
+        }
+      }
+    });
+  }
+
+  // ❗ 発見スポット到着＆アイテム出現
+  function triggerDiscoverySpot(spotZ) {
+    gameState = 'DISCOVERY';
+    clearSpotObjects();
+    countedSoFar = 0;
+
+    // こねこがカメラ側（プレイヤー側）へくるっと笑顔で振り返り、頭上に「❗」を出す
+    gsap.to(catRoot.rotation, { y: 0, duration: 0.35, ease: 'back.out(1.8)' });
+    gsap.fromTo(
+      catRoot.userData.exclGroup.scale,
+      { x: 0, y: 0, z: 0 },
+      { x: 1, y: 1, z: 1, duration: 0.4, ease: 'back.out(2.5)' }
+    );
+    setTimeout(() => {
+      if (catRoot) gsap.to(catRoot.userData.exclGroup.scale, { x: 0, y: 0, z: 0, duration: 0.25 });
+    }, 1500);
+
+    audio.playDiscoveryChime();
+    audio.playMeow();
+
+    const lvSpec = LEVEL_SPECS[currentLevel];
+    currentTargetAnswer = lvSpec.minCount + Math.floor(Math.random() * (lvSpec.maxCount - lvSpec.minCount + 1));
+
+    // 今回見つける主役アイテムを決定
+    currentQuizTargetSpec = DISCOVERY_CATALOG[Math.floor(Math.random() * DISCOVERY_CATALOG.length)];
+
+    // Lv.3 / Lv.5 の色わけ観察問題では、別色のダミー（例：きいろの蝶々を探す問題でピンクの蝶々も2羽混ざる）を追加
+    const isColorObservation = lvSpec.colorFilterQuiz && Math.random() < 0.65;
+    let distractorSpec = null;
+    let distractorCount = 0;
+    if (isColorObservation) {
+      const sameCat = DISCOVERY_CATALOG.filter(
+        d => d.category === currentQuizTargetSpec.category && d.id !== currentQuizTargetSpec.id
+      );
+      if (sameCat.length > 0) {
+        distractorSpec = sameCat[Math.floor(Math.random() * sameCat.length)];
+        distractorCount = 1 + Math.floor(Math.random() * 2);
+      }
+    }
+
+    const totalSpawn = currentTargetAnswer + distractorCount;
+    const itemSpecsToSpawn = [
+      ...Array(currentTargetAnswer).fill({ spec: currentQuizTargetSpec, isTarget: true }),
+      ...Array(distractorCount).fill({ spec: distractorSpec, isTarget: false })
+    ].sort(() => Math.random() - 0.5);
+
+    // こねこの手前〜左右に見やすく並べる座標計算
+    itemSpecsToSpawn.forEach((entry, idx) => {
+      const row = totalSpawn > 5 ? Math.floor(idx / 5) : 0;
+      const col = totalSpawn > 5 ? (idx % 5) : idx;
+      const rowTotal = totalSpawn > 5 ? (row === 0 ? 5 : totalSpawn - 5) : totalSpawn;
+      const spacing = rowTotal <= 4 ? 1.55 : 1.28;
+
+      const xPos = (col - (rowTotal - 1) / 2) * spacing;
+      const zPos = spotZ + 2.0 + row * 1.35;
+      const yBase = entry.spec.category === 'butterfly' ? 1.55 : 0.08;
+
+      const mesh = createDiscoveryObject3D(entry.spec);
+      scene.add(mesh);
+
+      let body = null;
+      if (entry.spec.category === 'apple') {
+        // りんごは木の上から物理演算でコロンと落ちてくる演出！
+        body = new CANNON.Body({ mass: 1.0, material: stdPhysMat, linearDamping: 0.4 });
+        body.addShape(new CANNON.Sphere(0.45));
+        body.position.set(xPos, 4.2 + idx * 0.4, zPos);
+        world.addBody(body);
+      } else {
+        mesh.position.set(xPos, yBase, zPos);
+        gsap.fromTo(mesh.scale, { x: 0.01, y: 0.01, z: 0.01 }, { x: 1, y: 1, z: 1, duration: 0.4, delay: idx * 0.06, ease: 'back.out(2)' });
+      }
+
+      spotObjects.push({
+        spec: entry.spec,
+        mesh,
+        body,
+        basePos: new THREE.Vector3(xPos, yBase, zPos),
+        isTarget: entry.isTarget,
+        counted: false,
+        numberSprite: null,
+        phase: idx * 1.1
+      });
+    });
+
+    // ヘッダー＆3択ボタンの準備
+    document.getElementById('spot-target-badge').textContent = currentQuizTargetSpec.emoji;
+    document.getElementById('header-main-msg').textContent =
+      `「${currentQuizTargetSpec.name}」は なん${currentQuizTargetSpec.unit} あるかな？`;
+    document.getElementById('header-sub-msg').textContent =
+      `👆 タッチして数えるか、下の数字ボタンで答えよう！`;
+
+    const mainBtn = document.getElementById('one-step-btn');
+    mainBtn.classList.add('counting-mode');
+    mainBtn.textContent = `👆 1つずつ かぞえる (${countedSoFar}/${currentTargetAnswer})`;
+
+    setupQuizChoiceButtons();
+    popDiscoveryRibbonUI(`✨ ${currentQuizTargetSpec.name}を はっけん！`);
+
+    audio.speak(
+      `あっ！ ${currentQuizTargetSpec.name}を みつけたよ！ ` +
+      `${currentQuizTargetSpec.name}は、なん${currentQuizTargetSpec.unit} あるかな？ いっしょに 数えてみよう！`
+    );
+  }
+
+  function setupQuizChoiceButtons() {
+    const choiceSet = new Set([currentTargetAnswer]);
+    const candidates = [
+      currentTargetAnswer - 1,
+      currentTargetAnswer + 1,
+      currentTargetAnswer + 2,
+      currentTargetAnswer - 2,
+      1, 2, 3, 4, 5
+    ];
+    for (const c of candidates) {
+      if (c >= 1 && c <= 10 && choiceSet.size < 3) choiceSet.add(c);
+    }
+    const sortedChoices = Array.from(choiceSet).sort((a, b) => a - b);
+
+    const btns = document.querySelectorAll('#quiz-choice-row .choice-pokkori-btn');
+    sortedChoices.forEach((val, i) => {
+      const btn = btns[i];
+      btn.dataset.val = val;
+      btn.innerHTML = `${val}<small>${currentQuizTargetSpec.unit}</small>`;
+    });
+    document.getElementById('quiz-choice-row').classList.add('active');
+  }
+
+  // 見つけたオブジェクトを1つカウントする演出
+  function countSingleDiscoveryObject(obj) {
+    if (gameState !== 'DISCOVERY') return;
+
+    // 色分け観察問題で別の色のオブジェクトを触った場合の優しいガイド
+    if (!obj.isTarget) {
+      audio.playFootstep(0);
+      gsap.fromTo(obj.mesh.scale, { x: 1.25, y: 1.25, z: 1.25 }, { x: 1, y: 1, z: 1, duration: 0.3 });
+      audio.speak(`これは ${obj.spec.name} だね！ いまは ${currentQuizTargetSpec.name} だけを 数えてみよう！`);
+      return;
+    }
+
+    if (obj.counted) {
+      // すでに数えたものをもう一度触ったらその番号を読み上げる
+      audio.playCountPop(obj.assignedNum);
+      popBigNumberUI(obj.assignedNum);
+      audio.speak(NUM_READINGS[obj.assignedNum] || String(obj.assignedNum));
+      return;
+    }
+
+    obj.counted = true;
+    countedSoFar++;
+    obj.assignedNum = countedSoFar;
+
+    audio.playCountPop(countedSoFar);
+    popBigNumberUI(countedSoFar);
+    audio.speak(NUM_READINGS[countedSoFar] || String(countedSoFar));
+
+    // キラキラリング点灯＆ジャンプ
+    obj.mesh.userData.glowRing.material.opacity = 0.85;
+    gsap.fromTo(obj.mesh.scale, { x: 1.4, y: 1.4, z: 1.4 }, { x: 1.08, y: 1.08, z: 1.08, duration: 0.38, ease: 'back.out(2)' });
+
+    // 頭上に番号バッジをポップ表示
+    const numSp = createNumberSprite(countedSoFar);
+    numSp.position.set(obj.basePos.x, obj.basePos.y + 1.45, obj.basePos.z);
+    scene.add(numSp);
+    obj.numberSprite = numSp;
+
+    const mainBtn = document.getElementById('one-step-btn');
+    mainBtn.textContent = `👆 1つずつ かぞえる (${countedSoFar}/${currentTargetAnswer})`;
+
+    // 全部タッチして数え終わったら、そのまま少し待って自動クリアまたは3択ボタンを光らせる！
+    if (countedSoFar === currentTargetAnswer) {
+      mainBtn.textContent = `🎉 ぜんぶで ${currentTargetAnswer}${currentQuizTargetSpec.unit}！`;
+      setTimeout(() => {
+        if (gameState === 'DISCOVERY') {
+          handleQuizAnswerSelected(currentTargetAnswer);
+        }
+      }, 850);
+    }
+  }
+
+  function countNextUncountedTarget() {
+    const nextObj = spotObjects.find(o => o.isTarget && !o.counted);
+    if (nextObj) {
+      countSingleDiscoveryObject(nextObj);
+    } else {
+      handleQuizAnswerSelected(currentTargetAnswer);
+    }
+  }
+
+  // 💡 ヒントボタン：まだ数えていない対象を順番に自動でキラキラ数える
+  let autoCountRunning = false;
+  function triggerHintAutoCount() {
+    if (gameState !== 'DISCOVERY' || autoCountRunning) return;
+    const uncounted = spotObjects.filter(o => o.isTarget && !o.counted);
+    if (uncounted.length === 0) {
+      audio.speak(`ぜんぶで ${currentTargetAnswer}${currentQuizTargetSpec.unit} あるよ！ ${currentTargetAnswer}の ボタンを 押してね！`);
+      return;
+    }
+    autoCountRunning = true;
+    uncounted.forEach((obj, idx) => {
+      setTimeout(() => {
+        if (gameState === 'DISCOVERY') {
+          countSingleDiscoveryObject(obj);
+        }
+        if (idx === uncounted.length - 1) {
+          autoCountRunning = false;
+        }
+      }, idx * 650);
+    });
+  }
+
+  // 3択クイズの回答判定
+  function handleQuizAnswerSelected(chosenVal) {
+    if (gameState !== 'DISCOVERY') return;
+
+    if (chosenVal === currentTargetAnswer) {
+      // 🎉 大正解！
+      gameState = 'STEPPING';
+      completedSpots++;
+      updateHeaderProgressUI();
+
+      // 図鑑のカウントを記録
+      saveState.foundCounts[currentQuizTargetSpec.id] =
+        (saveState.foundCounts[currentQuizTargetSpec.id] || 0) + currentTargetAnswer;
+      persistSave();
+
+      // こねこがキラキラ星目（⭐）になって大喜びジャンプ！
+      setCatExpression('happy');
+      gsap.fromTo(
+        catRoot.userData.bodyPivot.position,
+        { y: 0 },
+        { y: 0.9, duration: 0.26, yoyo: true, repeat: 3, ease: 'power1.out' }
+      );
+
+      audio.playFanfare();
+      fireConfettiBurst(45);
+      popDiscoveryRibbonUI(`🎉 せいかい！ ${currentTargetAnswer}${currentQuizTargetSpec.unit} だね！`);
+      audio.speak(`大正解！ ${currentQuizTargetSpec.name}は、${currentTargetAnswer}${currentQuizTargetSpec.unit} あったね！ すごい！`);
+
+      document.getElementById('quiz-choice-row').classList.remove('active');
+
+      setTimeout(() => {
+        clearSpotObjects();
+        setCatExpression('normal');
+        gameState = 'WALKING';
+        const mainBtn = document.getElementById('one-step-btn');
+        mainBtn.classList.remove('counting-mode');
+        mainBtn.textContent = '🐾 トコトコ すすむ！';
+        document.getElementById('spot-target-badge').textContent = '🐾';
+        document.getElementById('header-main-msg').textContent = '「すすむ」を押して つぎへ歩こう！';
+        document.getElementById('header-sub-msg').textContent = '👆 ワンボタンでトコトコおさんぽ♪';
+      }, 2100);
+    } else {
+      // 😊 間違えても怒られない！ 1つずつキラキラ数えるヒントを発動
+      audio.playFootstep(1);
+      audio.speak(`いっしょに 1つずつ タッチして 数えてみよう！`);
+      setTimeout(() => triggerHintAutoCount(), 600);
+    }
+  }
+
+  // ☀️ 12歩目のゴールゲート到着＆おひさまスタンプ獲得演出
+  function triggerWalkGoal() {
+    gameState = 'GOAL';
+    saveState.stamps++;
+    persistSave();
+
+    setCatExpression('happy');
+    gsap.to(catRoot.rotation, { y: 0, duration: 0.35 });
+    audio.playFanfare();
+    fireConfettiBurst(85);
+
+    const modal = document.getElementById('stamp-modal');
+    const cardInner = document.getElementById('stamp-card-inner');
+    const seal = document.getElementById('sun-stamp-seal');
+
+    document.getElementById('stamp-reward-text').innerHTML =
+      `おひさまスタンプ <b>${saveState.stamps}こめ</b> ゲット！<br />見つけたものが「さんぽずかん」に増えたよ♪`;
+
+    modal.classList.add('active');
+    gsap.fromTo(cardInner, { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.45, ease: 'back.out(1.8)' });
+    gsap.fromTo(seal, { scale: 2.2, rotation: -25, opacity: 0 }, { scale: 1, rotation: -8, opacity: 1, duration: 0.55, delay: 0.25, ease: 'elastic.out(1, 0.5)' });
+
+    audio.speak('おさんぽ ゴール！ たいへんよくできました！ おひさまスタンプを ゲットしたよ！');
+  }
+
+  // ==========================================
+  // 7. カメラ追従＆スワイプ自由角度調整（スマホ縦画面最適化）
+  // ==========================================
+  let camMode = 'walk';
+  const camPresets = {
+    walk:    { yaw: 0.0, pitch: 0.38, dist: 10.5, label: 'さんぽ' },
+    closeup: { yaw: 0.0, pitch: 0.46, dist: 8.2,  label: '観察アップ' },
+    side:    { yaw: 0.52, pitch: 0.36, dist: 11.2, label: 'よこから' }
+  };
+
+  let yawOffset = 0, pitchOffset = 0, zoomScale = 1.0;
+  let curYaw = 0, curPitch = 0.38, curDist = 10.5;
+  let smoothLookZ = 0;
+
+  function setCameraPreset(mode) {
+    camMode = mode;
+    yawOffset = 0;
+    pitchOffset = 0;
+    zoomScale = 1.0;
+    document.getElementById('cam-label').textContent = camPresets[mode].label;
+    document.querySelectorAll('#cam-select-grid .menu-chip').forEach(b => {
+      b.classList.toggle('selected', b.dataset.cam === mode);
+    });
+  }
+
+  function updateCameraSmooth() {
+    const aspect = window.innerWidth / window.innerHeight;
+    const isPortrait = aspect < 0.95;
+    const portraitZoom = isPortrait ? Math.min(1.42, 0.94 / aspect) : 1.0;
+    const lookYOffset = isPortrait ? -0.35 : 0.25;
+
+    const base = camPresets[camMode];
+    const targetYaw = base.yaw + yawOffset;
+    const targetPitch = Math.max(0.18, Math.min(1.15, base.pitch + pitchOffset));
+    const targetDist = base.dist * portraitZoom * zoomScale;
+
+    curYaw += (targetYaw - curYaw) * 0.12;
+    curPitch += (targetPitch - curPitch) * 0.12;
+    curDist += (targetDist - curDist) * 0.12;
+
+    const catZ = catRoot ? catRoot.position.z : 0;
+    const goalLookZ = gameState === 'DISCOVERY' ? catZ + 1.4 : catZ + 0.5;
+    smoothLookZ += (goalLookZ - smoothLookZ) * 0.12;
+
+    const center = new THREE.Vector3(0, 1.15 + lookYOffset, smoothLookZ);
+    camera.position.set(
+      center.x + Math.sin(curYaw) * Math.cos(curPitch) * curDist,
+      center.y + Math.sin(curPitch) * curDist,
+      center.z + Math.cos(curYaw) * Math.cos(curPitch) * curDist
+    );
+    camera.lookAt(center);
+  }
+
+  // ==========================================
+  // 8. 3Dオブジェクトのタッチ判定＆スワイプ視点回転
+  // ==========================================
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  let isDragging = false;
+  let dragDist = 0;
+  let prevPt = { x: 0, y: 0 };
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    isDragging = true;
+    dragDist = 0;
+    prevPt = { x: e.clientX, y: e.clientY };
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - prevPt.x;
+    const dy = e.clientY - prevPt.y;
+    dragDist += Math.hypot(dx, dy);
+    prevPt = { x: e.clientX, y: e.clientY };
+
+    yawOffset = Math.max(-0.85, Math.min(0.85, yawOffset - dx * 0.006));
+    pitchOffset = Math.max(-0.18, Math.min(0.4, pitchOffset + dy * 0.005));
+  });
+
+  window.addEventListener('pointerup', (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    if (dragDist > 12) return;
+
+    pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+
+    // 発見スポットのアイテムを直接タッチした場合
+    if (gameState === 'DISCOVERY' && spotObjects.length > 0) {
+      const meshes = spotObjects.map(o => o.mesh);
+      const hits = raycaster.intersectObjects(meshes, true);
+      if (hits.length > 0) {
+        let rootObj = hits[0].object;
+        while (rootObj.parent && !meshes.includes(rootObj)) rootObj = rootObj.parent;
+        const found = spotObjects.find(o => o.mesh === rootObj);
+        if (found) {
+          countSingleDiscoveryObject(found);
+          return;
+        }
+      }
+    }
+
+    // こねこをタッチすると可愛く鳴いてジャンプ！
+    if (catRoot) {
+      const catHits = raycaster.intersectObjects(catRoot.children, true);
+      if (catHits.length > 0) {
+        audio.playMeow();
+        setCatExpression('happy');
+        gsap.fromTo(catRoot.userData.bodyPivot.position, { y: 0 }, { y: 0.65, duration: 0.22, yoyo: true, repeat: 1 });
+        setTimeout(() => setCatExpression('normal'), 900);
+      }
+    }
+  });
+
+  // ==========================================
+  // 9. 📒 さんぽずかん（3Dターンテーブル）構築
+  // ==========================================
+  const zukanModal = document.getElementById('zukan-modal');
+  const zukanStage = document.getElementById('zukan-3d-stage');
+  let zkScene, zkCam, zkRenderer, zkPreviewMesh;
+  let zkYaw = 0.4;
+
+  function initZukan3D() {
+    zkScene = new THREE.Scene();
+    zkCam = new THREE.PerspectiveCamera(40, 1, 0.1, 30);
+    zkCam.position.set(0, 0.9, 2.6);
+    zkCam.lookAt(0, 0.35, 0);
+
+    zkRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    zkRenderer.setSize(100, 100);
+    zkRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    zukanStage.appendChild(zkRenderer.domElement);
+
+    zkScene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    const dl = new THREE.DirectionalLight(0xfffbeb, 0.9);
+    dl.position.set(3, 6, 4);
+    zkScene.add(dl);
+
+    let drag = false, px = 0;
+    zukanStage.addEventListener('pointerdown', e => { drag = true; px = e.clientX; });
+    window.addEventListener('pointermove', e => {
+      if (!drag) return;
+      zkYaw += (e.clientX - px) * 0.02;
+      px = e.clientX;
+    });
+    window.addEventListener('pointerup', () => { drag = false; });
+  }
+  initZukan3D();
+
+  function selectZukanItem(spec, speakIt = false) {
+    if (zkPreviewMesh) zkScene.remove(zkPreviewMesh);
+    zkPreviewMesh = createDiscoveryObject3D(spec);
+    zkScene.add(zkPreviewMesh);
+
+    const cnt = saveState.foundCounts[spec.id] || 0;
+    document.getElementById('zukan-item-title').textContent =
+      `${spec.emoji} ${spec.name} （みつけた数: ${cnt}${spec.unit}）`;
+    document.getElementById('zukan-item-desc').textContent = spec.desc;
+    if (speakIt) {
+      audio.speak(`${spec.name}！ ${spec.desc}`);
+    }
+  }
+
+  function renderZukanGrid() {
+    const grid = document.getElementById('zukan-grid');
+    grid.innerHTML = '';
+    DISCOVERY_CATALOG.forEach((spec, idx) => {
+      const cnt = saveState.foundCounts[spec.id] || 0;
+      const cell = document.createElement('div');
+      cell.className = `zukan-cell ${cnt > 0 ? 'unlocked' : ''} ${idx === 0 ? 'active-cell' : ''}`;
+      cell.innerHTML = `
+        <span class="z-emo">${spec.emoji}</span>
+        <div>${spec.name.slice(0, 6)}</div>
+        <div style="color:#fde047;">✨×${cnt}</div>
+      `;
+      cell.addEventListener('click', () => {
+        document.querySelectorAll('.zukan-cell').forEach(el => el.classList.remove('active-cell'));
+        cell.classList.add('active-cell');
+        selectZukanItem(spec, true);
+      });
+      grid.appendChild(cell);
+    });
+    selectZukanItem(DISCOVERY_CATALOG[0], false);
+  }
+
+  document.getElementById('zukan-open-btn').addEventListener('click', () => {
+    renderZukanGrid();
+    zukanModal.classList.add('active');
+  });
+  document.getElementById('close-zukan-btn').addEventListener('click', () => {
+    zukanModal.classList.remove('active');
+  });
+
+  // ==========================================
+  // 10. UIイベント＆設定ドロワー連携
+  // ==========================================
+  document.getElementById('one-step-btn').addEventListener('click', handleMainOneButtonAction);
+  document.getElementById('hint-count-btn').addEventListener('click', () => {
+    if (gameState === 'WALKING') {
+      handleMainOneButtonAction();
+    } else {
+      triggerHintAutoCount();
+    }
+  });
+
+  const repeatCurrentSpeech = () => {
+    if (gameState === 'DISCOVERY' && currentQuizTargetSpec) {
+      audio.speak(`${currentQuizTargetSpec.name}は、なん${currentQuizTargetSpec.unit} あるかな？ タッチして数えてみよう！`);
+    } else {
+      audio.speak('すすむボタンを 押して、こねこと おさんぽしよう！');
+    }
+  };
+  document.getElementById('walk-header-card').addEventListener('click', repeatCurrentSpeech);
+  document.getElementById('speak-again-btn').addEventListener('click', repeatCurrentSpeech);
+
+  document.querySelectorAll('#quiz-choice-row .choice-pokkori-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      handleQuizAnswerSelected(Number(btn.dataset.val));
+    });
+  });
+
+  document.getElementById('next-walk-btn').addEventListener('click', () => {
+    document.getElementById('stamp-modal').classList.remove('active');
+    startNewWalkCourse(true);
+  });
+
+  // レベル選択
+  document.querySelectorAll('#level-select-grid .menu-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#level-select-grid .menu-chip').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      currentLevel = Number(btn.dataset.lv);
+      startNewWalkCourse(true);
+      document.getElementById('settings-drawer').classList.remove('open');
+    });
+  });
+  document.getElementById('level-badge-btn').addEventListener('click', () => {
+    currentLevel = (currentLevel % 5) + 1;
+    document.querySelectorAll('#level-select-grid .menu-chip').forEach(b => {
+      b.classList.toggle('selected', Number(b.dataset.lv) === currentLevel);
+    });
+    startNewWalkCourse(true);
+  });
+
+  // こねこの毛色チェンジ
+  document.querySelectorAll('#cat-coat-grid .menu-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#cat-coat-grid .menu-chip').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      respawnCatMesh(btn.dataset.coat);
+      audio.playMeow();
+      document.getElementById('settings-drawer').classList.remove('open');
+    });
+  });
+
+  // カメラ切替
+  document.querySelectorAll('#cam-select-grid .menu-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setCameraPreset(btn.dataset.cam);
+      document.getElementById('settings-drawer').classList.remove('open');
+    });
+  });
+  document.getElementById('quick-cam-btn').addEventListener('click', () => {
+    const order = ['walk', 'closeup', 'side'];
+    const next = order[(order.indexOf(camMode) + 1) % order.length];
+    setCameraPreset(next);
+  });
+
+  // 右上ドロワー開閉
+  const drawerEl = document.getElementById('settings-drawer');
+  const openSettingsBtn = document.getElementById('open-settings-btn');
+  openSettingsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    drawerEl.classList.toggle('open');
+  });
+  document.getElementById('close-drawer-btn').addEventListener('click', () => {
+    drawerEl.classList.remove('open');
+  });
+  window.addEventListener('pointerdown', (e) => {
+    if (!drawerEl.contains(e.target) && e.target !== openSettingsBtn && !openSettingsBtn.contains(e.target)) {
+      drawerEl.classList.remove('open');
+    }
+  });
+
+  // 音量＆UI最小化
+  const soundBtn = document.getElementById('sound-toggle-btn');
+  soundBtn.addEventListener('click', () => {
+    audio.enabled = !audio.enabled;
+    soundBtn.textContent = audio.enabled ? '🔊' : '🔇';
+  });
+  const uiMinBtn = document.getElementById('ui-min-btn');
+  uiMinBtn.addEventListener('click', () => {
+    document.body.classList.toggle('ui-minimized');
+    uiMinBtn.classList.toggle('active-toggle');
+  });
+
+  // ==========================================
+  // 11. メイン物理＆アニメーションループ
+  // ==========================================
+  const clock = new THREE.Clock();
+  startNewWalkCourse(false);
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.04);
+    const elapsed = clock.getElapsedTime();
+
+    world.step(1 / 60, dt, 3);
+
+    // こねこのしっぽ揺れ＆呼吸アニメーション
+    if (catRoot) {
+      const ud = catRoot.userData;
+      ud.tailPivot.rotation.z = Math.sin(elapsed * 4.5) * 0.28;
+      ud.headGroup.rotation.z = Math.sin(elapsed * 2.2) * 0.05;
+    }
+
+    // 発見スポットのオブジェクト更新（りんごの物理着地・蝶々の羽ばたき）
+    spotObjects.forEach(obj => {
+      if (obj.body) {
+        obj.body.position.x += (obj.basePos.x - obj.body.position.x) * 0.15;
+        obj.body.position.z += (obj.basePos.z - obj.body.position.z) * 0.15;
+        obj.mesh.position.set(
+          obj.body.position.x,
+          Math.max(0.05, obj.body.position.y - 0.4),
+          obj.body.position.z
+        );
+      } else if (obj.spec.category === 'butterfly') {
+        // ちょうちょのひらひら浮遊＆羽ばたき
+        obj.mesh.position.y = obj.basePos.y + Math.sin(elapsed * 3.8 + obj.phase) * 0.25;
+        obj.mesh.position.x = obj.basePos.x + Math.cos(elapsed * 2.2 + obj.phase) * 0.15;
+        if (obj.mesh.userData.wings) {
+          const flap = Math.sin(elapsed * 16 + obj.phase) * 0.65;
+          obj.mesh.userData.wings.leftWing.rotation.z = flap;
+          obj.mesh.userData.wings.rightWing.rotation.z = -flap;
+        }
+      }
+    });
+
+    // さんぽずかんモーダル内の3D回転
+    if (zukanModal.classList.contains('active') && zkPreviewMesh) {
+      zkPreviewMesh.rotation.y = zkYaw + elapsed * 0.8;
+      zkRenderer.render(zkScene, zkCam);
+    }
+
+    updateCameraSmooth();
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  animate();
+})();
+</script>
+</body>
+</html>

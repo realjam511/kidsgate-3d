@@ -703,25 +703,34 @@
             if (t.includes('ランチタイム') || t.includes('くいしんぼう')) return '動物ランチタイム';
             if (t.includes('とけい') || t.includes('ステーション')) return 'とけい新幹線';
             if (t.includes('かたちブロック') || t.includes('おもちゃばこ') || t.includes('スポッと')) return 'かたちブロック';
+            if (t.includes('ねこさんぽ') || t.includes('かぞえてはっけん')) return 'ねこさんぽ';
+            if (t.includes('かくれんぼ') || t.includes('みーつけた')) return 'どうぶつかくれんぼ';
+            if (t.includes('たから島') || t.includes('探知機')) return 'たから島たんけん';
+            if (t.includes('シャボン玉') || t.includes('ふわりん')) return 'シャボン玉めいろ';
             return t.replace(/^★\s*|\s*★$/g, '').slice(0, 8);
         }
 
-        // 各ゲームのグループ判定（重複を防止）
+        // 各ゲームのグループ判定（重複を防止・metaタグのcategoryも尊重）
         function getGameGroupId(g) {
             const t = g.title;
             if (g.id.includes('コインプッシャー') || g.id.includes('クレーン') || g.id.includes('パニック') || 
                 t.includes('コイン') || t.includes('クレーン') || t.includes('パニック') ||
-                t.includes('ピタゴラ') || t.includes('マーブルコースター')) {
+                t.includes('ピタゴラ') || t.includes('マーブルコースター') || g.category === 'arcade') {
                 return 'arcade';
             }
-            if (t.includes('レーサー') || t.includes('バギー') || t.includes('たしざん') ||
+            if (g.category === 'vehicle' || g.category === 'number' || g.category === 'math' ||
+                t.includes('レーサー') || t.includes('バギー') || t.includes('たしざん') ||
                 t.includes('ジオラマ') || t.includes('特急') || t.includes('くるま') ||
-                t.includes('とけい') || t.includes('新幹線') || t.includes('ステーション')) {
+                t.includes('とけい') || t.includes('新幹線') || t.includes('ステーション') ||
+                t.includes('ねこさんぽ') || t.includes('かぞえて')) {
                 return 'vehicle';
             }
-            if (t.includes('ひらがな') || t.includes('シャッフルカップ') || t.includes('暗記') ||
+            if (g.category === 'puzzle' ||
+                t.includes('ひらがな') || t.includes('シャッフルカップ') || t.includes('暗記') ||
                 t.includes('まるばつ') || t.includes('しんけいすいじゃく') || t.includes('すごろく') ||
-                t.includes('かたちブロック') || t.includes('おもちゃばこ') || t.includes('スポッと')) {
+                t.includes('かたちブロック') || t.includes('おもちゃばこ') || t.includes('スポッと') ||
+                t.includes('かくれんぼ') || t.includes('探知機') || t.includes('たから島') ||
+                t.includes('シャボン玉') || t.includes('めいろ')) {
                 return 'puzzle';
             }
             if (g.category === 'nature' || t.includes('ボウリング') || t.includes('オセロ') || 

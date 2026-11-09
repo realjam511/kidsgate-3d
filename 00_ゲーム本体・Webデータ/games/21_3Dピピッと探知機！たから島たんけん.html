@@ -1,0 +1,2727 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>3Dピピッと探知機！たから島たんけん</title>
+<meta name="description" content="探知機のピピッという音の高さと速さを手がかりに3Dの宝島をたんけん！こいぬのポッケと一緒にキラキラの宝物や生き物を掘り起こす、幼児〜低学年向け音感・集中力3Dゲーム。" />
+<meta name="game-icon" content="⛏️" />
+<meta name="game-category" content="puzzle" />
+<meta name="game-age" content="baby" />
+<meta name="game-tag" content="たからさがし" />
+
+<!-- Google Fonts: 丸ゴシック体 (M PLUS Rounded 1c / Zen Maru Gothic) -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800&family=Zen+Maru+Gothic:wght@700;900&display=swap" rel="stylesheet" />
+
+<style>
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    margin: 0;
+    padding: 0;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: linear-gradient(180deg, #38bdf8 0%, #bae6fd 48%, #fef08a 100%);
+    font-family: 'M PLUS Rounded 1c', "Hiragino Maru Gothic ProN", sans-serif;
+    touch-action: none;
+    transition: background 0.6s ease;
+  }
+
+  /* ステージ別テーマ背景グラデーション */
+  body.stage-1 { background: linear-gradient(180deg, #0ea5e9 0%, #7dd3fc 50%, #fef08a 100%); }
+  body.stage-2 { background: linear-gradient(180deg, #38bdf8 0%, #fbcfe8 52%, #bbf7d0 100%); }
+  body.stage-3 { background: linear-gradient(180deg, #f472b6 0%, #fbcfe8 50%, #fef9c3 100%); }
+  body.stage-4 { background: linear-gradient(180deg, #0284c7 0%, #86efac 52%, #4ade80 100%); }
+  body.stage-5 { background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 52%, #312e81 100%); }
+
+  /* 背景のインラインSVG模様（雲・星・お花・波のやさしい模様 opacity 0.16） */
+  #bg-svg-pattern {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.16;
+    background-image: url("data:image/svg+xml,%3Csvg width='160' height='160' viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff'%3E%3Cpath d='M35 36c0-6 5-11 11-11 4 0 8 2 10 6 2-1 4-1 6-1 5 0 9 4 9 9s-4 9-9 9H37c-5 0-9-4-9-9 0-1 0-2 1-3z'/%3E%3Ccircle cx='125' cy='32' r='8' fill='%23fef08a'/%3E%3Cpath d='M125 16l2 5 5 2-5 2-2 5-2-5-5-2 5-2z' fill='%23fef08a'/%3E%3Ccircle cx='42' cy='118' r='5' fill='%23fbcfe8'/%3E%3Ccircle cx='42' cy='109' r='4'/%3E%3Ccircle cx='42' cy='127' r='4'/%3E%3Ccircle cx='33' cy='118' r='4'/%3E%3Ccircle cx='51' cy='118' r='4'/%3E%3Cpath d='M100 122c8-6 16-6 24 0s16 6 24 0' stroke='%23ffffff' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 160px 160px;
+  }
+
+  #canvas-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    z-index: 2;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+  canvas:active {
+    cursor: grabbing;
+  }
+
+  /* ぽっこり立体ボタン共通スタイル */
+  .pokkori-btn {
+    border: 2.5px solid rgba(255, 255, 255, 0.9);
+    border-radius: 999px;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-weight: 900;
+    color: #ffffff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-shadow: 0 2px 2px rgba(0, 0, 0, 0.4);
+    transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.2s ease;
+    position: relative;
+    white-space: nowrap;
+  }
+  .pokkori-btn:active {
+    transform: translateY(4px) !important;
+  }
+
+  /* =========================================================
+     画面①：タイトル＆スタート画面（第1層）
+     ========================================================= */
+  #title-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: max(24px, env(safe-area-inset-top)) 20px max(28px, env(safe-area-inset-bottom));
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+  }
+  #title-screen.hidden {
+    opacity: 0;
+    pointer-events: none !important;
+    visibility: hidden;
+  }
+  .title-banner {
+    pointer-events: auto;
+    background: linear-gradient(180deg, #ffffff 0%, #fef9c3 100%);
+    border: 4px solid #f59e0b;
+    border-radius: 28px;
+    padding: 14px 22px;
+    text-align: center;
+    box-shadow: 0 8px 0 #d97706, 0 14px 30px rgba(0, 0, 0, 0.3);
+    max-width: 92vw;
+  }
+  .title-sub {
+    font-size: 13px;
+    font-weight: 800;
+    color: #ea580c;
+    letter-spacing: 0.5px;
+  }
+  .title-main {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 24px;
+    font-weight: 900;
+    color: #1e293b;
+    line-height: 1.25;
+    margin-top: 2px;
+    text-shadow: 0 2px 0 #ffffff;
+  }
+  .title-hint-pill {
+    margin-top: 6px;
+    display: inline-block;
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1.5px solid #38bdf8;
+    border-radius: 999px;
+    padding: 3px 12px;
+    font-size: 11.5px;
+    font-weight: 800;
+  }
+  .title-bottom-box {
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+  #start-game-btn {
+    min-width: 260px;
+    height: 74px;
+    padding: 0 32px;
+    font-size: 22px;
+    background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+    border: 3px solid #fef08a;
+    box-shadow: 0 7px 0 #14532d, 0 12px 28px rgba(0, 0, 0, 0.35);
+  }
+  #start-game-btn:active {
+    box-shadow: 0 2px 0 #14532d;
+  }
+  #resume-badge {
+    background: rgba(15, 23, 42, 0.78);
+    color: #fde047;
+    padding: 4px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    border: 1px solid rgba(253, 224, 71, 0.5);
+  }
+
+  /* =========================================================
+     画面②：プレイ画面HUD（画面端から16px以上の余白、サブボタン52px以上・間隔12px以上）
+     ========================================================= */
+  #play-hud {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+  }
+  #play-hud.hidden {
+    display: none;
+  }
+
+  /* 上部バー（端から16pxマージン、サブボタン同士は12px以上の間隔） */
+  #top-bar {
+    position: fixed;
+    top: max(16px, env(safe-area-inset-top));
+    left: 16px;
+    right: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    pointer-events: none;
+  }
+  .top-left-group, .top-right-group {
+    display: flex;
+    align-items: center;
+    gap: 12px; /* 最低12px以上の間隔 */
+    pointer-events: auto;
+  }
+
+  /* サブボタン規定：最低 52px × 52px 以上 */
+  .sub-icon-btn {
+    min-width: 54px;
+    height: 54px;
+    padding: 0 14px;
+    border-radius: 18px;
+    font-size: 13px;
+    box-shadow: 0 5px 0 rgba(0, 0, 0, 0.35), 0 6px 14px rgba(0, 0, 0, 0.22);
+  }
+  .sub-icon-btn.square {
+    width: 54px;
+    padding: 0;
+    font-size: 22px;
+  }
+  #map-open-btn {
+    background: linear-gradient(180deg, #fb923c 0%, #ea580c 100%);
+    box-shadow: 0 5px 0 #9a3412, 0 6px 14px rgba(0,0,0,0.22);
+  }
+  #box-open-btn {
+    background: linear-gradient(180deg, #ec4899 0%, #db2777 100%);
+    box-shadow: 0 5px 0 #831843, 0 6px 14px rgba(0,0,0,0.22);
+  }
+  #hint-btn {
+    background: linear-gradient(180deg, #facc15 0%, #ca8a04 100%);
+    color: #713f12;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.7);
+    box-shadow: 0 5px 0 #854d0e, 0 6px 14px rgba(0,0,0,0.22);
+  }
+  #settings-gate-btn {
+    background: linear-gradient(180deg, #64748b 0%, #334155 100%);
+    box-shadow: 0 5px 0 #0f172a, 0 6px 14px rgba(0,0,0,0.22);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* 長押し進捗を示す青い円形リングオーバーレイ */
+  .hold-ring-svg {
+    position: absolute;
+    inset: -2px;
+    width: calc(100% + 4px);
+    height: calc(100% + 4px);
+    pointer-events: none;
+    transform: rotate(-90deg);
+  }
+  .hold-ring-circle {
+    fill: none;
+    stroke: #38bdf8;
+    stroke-width: 6;
+    stroke-dasharray: 180;
+    stroke-dashoffset: 180;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.05s linear;
+  }
+
+  /* 上部第2段：おひさまメーター（制限時間ではなく1プレイの目安）＆コンボ・探知モニター */
+  #status-strip {
+    position: fixed;
+    top: calc(max(16px, env(safe-area-inset-top)) + 64px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(92vw, 430px);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(254, 249, 195, 0.94) 100%);
+    border: 3px solid #f59e0b;
+    border-radius: 20px;
+    padding: 7px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    box-shadow: 0 4px 0 #d97706, 0 6px 16px rgba(0,0,0,0.2);
+    pointer-events: auto;
+    cursor: pointer;
+  }
+  .strip-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  #radar-status-text {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 13.5px;
+    font-weight: 900;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #combo-title-pill {
+    background: linear-gradient(135deg, #ec4899, #f97316);
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 900;
+    padding: 2px 8px;
+    border-radius: 999px;
+    display: none;
+    white-space: nowrap;
+  }
+  #combo-title-pill.show {
+    display: inline-block;
+  }
+  .strip-bottom-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  /* おひさまメーター（時間切れ失敗なし・ぽかぽか応援バー） */
+  .sun-meter-wrap {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex: 1;
+  }
+  .sun-meter-track {
+    flex: 1;
+    height: 10px;
+    background: #fde68a;
+    border-radius: 999px;
+    border: 1.5px solid #f59e0b;
+    overflow: hidden;
+  }
+  #sun-meter-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #f97316, #facc15);
+    border-radius: 999px;
+    transition: width 0.3s ease;
+  }
+  #stage-treasures-dots {
+    font-size: 14px;
+    letter-spacing: 2px;
+    flex-shrink: 0;
+  }
+
+  /* トースト通知 */
+  #info-toast {
+    position: fixed;
+    top: calc(max(16px, env(safe-area-inset-top)) + 132px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-6px);
+    z-index: 38;
+    background: rgba(15, 23, 42, 0.9);
+    color: #fef08a;
+    border: 2px solid #38bdf8;
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 12.5px;
+    font-weight: 900;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    white-space: nowrap;
+    max-width: 92vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #info-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* =========================================================
+     最下部中央：主役ワンボタン（幅220px以上×高さ68px以上、すすむ⇔ほる変身）
+     ========================================================= */
+  #bottom-main-bar {
+    position: fixed;
+    bottom: max(18px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 25;
+    pointer-events: auto;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 6px;
+    width: 100%;
+    padding: 0 10px;
+  }
+  /* バーチャルスティック：倒した方向に歩く（よくあるスティック操作） */
+  #joystick-base {
+    flex: 0 0 auto;
+    width: 104px;
+    height: 104px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+    border: 3px solid rgba(255, 255, 255, 0.85);
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.18), 0 6px 16px rgba(0, 0, 0, 0.25);
+    position: relative;
+    touch-action: none;
+  }
+  #joystick-knob {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 54px;
+    height: 54px;
+    margin: -27px 0 0 -27px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #fde047 0%, #f59e0b 100%);
+    border: 3px solid #ffffff;
+    box-shadow: 0 4px 0 #b45309, 0 6px 14px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    pointer-events: none;
+  }
+  #main-action-btn {
+    flex: 1 1 auto;
+    max-width: 256px;
+    min-width: 200px; /* 方向ボタン併設時は画面幅に合わせて可変（390px幅では約230pxになる） */
+    height: 72px;     /* 規定68px以上を満たす72px */
+    padding: 0 28px;
+    font-size: 21px;
+    background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+    border: 3px solid #fef08a;
+    box-shadow: 0 7px 0 #14532d, 0 10px 24px rgba(0, 0, 0, 0.35);
+    letter-spacing: 0.5px;
+  }
+  #main-action-btn:active {
+    box-shadow: 0 2px 0 #14532d;
+  }
+  /* 宝物の真上に来たときだけ黄金の「✨ ここを ほる！」に大変身 */
+  #main-action-btn.dig-mode {
+    background: linear-gradient(180deg, #fde047 0%, #f59e0b 100%);
+    color: #7c2d12;
+    border: 3.5px solid #ffffff;
+    text-shadow: 0 1.5px 0 rgba(255, 255, 255, 0.85);
+    box-shadow: 0 8px 0 #b45309, 0 0 28px rgba(250, 204, 21, 0.9);
+    animation: pulseDigBtn 0.65s infinite alternate ease-in-out;
+  }
+  @keyframes pulseDigBtn {
+    from { transform: scale(1.05); }
+    to   { transform: scale(1.13); }
+  }
+
+  /* =========================================================
+     画面③：ステージ選択／島マップドロワー（第2層）
+     ========================================================= */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .modal-backdrop.active {
+    display: flex;
+  }
+  .dialog-card {
+    width: min(94vw, 460px);
+    max-height: 86vh;
+    background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+    border: 4px solid #f59e0b;
+    border-radius: 28px;
+    padding: 16px;
+    color: #1e293b;
+    box-shadow: 0 10px 0 #b45309, 0 20px 45px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+  }
+  .dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .dialog-header h2 {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 19px;
+    font-weight: 900;
+    color: #b45309;
+  }
+  .close-big-btn {
+    min-width: 54px;
+    height: 54px;
+    padding: 0 16px;
+    background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 4px 0 #7f1d1d;
+    font-size: 14px;
+  }
+  .stage-map-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .stage-map-item {
+    min-height: 62px;
+    background: #ffffff;
+    border: 3px solid #fbbf24;
+    border-radius: 20px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #d97706;
+    transition: transform 0.1s;
+  }
+  .stage-map-item:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 #d97706;
+  }
+  .stage-map-item.selected {
+    background: linear-gradient(135deg, #fef08a, #fde68a);
+    border-color: #ea580c;
+  }
+  .stage-ico {
+    font-size: 30px;
+    flex-shrink: 0;
+  }
+  .stage-info-txt {
+    flex: 1;
+    text-align: left;
+  }
+  .stage-info-txt .st-title {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 15px;
+    font-weight: 900;
+    color: #1e293b;
+  }
+  .stage-info-txt .st-desc {
+    font-size: 11.5px;
+    font-weight: 800;
+    color: #9a3412;
+  }
+
+  /* =========================================================
+     画面④：発見ショー・ポップアップ（第2層オーバーレイ・0.8秒ロック付）
+     ========================================================= */
+  #discovery-modal {
+    z-index: 48;
+  }
+  .discovery-card {
+    width: min(92vw, 390px);
+    background: linear-gradient(180deg, #1e1b4b 0%, #312e81 100%);
+    border: 4px solid #fde047;
+    border-radius: 30px;
+    padding: 18px 16px;
+    text-align: center;
+    color: #ffffff;
+    box-shadow: 0 12px 0 #ca8a04, 0 22px 50px rgba(0, 0, 0, 0.65);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .disc-badge {
+    background: linear-gradient(135deg, #ec4899, #f97316);
+    border: 2px solid #fef08a;
+    padding: 4px 16px;
+    border-radius: 999px;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 14px;
+    font-weight: 900;
+  }
+  #disc-3d-stage {
+    width: 190px;
+    height: 170px;
+    border-radius: 20px;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.35) 0%, rgba(15, 23, 42, 0.2) 75%);
+    cursor: pointer;
+  }
+  #disc-item-name {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 23px;
+    font-weight: 900;
+    color: #fde047;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+  #disc-item-desc {
+    font-size: 13px;
+    font-weight: 800;
+    color: #e0f2fe;
+    line-height: 1.4;
+  }
+  #disc-friend-bonus {
+    background: rgba(34, 197, 94, 0.28);
+    border: 1.5px solid #86efac;
+    border-radius: 14px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #bbf7d0;
+    display: none;
+  }
+  #disc-next-btn {
+    min-width: 230px;
+    height: 68px;
+    font-size: 19px;
+    margin-top: 6px;
+    background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+    border: 3px solid #fef08a;
+    box-shadow: 0 6px 0 #14532d;
+  }
+
+  /* =========================================================
+     画面⑤：たからばこ＆ずかん統合画面（第3層・1画面＋タブ切替）
+     ========================================================= */
+  .collection-card {
+    width: min(95vw, 510px);
+    max-height: 88vh;
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    border: 3.5px solid #fde047;
+    border-radius: 28px;
+    padding: 15px;
+    color: #ffffff;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.65);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden;
+  }
+  /* タブ切り替えボタン（たからばこ12種 ⇔ いきものずかん4種） */
+  .tab-switch-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .tab-pokkori-btn {
+    min-height: 54px;
+    border-radius: 18px;
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 2px solid rgba(255, 255, 255, 0.28);
+    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.4);
+  }
+  .tab-pokkori-btn.active {
+    background: linear-gradient(180deg, #ec4899 0%, #db2777 100%);
+    border-color: #fde047;
+    box-shadow: 0 4px 0 #831843;
+  }
+  /* 3D展示棚＆回転プレビューバー */
+  #shelf-preview-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1.5px solid rgba(255, 255, 255, 0.22);
+    border-radius: 18px;
+    padding: 8px 12px;
+  }
+  #shelf-3d-stage {
+    width: 112px;
+    height: 112px;
+    border-radius: 14px;
+    background: radial-gradient(circle, #38bdf8 0%, #1e3a8a 100%);
+    flex-shrink: 0;
+    cursor: grab;
+  }
+  .shelf-info {
+    flex: 1;
+  }
+  #shelf-item-title {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 17px;
+    font-weight: 900;
+    color: #fde047;
+  }
+  #shelf-item-desc {
+    font-size: 12px;
+    font-weight: 800;
+    color: #f8fafc;
+    margin-top: 3px;
+    line-height: 1.35;
+  }
+  #shelf-speak-btn {
+    margin-top: 6px;
+    min-height: 40px;
+    padding: 0 14px;
+    font-size: 11.5px;
+    background: linear-gradient(180deg, #fb923c 0%, #ea580c 100%);
+    box-shadow: 0 3px 0 #9a3412;
+  }
+  .collection-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    overflow-y: auto;
+    padding: 2px;
+  }
+  .col-cell {
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.16);
+    border-radius: 14px;
+    padding: 8px 4px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 10.5px;
+    font-weight: 800;
+    color: #cbd5e1;
+  }
+  .col-cell.unlocked {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(147, 51, 234, 0.35));
+    border-color: #fde047;
+    color: #ffffff;
+  }
+  .col-cell.active-cell {
+    border-color: #ffffff;
+    box-shadow: 0 0 12px rgba(253, 224, 71, 0.7);
+  }
+  .col-cell .c-emo {
+    font-size: 22px;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  /* =========================================================
+     画面⑥：おとな設定メニュー（ペアレンタルゲート＆2秒長押しリセット）
+     ========================================================= */
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #ffffff;
+    border: 2px solid #fcd34d;
+    border-radius: 16px;
+    padding: 10px 14px;
+    font-weight: 800;
+    font-size: 13.5px;
+  }
+  .toggle-pill-btn {
+    min-width: 90px;
+    height: 46px;
+    padding: 0 14px;
+    font-size: 13px;
+    background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+    box-shadow: 0 4px 0 #14532d;
+  }
+  .toggle-pill-btn.off {
+    background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
+    box-shadow: 0 4px 0 #334155;
+  }
+  #reset-hold-btn {
+    width: 100%;
+    height: 54px;
+    background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
+    box-shadow: 0 4px 0 #7f1d1d;
+    font-size: 13.5px;
+    position: relative;
+    overflow: hidden;
+  }
+  #reset-progress-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 0%;
+    background: rgba(56, 189, 248, 0.55);
+    pointer-events: none;
+  }
+  /* データリセット最終確認ダイアログ（「はい」「いいえ」） */
+  #reset-confirm-box {
+    display: none;
+    background: #fee2e2;
+    border: 2.5px solid #ef4444;
+    border-radius: 16px;
+    padding: 12px;
+    text-align: center;
+  }
+  #reset-confirm-box.show {
+    display: block;
+  }
+  .confirm-btns-row {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 10px;
+  }
+
+  /* 雲と虹のステージ切替トランジション（0.35秒） */
+  #cloud-transition {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    background: radial-gradient(circle, #ffffff 0%, #e0f2fe 100%);
+    opacity: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 24px;
+    font-weight: 900;
+    color: #0284c7;
+    transition: opacity 0.32s ease;
+  }
+  #cloud-transition.active {
+    opacity: 1;
+  }
+
+  @media (max-width: 400px) {
+    .title-main { font-size: 20px; }
+    #main-action-btn { min-width: 228px; height: 68px; font-size: 19px; }
+    .sub-icon-btn { min-width: 52px; height: 52px; }
+  }
+</style>
+</head>
+<body class="stage-1">
+
+<!-- 背景のインラインSVG模様 -->
+<div id="bg-svg-pattern"></div>
+
+<!-- 3Dキャンバス -->
+<div id="canvas-container"></div>
+
+<!-- 雲と虹のステージ切替トランジション -->
+<div id="cloud-transition">
+  <div style="font-size:56px;">☁️🌈☁️</div>
+  <div>あたらしい しまへ しゅっぱつ！</div>
+</div>
+
+<!-- =========================================================
+     画面①：タイトル＆スタート画面（第1層）
+     ========================================================= -->
+<div id="title-screen">
+  <div class="title-banner">
+    <div class="title-sub">🔊 ピピッとおとで さがそう！</div>
+    <div class="title-main">3Dピピッと探知機！<br />たから島たんけん</div>
+    <div class="title-hint-pill">👆 ポッケのくびわや がめんを さわってみてね♪</div>
+  </div>
+
+  <div class="title-bottom-box">
+    <div id="resume-badge" style="display:none;">✨ あつめた たからもの の つづきから あそべるよ！</div>
+    <button class="pokkori-btn" id="start-game-btn">
+      🏝️ たんけん スタート！
+    </button>
+  </div>
+</div>
+
+<!-- =========================================================
+     画面②：プレイ画面（第2層）
+     ========================================================= -->
+<div id="play-hud" class="hidden">
+  <!-- 上部サブボタンバー（端16px余白、ボタンサイズ54px、間隔12px以上） -->
+  <div id="top-bar">
+    <div class="top-left-group">
+      <button class="pokkori-btn sub-icon-btn" id="map-open-btn" title="しまマップ（ステージせんたく）">
+        🗺️ <span id="hud-stage-name">Lv.1</span>
+      </button>
+      <button class="pokkori-btn sub-icon-btn" id="box-open-btn" title="たからばこ＆ずかん">
+        🎁 <span id="hud-col-count">0/16</span>
+      </button>
+    </div>
+
+    <div class="top-right-group">
+      <button class="pokkori-btn sub-icon-btn square" id="hint-btn" title="おたすけヒント">
+        💡
+      </button>
+      <!-- おとな関門：1.5秒長押しで開く設定ボタン -->
+      <button class="pokkori-btn sub-icon-btn square" id="settings-gate-btn" title="おとなのひとと 1.5びょう ながおし">
+        ⚙️
+        <svg class="hold-ring-svg" viewBox="0 0 60 60">
+          <circle class="hold-ring-circle" id="settings-hold-circle" cx="30" cy="30" r="26"></circle>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- おひさまメーター（制限時間ではない目安表示）＆探知モニター -->
+  <div id="status-strip" title="タップで音声ガイドをよみあげます">
+    <div class="strip-top-row">
+      <div id="radar-status-text">📡 ピピまる「スティックを たおして あるこう！」</div>
+      <div id="combo-title-pill">🔥 3コンボ！ほりほりマスター</div>
+    </div>
+    <div class="strip-bottom-row">
+      <div class="sun-meter-wrap">
+        <span style="font-size:15px;">☀️</span>
+        <div class="sun-meter-track">
+          <div id="sun-meter-fill"></div>
+        </div>
+      </div>
+      <div id="stage-treasures-dots">⚪⚪⚪⚪⚪</div>
+    </div>
+  </div>
+
+  <!-- トースト通知 -->
+  <div id="info-toast">📡 ピピッ！ちかづいてきたよ！</div>
+
+  <!-- 最下部中央：主役1ボタン（移動中は「すすむ」、真上に来たら金色の「ほる！」に変身） -->
+  <div id="bottom-main-bar">
+    <div id="joystick-base" aria-label="スティック">
+      <div id="joystick-knob">🐾</div>
+    </div>
+    <button class="pokkori-btn" id="main-action-btn">
+      🐾 トコトコ すすむ！
+    </button>
+  </div>
+</div>
+
+<!-- =========================================================
+     画面③：ステージ選択／島マップドロワー（第2層）
+     ========================================================= -->
+<div class="modal-backdrop" id="map-modal">
+  <div class="dialog-card">
+    <div class="dialog-header">
+      <h2>🗺️ たからじま マップ（えらんでね）</h2>
+      <button class="pokkori-btn close-big-btn" id="close-map-btn">✕ とじる</button>
+    </div>
+    <div class="stage-map-list" id="stage-map-list"></div>
+  </div>
+</div>
+
+<!-- =========================================================
+     画面④：発見ショー・ポップアップ（第2層オーバーレイ）
+     ========================================================= -->
+<div class="modal-backdrop" id="discovery-modal">
+  <div class="discovery-card" id="discovery-card-inner">
+    <div class="disc-badge" id="disc-rarity-badge">✨ たからもの はっけん！</div>
+    <div id="disc-3d-stage" title="タップでキラキラ＆回転"></div>
+    <div id="disc-item-name">👑 ルビーのおうかん</div>
+    <div id="disc-item-desc">まっかな ルビーが かがやく すてきな おうかん！</div>
+    <div id="disc-friend-bonus">🦀 おともだちの「カニさん」も いっしょに でてきたよ！</div>
+    <button class="pokkori-btn" id="disc-next-btn">
+      👆 つぎへ すすむ！
+    </button>
+  </div>
+</div>
+
+<!-- =========================================================
+     画面⑤：たからばこ＆ずかん統合画面（第3層・タブ切替）
+     ========================================================= -->
+<div class="modal-backdrop" id="collection-modal">
+  <div class="collection-card">
+    <div class="dialog-header">
+      <h2 style="color:#fde047;">🏆 たからばこ ＆ ずかん</h2>
+      <button class="pokkori-btn close-big-btn" id="close-col-btn">✕ もどる</button>
+    </div>
+
+    <!-- タブ切替（たからばこ12種 ⇔ いきものずかん4種） -->
+    <div class="tab-switch-row">
+      <button class="pokkori-btn tab-pokkori-btn active" id="tab-treasures-btn">
+        🎁 たからばこ (12しゅ)
+      </button>
+      <button class="pokkori-btn tab-pokkori-btn" id="tab-friends-btn">
+        🦀 いきものずかん (4しゅ)
+      </button>
+    </div>
+
+    <!-- 3D回転プレビュー＆音声解説 -->
+    <div id="shelf-preview-box">
+      <div id="shelf-3d-stage" title="ドラッグでくるくる回せます"></div>
+      <div class="shelf-info">
+        <div id="shelf-item-title">👑 ルビーのおうかん</div>
+        <div id="shelf-item-desc">あつめた たからものを タッチして みてみよう！</div>
+        <button class="pokkori-btn" id="shelf-speak-btn">🔊 なまえを きく</button>
+      </div>
+    </div>
+
+    <!-- コレクショングリッド -->
+    <div class="collection-grid" id="collection-grid"></div>
+  </div>
+</div>
+
+<!-- =========================================================
+     画面⑥：おとな設定メニュー（ペアレンタルゲート付き）
+     ========================================================= -->
+<div class="modal-backdrop" id="settings-modal">
+  <div class="dialog-card">
+    <div class="dialog-header">
+      <h2>⚙️ おとな せっていメニュー</h2>
+      <button class="pokkori-btn close-big-btn" id="close-settings-btn">✕ とじる</button>
+    </div>
+
+    <div class="settings-row">
+      <span>🔊 おと・こえ の オン/オフ</span>
+      <button class="pokkori-btn toggle-pill-btn" id="toggle-sound-btn">ON 🔊</button>
+    </div>
+
+    <div class="settings-row">
+      <span>🗣️ よみあげ の はやさ</span>
+      <button class="pokkori-btn toggle-pill-btn" id="toggle-speech-rate-btn">ふつう</button>
+    </div>
+
+    <div class="settings-row" style="flex-direction:column; gap:8px; align-items:stretch;">
+      <div style="font-size:12px; color:#64748b;">
+        ※データを消すときは 下のボタンを 2びょう ながおし してください
+      </div>
+      <button class="pokkori-btn" id="reset-hold-btn">
+        <div id="reset-progress-bar"></div>
+        <span style="position:relative; z-index:2;">🗑️ データを リセット（2びょう長押し）</span>
+      </button>
+
+      <!-- 2秒長押し後に表示される確認ダイアログ -->
+      <div id="reset-confirm-box">
+        <div style="font-weight:900; color:#b91c1c; font-size:14px;">
+          ほんとうに データを リセットする？
+        </div>
+        <div class="confirm-btns-row">
+          <button class="pokkori-btn close-big-btn" id="confirm-reset-yes" style="min-width:95px;">はい</button>
+          <button class="pokkori-btn toggle-pill-btn" id="confirm-reset-no" style="min-width:95px;">いいえ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Three.js / Cannon.js / GSAP / canvas-confetti (CDN) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+<script>
+(() => {
+  // ==========================================
+  // 1. マスターデータ定義（宝物12種＝通常10＋レア2、おともだち生き物4種、全5ステージ）
+  // ==========================================
+  const TREASURE_CATALOG = [
+    // 通常10種
+    {
+      id: 'ruby_crown', name: 'ルビーのおうかん', emoji: '👑', color: 0xef4444, sub: 0xfacc15, rare: false,
+      desc: 'まっかな ルビーが キラキラ かがやく おうさまの おうかんだよ！'
+    },
+    {
+      id: 'gold_coin', name: 'おうごんコイン', emoji: '🪙', color: 0xfacc15, sub: 0xd97706, rare: false,
+      desc: 'むかしの たからじまで つかわれていた ピカピカの きんかだよ！'
+    },
+    {
+      id: 'pearl_shell', name: 'ピンクしんじゅのかいがら', emoji: '🐚', color: 0xf472b6, sub: 0xffffff, rare: false,
+      desc: 'なかに まんまるな ピンクの しんじゅが はいった かいがらだよ！'
+    },
+    {
+      id: 'star_pendant', name: 'ほしのペンダント', emoji: '🌟', color: 0xfde047, sub: 0x38bdf8, rare: false,
+      desc: 'おそらの ほしと おなじ かたちをした ひかる ペンダントだよ！'
+    },
+    {
+      id: 'dino_fossil', name: 'きょうりゅうのかせき', emoji: '🦕', color: 0xd97706, sub: 0xfef3c7, rare: false,
+      desc: 'おおむかしの きょうりゅうの あしあとが のこった かせきだよ！'
+    },
+    {
+      id: 'ancient_medal', name: 'こだいのメダル', emoji: '🎖️', color: 0xf59e0b, sub: 0x10b981, rare: false,
+      desc: 'たんけんを がんばった ひとに おくられる こだいの メダルだよ！'
+    },
+    {
+      id: 'emerald_ring', name: 'エメラルドのゆびわ', emoji: '💍', color: 0x10b981, sub: 0xfacc15, rare: false,
+      desc: 'きれいな みどりいろの ほうせきが ついた ゆびわだよ！'
+    },
+    {
+      id: 'crystal_key', name: 'クリスタルのかぎ', emoji: '🗝️', color: 0x38bdf8, sub: 0xe0f2fe, rare: false,
+      desc: 'ひみつの たからばこを あける とうめいな クリスタルのかぎだよ！'
+    },
+    {
+      id: 'sun_stone', name: 'たいようのいし', emoji: '☀️', color: 0xf97316, sub: 0xfef08a, rare: false,
+      desc: 'おひさまみたいに ぽかぽか あたたかい オレンジいろの いしだよ！'
+    },
+    {
+      id: 'bottle_ship', name: 'ガラスのボトルシップ', emoji: '⛵', color: 0x60a5fa, sub: 0xffffff, rare: false,
+      desc: 'とうめいな ガラスの びんの なかに ちいさな ふねが はいっているよ！'
+    },
+    // レア2種（アルパ確定事項：にじいろの宝石／おうごんの王冠）
+    {
+      id: 'rainbow_gem', name: 'にじいろのほうせき', emoji: '🌈', color: 0xe879f9, sub: 0x38bdf8, rare: true,
+      desc: 'なないろに ひかりかがやく、たからじま いちばんの レアな ほうせきだよ！'
+    },
+    {
+      id: 'golden_crown', name: 'おうごんのおうかん', emoji: '🏆', color: 0xfde047, sub: 0xffffff, rare: true,
+      desc: 'でんせつの たんけんか だけが みつけられる、まぶしい おうごんのおうかんだよ！'
+    }
+  ];
+
+  // おともだち生き物（全4種）
+  const FRIEND_CATALOG = [
+    {
+      id: 'hermit_crab', name: 'ヤドカリくん', emoji: '🐚', color: 0xf97316, sub: 0xfef3c7,
+      desc: 'かいがらの おうちから ひょっこり かおを だして ニコニコ わらうよ！'
+    },
+    {
+      id: 'crab', name: 'カニさん', emoji: '🦀', color: 0xef4444, sub: 0xfca5a5,
+      desc: 'おおきな ハサミを パチパチ もちあげて リズムをとるのが だいすき！'
+    },
+    {
+      id: 'mole', name: 'モグラくん', emoji: '🐹', color: 0x92400e, sub: 0xfde68a,
+      desc: 'つちの なかから かおを だして おみみを ピクピク うごかすよ！'
+    },
+    {
+      id: 'bird', name: 'ことりさん', emoji: '🐣', color: 0xfacc15, sub: 0xffffff,
+      desc: 'はねを パタパタ ひろげて「チュンチュン♪」と うたってくれるよ！'
+    }
+  ];
+
+  // 全5ステージ定義
+  const STAGE_LIST = [
+    {
+      level: 1, name: 'Lv.1 すなはま', fullName: 'Lv.1 キラキラすなはま', icon: '🏖️',
+      desc: 'おとの へんかが わかりやすい たんけんの れんしゅうじょう！',
+      groundColor: 0xfef08a, rimColor: 0x38bdf8, sunGoalSteps: 18
+    },
+    {
+      level: 2, name: 'Lv.2 おはなばたけ', fullName: 'Lv.2 そよかぜのお花畑', icon: '🌷',
+      desc: 'おはなの かげに かくれた たからものを おとで さがそう！',
+      groundColor: 0xbbf7d0, rimColor: 0xf472b6, sunGoalSteps: 20
+    },
+    {
+      level: 3, name: 'Lv.3 おかしのくに', fullName: 'Lv.3 あま〜いお菓子の国', icon: '🍩',
+      desc: 'ドーナツや ケーキの うしろから ピピッとおとが きこえるよ！',
+      groundColor: 0xfce7f3, rimColor: 0xf59e0b, sunGoalSteps: 22
+    },
+    {
+      level: 4, name: 'Lv.4 もりもりもり', fullName: 'Lv.4 ひみつのもりもり森', icon: '🌲',
+      desc: 'おおきな きの あいだを あるいて おとの ほうへ すすもう！',
+      groundColor: 0x86efac, rimColor: 0x15803d, sunGoalSteps: 24
+    },
+    {
+      level: 5, name: 'Lv.5 よるのたからじま', fullName: 'Lv.5 星空とたから島のひみつ', icon: '🌌',
+      desc: 'レアな「にじいろのほうせき」や「おうごんのおうかん」が でるよ！',
+      groundColor: 0x312e81, rimColor: 0xfacc15, sunGoalSteps: 26
+    }
+  ];
+
+  // セーブデータ（localStorage）管理
+  const STORAGE_KEY = 'treasure_island_detector_v2';
+  let saveData = {
+    currentLevel: 1,
+    treasures: {},
+    friends: {},
+    comboBest: 0
+  };
+
+  function loadSaveData() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      if (raw && typeof raw === 'object') {
+        saveData.currentLevel = raw.currentLevel || 1;
+        saveData.treasures = raw.treasures || {};
+        saveData.friends = raw.friends || {};
+        saveData.comboBest = raw.comboBest || 0;
+      }
+    } catch (e) {}
+    updateHudCollectionBadge();
+  }
+
+  function writeSaveData() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
+    } catch (e) {}
+    updateHudCollectionBadge();
+  }
+
+  function updateHudCollectionBadge() {
+    const tCount = TREASURE_CATALOG.filter(t => (saveData.treasures[t.id] || 0) > 0).length;
+    const fCount = FRIEND_CATALOG.filter(f => (saveData.friends[f.id] || 0) > 0).length;
+    document.getElementById('hud-col-count').textContent = `${tCount + fCount}/16`;
+
+    if (tCount + fCount > 0) {
+      document.getElementById('resume-badge').style.display = 'inline-block';
+    }
+  }
+
+  // ==========================================
+  // 2. Web Audio API（探知機の連続ピッチ・テンポ制御＆効果音）＋ Web Speech API
+  // ==========================================
+  class IslandSoundEngine {
+    constructor() {
+      this.ctx = null;
+      this.enabled = true;
+      this.speechRate = 0.98;
+      this.lastBeepTime = 0;
+    }
+    init() {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) this.ctx = new AudioCtx();
+      }
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+    }
+    speak(text) {
+      if (!this.enabled || !('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'ja-JP';
+        u.rate = this.speechRate;
+        u.pitch = 1.15;
+        window.speechSynthesis.speak(u);
+      } catch (e) {}
+    }
+    playTone(freq, dur = 0.12, type = 'triangle', vol = 0.16) {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, now);
+      g.gain.setValueAtTime(vol, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      o.connect(g).connect(this.ctx.destination);
+      o.start(now);
+      o.stop(now + dur);
+    }
+    // 探知機の「ピピッ」音（近さ proximity 0.0〜1.0 で高さと速さを連続制御）
+    playDetectorBeep(proximity) {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      // 遠い(0.0): 420Hz → 真上(1.0): 1180Hz
+      const freq = 420 + Math.pow(proximity, 1.3) * 760;
+      const dur = proximity > 0.85 ? 0.065 : 0.09;
+
+      [0, dur * 1.15].forEach((offset, idx) => {
+        if (idx === 1 && proximity < 0.45) return; // 近いときは「ピピッ！」の2連音になる
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(freq * (idx === 1 ? 1.12 : 1.0), now + offset);
+        g.gain.setValueAtTime(0.14, now + offset);
+        g.gain.exponentialRampToValueAtTime(0.001, now + offset + dur);
+        o.connect(g).connect(this.ctx.destination);
+        o.start(now + offset);
+        o.stop(now + offset + dur + 0.01);
+      });
+
+      // 対応端末のみ軽い振動フィードバック
+      if (proximity > 0.75 && navigator.vibrate) {
+        try { navigator.vibrate(25); } catch (e) {}
+      }
+    }
+    playBark() {
+      // ポッケの「ワン♪」
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(480, now);
+      o.frequency.exponentialRampToValueAtTime(760, now + 0.09);
+      o.frequency.exponentialRampToValueAtTime(420, now + 0.18);
+      g.gain.setValueAtTime(0.18, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      o.connect(g).connect(this.ctx.destination);
+      o.start(now);
+      o.stop(now + 0.21);
+    }
+    playFootstep(stepIdx) {
+      this.playTone(stepIdx % 2 === 0 ? 350 : 440, 0.08, 'triangle', 0.12);
+    }
+    playDigSound() {
+      // ザクザク穴掘り音
+      [260, 340, 420, 520].forEach((f, i) => {
+        setTimeout(() => this.playTone(f, 0.09, 'sawtooth', 0.11), i * 85);
+      });
+      if (navigator.vibrate) {
+        try { navigator.vibrate([40, 30, 60]); } catch (e) {}
+      }
+    }
+    playFanfare(comboCount = 1, isRare = false) {
+      // コンボが上がるほど音階が少しずつ高くなる祝福ファンファーレ
+      const pitchShift = Math.min(1.35, 1 + (comboCount - 1) * 0.05);
+      const baseNotes = isRare
+        ? [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98]
+        : [523.25, 659.25, 783.99, 1046.5];
+      baseNotes.forEach((f, i) => {
+        setTimeout(() => this.playTone(f * pitchShift, 0.26, 'triangle', 0.2), i * 90);
+      });
+    }
+    playWindTransition() {
+      [440, 554.37, 659.25, 880].forEach((f, i) => {
+        setTimeout(() => this.playTone(f, 0.15, 'sine', 0.12), i * 55);
+      });
+    }
+  }
+  const sound = new IslandSoundEngine();
+
+  // ==========================================
+  // 3. Three.js + Cannon.js メイン3D空間＆物理エンジン構築
+  // ==========================================
+  const container = document.getElementById('canvas-container');
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0xbae6fd, 0.012);
+
+  const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 160);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  container.appendChild(renderer.domElement);
+
+  const ambientLight = new THREE.AmbientLight(0xfffbeb, 0.85);
+  scene.add(ambientLight);
+
+  const sunLight = new THREE.DirectionalLight(0xfff7ed, 0.95);
+  sunLight.position.set(10, 26, 15);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.width = 1024;
+  sunLight.shadow.mapSize.height = 1024;
+  scene.add(sunLight);
+
+  // Cannon.js 物理ワールド（掘った瞬間に飛び散る土の粒＆お宝ジャンプ用）
+  const world = new CANNON.World();
+  world.gravity.set(0, -26, 0);
+  const soilPhysMat = new CANNON.Material('soil');
+  world.addContactMaterial(new CANNON.ContactMaterial(soilPhysMat, soilPhysMat, {
+    friction: 0.4,
+    restitution: 0.45
+  }));
+
+  const groundBody = new CANNON.Body({ mass: 0, material: soilPhysMat });
+  groundBody.addShape(new CANNON.Box(new CANNON.Vec3(25, 0.5, 25)));
+  groundBody.position.set(0, -0.5, 0);
+  world.addBody(groundBody);
+
+  const islandGroup = new THREE.Group();
+  scene.add(islandGroup);
+
+  // ==========================================
+  // 4. 主人公「たんけんわんこ・ポッケ」＆相棒ロボ「ピピまる」3Dモデル構築
+  // ==========================================
+  function createPokkeAndPipimaru3D() {
+    const root = new THREE.Group();
+
+    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35 });
+    const orangeMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.4 });
+    const brownMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.45 });
+    const darkMat = new THREE.MeshBasicMaterial({ color: 0x111827 });
+    const cheekMat = new THREE.MeshBasicMaterial({ color: 0xfb7185 });
+
+    // ① 足元の楕円形ドロップシャドウ（浮遊感防止）
+    const dropShadow = new THREE.Mesh(
+      new THREE.CircleGeometry(1.05, 24),
+      new THREE.MeshBasicMaterial({ color: 0x0f172a, transparent: true, opacity: 0.28 })
+    );
+    dropShadow.rotation.x = -Math.PI / 2;
+    dropShadow.scale.set(1.0, 1.15, 1.0);
+    dropShadow.position.y = 0.05;
+    root.add(dropShadow);
+
+    const pokkePivot = new THREE.Group();
+    root.add(pokkePivot);
+
+    // ② ポッケの胴体（三毛模様パッチ付き）＋首輪と青い丸タグ
+    const torso = new THREE.Mesh(new THREE.SphereGeometry(0.76, 18, 16), whiteMat);
+    torso.scale.set(0.96, 0.92, 1.12);
+    torso.position.y = 0.8;
+    torso.castShadow = true;
+    pokkePivot.add(torso);
+
+    const patch1 = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 12), orangeMat);
+    patch1.position.set(0.32, 0.92, -0.1);
+    const patch2 = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), brownMat);
+    patch2.position.set(-0.3, 0.85, 0.2);
+    pokkePivot.add(patch1, patch2);
+
+    // 赤い首輪＆タイトル画面で触れる「丸い青色のタグ」
+    const collar = new THREE.Mesh(
+      new THREE.TorusGeometry(0.55, 0.08, 10, 24),
+      new THREE.MeshStandardMaterial({ color: 0xef4444 })
+    );
+    collar.rotation.x = Math.PI / 2;
+    collar.position.set(0, 1.24, 0.05);
+    const blueTag = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.22, 0.22, 0.08, 16),
+      new THREE.MeshStandardMaterial({ color: 0x2563eb, emissive: 0x1d4ed8, emissiveIntensity: 0.3 })
+    );
+    blueTag.rotation.x = Math.PI / 2;
+    blueTag.position.set(0, 1.12, 0.65);
+    pokkePivot.add(collar, blueTag);
+
+    // 4本の足＆しっぽ
+    const legs = [];
+    [[-0.36, 0.36], [0.36, 0.36], [-0.36, -0.36], [0.36, -0.36]].forEach(([lx, lz]) => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.65, 10), whiteMat);
+      leg.position.set(lx, 0.32, lz);
+      leg.castShadow = true;
+      pokkePivot.add(leg);
+      legs.push(leg);
+    });
+
+    const tailPivot = new THREE.Group();
+    tailPivot.position.set(0, 0.95, -0.7);
+    const tailMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.75, 10), orangeMat);
+    tailMesh.position.set(0, 0.3, -0.15);
+    tailMesh.rotation.x = -0.5;
+    tailPivot.add(tailMesh);
+    pokkePivot.add(tailPivot);
+
+    // ③ ポッケの丸頭・大きな耳・探検ヘルメット・4段階表情パーツ
+    const headGroup = new THREE.Group();
+    headGroup.position.set(0, 1.78, 0.12);
+    pokkePivot.add(headGroup);
+
+    const headSphere = new THREE.Mesh(new THREE.SphereGeometry(0.78, 20, 18), whiteMat);
+    headSphere.scale.set(1.06, 0.96, 1.0);
+    headSphere.castShadow = true;
+    headGroup.add(headSphere);
+
+    // 黄色い探検ヘルメット（ライト付き）
+    const helmet = new THREE.Mesh(
+      new THREE.SphereGeometry(0.72, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.48),
+      new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.25 })
+    );
+    helmet.position.y = 0.22;
+    const helmetLamp = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.16, 0.16, 0.14, 12),
+      new THREE.MeshBasicMaterial({ color: 0xfef08a })
+    );
+    helmetLamp.rotation.x = Math.PI / 2;
+    helmetLamp.position.set(0, 0.56, 0.66);
+    headGroup.add(helmet, helmetLamp);
+
+    // 大きな耳（左右で三毛色分け）
+    const leftEar = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), orangeMat);
+    leftEar.scale.set(0.55, 1.25, 0.8);
+    leftEar.position.set(-0.72, 0.18, 0);
+    leftEar.rotation.z = 0.28;
+    const rightEar = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), brownMat);
+    rightEar.scale.set(0.55, 1.25, 0.8);
+    rightEar.position.set(0.72, 0.18, 0);
+    rightEar.rotation.z = -0.28;
+    headGroup.add(leftEar, rightEar);
+
+    // 表情切り替え用グループ（通常目 vs 大喜び黄金星目⭐）
+    const normalEyes = new THREE.Group();
+    const starEyes = new THREE.Group();
+    starEyes.visible = false;
+    headGroup.add(normalEyes, starEyes);
+
+    [-0.28, 0.28].forEach(ex => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 12), darkMat);
+      eye.position.set(ex, 0.08, 0.72);
+      const shine = new THREE.Mesh(new THREE.SphereGeometry(0.048, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      shine.position.set(ex + 0.04, 0.13, 0.81);
+      normalEyes.add(eye, shine);
+
+      const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.17, 0), new THREE.MeshBasicMaterial({ color: 0xfde047 }));
+      star.position.set(ex, 0.1, 0.75);
+      starEyes.add(star);
+
+      const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 8), cheekMat);
+      cheek.scale.set(1.3, 0.75, 0.5);
+      cheek.position.set(ex * 1.5, -0.08, 0.68);
+      headGroup.add(cheek);
+    });
+
+    // 丸い鼻＆口（通常口と「わぁ〜！」口）
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 10), darkMat);
+    nose.position.set(0, -0.02, 0.8);
+    const mouthSmile = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.025, 8, 12, Math.PI), darkMat);
+    mouthSmile.rotation.x = Math.PI;
+    mouthSmile.position.set(0, -0.1, 0.76);
+    const mouthWow = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 10), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+    mouthWow.scale.set(1, 1.2, 0.4);
+    mouthWow.position.set(0, -0.14, 0.76);
+    mouthWow.visible = false;
+    headGroup.add(nose, mouthSmile, mouthWow);
+
+    // 頭上の「❗（ワクワク）」「💡（発見）」3Dポップアップアイコン
+    const headMarkerSprite = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, opacity: 0 }));
+    headMarkerSprite.scale.set(1.3, 1.3, 1);
+    headMarkerSprite.position.set(0, 1.45, 0);
+    headGroup.add(headMarkerSprite);
+
+    // ④ 相棒キャラ「ピピまる」（キラキラピンク色の探知機ロボ＋アンテナ発光リング＋方向矢印）
+    const pipiGroup = new THREE.Group();
+    pipiGroup.position.set(1.25, 2.35, 0.3);
+    root.add(pipiGroup);
+
+    const pipiBodyMat = new THREE.MeshPhysicalMaterial({
+      color: 0xf472b6,
+      roughness: 0.18,
+      metalness: 0.1,
+      clearcoat: 0.9
+    });
+    const pipiBody = new THREE.Mesh(new THREE.SphereGeometry(0.46, 18, 16), pipiBodyMat);
+    pipiGroup.add(pipiBody);
+
+    // ピピまるの目（通常キラキラ目 vs 発見時のハート目🩷）
+    const pipiNormalEyes = new THREE.Group();
+    const pipiHeartEyes = new THREE.Group();
+    pipiHeartEyes.visible = false;
+    pipiGroup.add(pipiNormalEyes, pipiHeartEyes);
+
+    [-0.16, 0.16].forEach(px => {
+      const pEye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), darkMat);
+      pEye.position.set(px, 0.05, 0.42);
+      const pStar = new THREE.Mesh(new THREE.OctahedronGeometry(0.05, 0), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+      pStar.position.set(px + 0.08, 0.14, 0.43);
+      pipiNormalEyes.add(pEye, pStar);
+
+      const hEye = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 10), new THREE.MeshBasicMaterial({ color: 0xf43f5e }));
+      hEye.position.set(px, 0.06, 0.43);
+      pipiHeartEyes.add(hEye);
+    });
+
+    // 頭上アンテナ＆回転する「アンテナ発光リング」
+    const antRod = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.35, 8), new THREE.MeshStandardMaterial({ color: 0xfacc15 }));
+    antRod.position.y = 0.56;
+    const antTip = new THREE.Mesh(new THREE.OctahedronGeometry(0.14, 0), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+    antTip.position.y = 0.78;
+    const antWaveRing = new THREE.Mesh(
+      new THREE.TorusGeometry(0.32, 0.04, 8, 24),
+      new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.75 })
+    );
+    antWaveRing.rotation.x = Math.PI / 2;
+    antWaveRing.position.y = 0.78;
+    pipiGroup.add(antRod, antTip, antWaveRing);
+
+    // お宝の方向を指す大きな足元矢印（太い軸＋大きな三角、白いフチ付きで見やすく）
+    const dirArrowGroup = new THREE.Group();
+    dirArrowGroup.position.set(0, 0.14, 0);
+    const arrowMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+    const arrowEdgeMat = new THREE.MeshBasicMaterial({ color: 0x991b1b });
+    const shaftEdge = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.03, 1.32), arrowEdgeMat);
+    shaftEdge.position.set(0, -0.015, 1.18);
+    const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.05, 1.18), arrowMat);
+    shaft.position.set(0, 0, 1.18);
+    const headEdge = new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.32, 14), arrowEdgeMat);
+    headEdge.rotation.x = Math.PI / 2;
+    headEdge.position.set(0, -0.015, 2.3);
+    const head = new THREE.Mesh(new THREE.ConeGeometry(0.62, 1.15, 14), arrowMat);
+    head.rotation.x = Math.PI / 2;
+    head.position.set(0, 0, 2.3);
+    dirArrowGroup.add(shaftEdge, headEdge, shaft, head);
+    root.add(dirArrowGroup);
+
+    root.userData = {
+      pokkePivot,
+      headGroup,
+      legs,
+      tailPivot,
+      leftEar,
+      rightEar,
+      normalEyes,
+      starEyes,
+      mouthSmile,
+      mouthWow,
+      headMarkerSprite,
+      blueTag,
+      pipiGroup,
+      pipiBody,
+      pipiBodyMat,
+      pipiNormalEyes,
+      pipiHeartEyes,
+      antTip,
+      antWaveRing,
+      dirArrowGroup
+    };
+    return root;
+  }
+
+  // 頭上マーカー（「❗」「💡」）テクスチャ生成
+  const markerTexCache = {};
+  function getMarkerTexture(symbol) {
+    if (markerTexCache[symbol]) return markerTexCache[symbol];
+    const c = document.createElement('canvas');
+    c.width = 128; c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.beginPath();
+    ctx.arc(64, 64, 52, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = '#f59e0b';
+    ctx.stroke();
+    ctx.font = '72px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(symbol, 64, 68);
+    const t = new THREE.CanvasTexture(c);
+    markerTexCache[symbol] = t;
+    return t;
+  }
+
+  const playerRoot = createPokkeAndPipimaru3D();
+  scene.add(playerRoot);
+
+  // 4段階の表情・状態切り替え関数
+  // state: 1(通常) | 2(ワクワク:❗) | 3(発見:💡＆ハート目) | 4(大喜び:⭐)
+  function setCharacterEmotionState(stateNum) {
+    const ud = playerRoot.userData;
+    ud.normalEyes.visible = stateNum !== 4;
+    ud.starEyes.visible = stateNum === 4;
+    ud.mouthSmile.visible = stateNum !== 3;
+    ud.mouthWow.visible = stateNum === 3;
+
+    ud.pipiNormalEyes.visible = stateNum !== 3;
+    ud.pipiHeartEyes.visible = stateNum === 3;
+
+    if (stateNum === 2) {
+      ud.headMarkerSprite.material.map = getMarkerTexture('❗');
+      ud.headMarkerSprite.material.needsUpdate = true; // マップ差し替え時は必須（無いと白い四角になる）
+      ud.headMarkerSprite.material.opacity = 1;
+    } else if (stateNum === 3) {
+      ud.headMarkerSprite.material.map = getMarkerTexture('💡');
+      ud.headMarkerSprite.material.needsUpdate = true;
+      ud.headMarkerSprite.material.opacity = 1;
+    } else {
+      ud.headMarkerSprite.material.opacity = 0;
+    }
+  }
+
+  // ==========================================
+  // 5. 宝物12種 ＆ おともだち生き物4種の3Dモデル生成関数
+  // ==========================================
+  function createItem3DModel(spec, isFriend = false) {
+    const g = new THREE.Group();
+    const mainMat = new THREE.MeshStandardMaterial({
+      color: spec.color,
+      roughness: 0.2,
+      metalness: isFriend ? 0.05 : 0.45
+    });
+    const subMat = new THREE.MeshStandardMaterial({
+      color: spec.sub || 0xffffff,
+      roughness: 0.25,
+      metalness: 0.3
+    });
+    const darkMat = new THREE.MeshBasicMaterial({ color: 0x111827 });
+
+    if (isFriend) {
+      // おともだち生き物4種（顔と愛嬌のある造形）
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 14), mainMat);
+      body.position.y = 0.55;
+      g.add(body);
+      [-0.2, 0.2].forEach(ex => {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), darkMat);
+        eye.position.set(ex, 0.68, 0.48);
+        g.add(eye);
+      });
+      if (spec.id === 'hermit_crab') {
+        const shell = new THREE.Mesh(new THREE.ConeGeometry(0.58, 0.9, 12), subMat);
+        shell.rotation.x = -0.4;
+        shell.position.set(0, 0.95, -0.15);
+        g.add(shell);
+      } else if (spec.id === 'crab') {
+        [-0.65, 0.65].forEach(cx => {
+          const claw = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 10), mainMat);
+          claw.position.set(cx, 0.85, 0.25);
+          g.add(claw);
+        });
+      } else if (spec.id === 'bird') {
+        const beak = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.3, 8), new THREE.MeshStandardMaterial({ color: 0xf97316 }));
+        beak.rotation.x = Math.PI / 2;
+        beak.position.set(0, 0.58, 0.6);
+        g.add(beak);
+      }
+      return g;
+    }
+
+    // 宝物12種の立体造形
+    if (spec.id === 'ruby_crown' || spec.id === 'golden_crown') {
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.52, 0.45, 16), subMat);
+      base.position.y = 0.45;
+      const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.45, 0), mainMat);
+      gem.position.y = 0.78;
+      g.add(base, gem);
+    } else if (spec.id === 'rainbow_gem') {
+      const gem = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.72, 1),
+        new THREE.MeshPhysicalMaterial({ color: 0xe879f9, emissive: 0x38bdf8, emissiveIntensity: 0.35, roughness: 0.1, clearcoat: 1 })
+      );
+      gem.position.y = 0.72;
+      g.add(gem);
+    } else if (spec.id === 'gold_coin' || spec.id === 'ancient_medal' || spec.id === 'sun_stone') {
+      const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 0.2, 24), mainMat);
+      coin.rotation.x = Math.PI / 2;
+      coin.position.y = 0.65;
+      const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.32, 0), subMat);
+      core.position.set(0, 0.65, 0.12);
+      g.add(coin, core);
+    } else {
+      const body = new THREE.Mesh(new THREE.DodecahedronGeometry(0.62, 0), mainMat);
+      body.position.y = 0.65;
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.1, 10, 20), subMat);
+      ring.position.y = 0.65;
+      g.add(body, ring);
+    }
+    return g;
+  }
+
+  // ==========================================
+  // 6. ステージ環境＆宝物スポット配置・ゲーム進行管理
+  // ==========================================
+  let appScreen = 'TITLE'; // 'TITLE' | 'PLAY'
+  let currentLevel = 1;
+  let targetTreasurePos = new THREE.Vector3(0, 0, -4);
+  let currentProximity = 0;     // 0.0（遠い）〜 1.0（真上）
+  let canDigHere = false;       // 真上に来たときだけ true
+  let foundInStage = 0;         // 1ステージ5個で1周達成
+  let stepsTakenInStage = 0;
+  let currentCombo = 0;
+  let isWalkingStep = false;
+  let isDigging = false;
+  let playerHeading = 0;        // ポッケの向き（ラジアン）。スティック／「すすむ」で自分で決められる
+  let discoveryButtonLocked = false;
+  let hintLevel = 0;
+
+  // 掘った時に飛び散る物理土ブロック配列
+  const soilChunks = [];
+  // 地面のキラキラリング＆光柱
+  let targetSparkleRing = null;
+  let targetLightBeam = null;
+
+  function showToast(msg) {
+    const el = document.getElementById('info-toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => el.classList.remove('show'), 2200);
+  }
+
+  function buildIslandEnvironment(lv) {
+    while (islandGroup.children.length > 0) {
+      islandGroup.remove(islandGroup.children[0]);
+    }
+    const st = STAGE_LIST[lv - 1];
+    document.body.className = `stage-${lv}`;
+    scene.fog.color.setHex(lv === 5 ? 0x1e1b4b : 0xbae6fd);
+
+    // 円形の宝島フィールド（半径 11）
+    const floor = new THREE.Mesh(
+      new THREE.CylinderGeometry(11.0, 11.6, 0.9, 48),
+      new THREE.MeshStandardMaterial({ color: st.groundColor, roughness: 0.7 })
+    );
+    floor.position.y = -0.45;
+    floor.receiveShadow = true;
+    islandGroup.add(floor);
+
+    const rim = new THREE.Mesh(
+      new THREE.TorusGeometry(11.2, 0.35, 12, 48),
+      new THREE.MeshStandardMaterial({ color: st.rimColor, roughness: 0.4 })
+    );
+    rim.rotation.x = Math.PI / 2;
+    rim.position.y = -0.05;
+    islandGroup.add(rim);
+
+    // ステージ奥の「育つ3Dたからばこ展示棚」
+    const chestGroup = new THREE.Group();
+    chestGroup.position.set(0, 0, -9.2);
+    const chestBox = new THREE.Mesh(
+      new THREE.BoxGeometry(4.8, 0.9, 1.8),
+      new THREE.MeshStandardMaterial({ color: 0x92400e })
+    );
+    chestBox.position.y = 0.45;
+    chestGroup.add(chestBox);
+
+    // 集めた宝物を展示棚の上に並べる
+    let slotIdx = 0;
+    TREASURE_CATALOG.forEach(t => {
+      if ((saveData.treasures[t.id] || 0) > 0 && slotIdx < 6) {
+        const mini = createItem3DModel(t, false);
+        mini.scale.set(0.45, 0.45, 0.45);
+        mini.position.set(-1.8 + slotIdx * 0.72, 0.85, 0);
+        chestGroup.add(mini);
+        slotIdx++;
+      }
+    });
+    islandGroup.add(chestGroup);
+
+    // ステージごとの可愛い周囲オブジェクト（木・お花・ドーナツ・星）
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2 + 0.3;
+      const r = 8.4;
+      const px = Math.cos(a) * r;
+      const pz = Math.sin(a) * r;
+
+      if (lv === 1 || lv === 4) {
+        // ヤシの木・森の木
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.4, 2.2, 8), new THREE.MeshStandardMaterial({ color: 0x78350f }));
+        trunk.position.set(px, 1.1, pz);
+        const crown = new THREE.Mesh(new THREE.SphereGeometry(1.3, 12, 12), new THREE.MeshStandardMaterial({ color: 0x22c55e }));
+        crown.position.set(px, 2.5, pz);
+        islandGroup.add(trunk, crown);
+      } else if (lv === 2) {
+        // 大きなチューリップ
+        const flower = new THREE.Mesh(new THREE.ConeGeometry(0.75, 1.3, 10), new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0xf43f5e : 0xfacc15 }));
+        flower.position.set(px, 0.9, pz);
+        islandGroup.add(flower);
+      } else if (lv === 3) {
+        // お菓子のドーナツアーチ
+        const donut = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.35, 12, 20), new THREE.MeshStandardMaterial({ color: 0xf472b6 }));
+        donut.position.set(px, 1.1, pz);
+        islandGroup.add(donut);
+      } else {
+        // 夜の光るクリスタル星
+        const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.85, 0), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+        star.position.set(px, 1.5, pz);
+        islandGroup.add(star);
+      }
+    }
+
+    // 宝物が埋まっている場所のキラキラリング＆ヒント光柱
+    targetSparkleRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.8, 1.35, 32),
+      new THREE.MeshBasicMaterial({ color: 0xfef08a, side: THREE.DoubleSide, transparent: true, opacity: 0.0 })
+    );
+    targetSparkleRing.rotation.x = -Math.PI / 2;
+    targetSparkleRing.position.y = 0.06;
+    islandGroup.add(targetSparkleRing);
+
+    targetLightBeam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.9, 1.2, 4.5, 20, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0xfde047, side: THREE.DoubleSide, transparent: true, opacity: 0.0 })
+    );
+    targetLightBeam.position.y = 2.25;
+    islandGroup.add(targetLightBeam);
+  }
+
+  // 新しいお宝の埋蔵位置を配置（3〜5歩で気持ちよく到達できる距離）
+  function spawnNextTreasureSpot() {
+    hintLevel = 0;
+    canDigHere = false;
+    const pPos = playerRoot.position;
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 4.2 + Math.random() * 2.4; // 1歩(1.65) × 3〜4歩分
+    let tx = pPos.x + Math.cos(angle) * dist;
+    let tz = pPos.z + Math.sin(angle) * dist;
+
+    // 島の半径(6.5以内)に収める
+    const rFromCenter = Math.hypot(tx, tz);
+    if (rFromCenter > 6.2) {
+      tx = (tx / rFromCenter) * 5.2;
+      tz = (tz / rFromCenter) * 5.2;
+    }
+
+    targetTreasurePos.set(tx, 0, tz);
+
+    // 新しいお宝が出たら、最初の向きだけお宝のほうを向いてあげる（あとは◀▶で自分で探す）
+    playerHeading = Math.atan2(tx - pPos.x, tz - pPos.z);
+    gsap.to(playerRoot.userData.pokkePivot.rotation, { y: playerHeading, duration: 0.4 });
+    if (targetSparkleRing) {
+      targetSparkleRing.position.set(tx, 0.06, tz);
+      targetSparkleRing.material.opacity = 0;
+    }
+    if (targetLightBeam) {
+      targetLightBeam.position.set(tx, 2.25, tz);
+      targetLightBeam.material.opacity = 0;
+    }
+
+    evaluateProximityAndUI();
+  }
+
+  // 近さ（0.0〜1.0）を計算し、ボタン変身（すすむ⇔ほる！）と表情を更新
+  function evaluateProximityAndUI() {
+    const pPos = playerRoot.position;
+    const dist = Math.hypot(targetTreasurePos.x - pPos.x, targetTreasurePos.z - pPos.z);
+
+    // 距離 1.85 以内で「宝物の真上到着（掘れる状態）！」
+    if (dist <= 1.85) {
+      currentProximity = 1.0;
+      canDigHere = true;
+    } else {
+      currentProximity = Math.max(0.08, Math.min(0.92, 1.0 - (dist - 1.85) / 7.5));
+      canDigHere = false;
+    }
+
+    // お宝の方向へ足元のガイド矢印を向ける
+    const angleToTarget = Math.atan2(targetTreasurePos.x - pPos.x, targetTreasurePos.z - pPos.z);
+    playerRoot.userData.dirArrowGroup.rotation.y = angleToTarget;
+
+    const mainBtn = document.getElementById('main-action-btn');
+    const radarTxt = document.getElementById('radar-status-text');
+
+    if (canDigHere) {
+      // ★ アルパ確定事項：宝物の真上に来た瞬間、メインボタンが金色の「✨ ここを ほる！」に大変身！
+      mainBtn.classList.add('dig-mode');
+      mainBtn.innerHTML = '✨ ここを ほる！';
+      radarTxt.textContent = '💡 ピピまる「タカラガ アルヨ！ほろう！」';
+      setCharacterEmotionState(3); // 発見！（💡＆ハート目）
+      if (targetSparkleRing) targetSparkleRing.material.opacity = 0.85;
+
+      // ポッケがお宝の方向へクルッと向き直って「ワン♪」（向きの基準も同期）
+      playerHeading = angleToTarget;
+      gsap.to(playerRoot.userData.pokkePivot.rotation, { y: angleToTarget, duration: 0.25 });
+    } else {
+      mainBtn.classList.remove('dig-mode');
+      mainBtn.innerHTML = '🐾 トコトコ すすむ！';
+
+      if (currentProximity > 0.55) {
+        radarTxt.textContent = '📡 ピピピッ！とっても ちかいよ！';
+        setCharacterEmotionState(2); // ワクワク（❗）
+      } else {
+        radarTxt.textContent = '📡 ピピッ… おとを きいて すすもう！';
+        setCharacterEmotionState(1); // 通常
+      }
+      if (targetSparkleRing && hintLevel === 0) {
+        targetSparkleRing.material.opacity = 0;
+      }
+    }
+  }
+
+  function updateStageStatusUI() {
+    const st = STAGE_LIST[currentLevel - 1];
+    document.getElementById('hud-stage-name').textContent = st.name;
+
+    // 5個の宝物進捗ドット
+    const dots = [];
+    for (let i = 0; i < 5; i++) {
+      dots.push(i < foundInStage ? '💎' : '⚪');
+    }
+    document.getElementById('stage-treasures-dots').textContent = dots.join('');
+
+    // おひさまメーター（制限時間ではなく1プレイの目安ゲージ）
+    const ratio = Math.max(15, Math.min(100, 100 - (stepsTakenInStage / st.sunGoalSteps) * 70));
+    document.getElementById('sun-meter-fill').style.width = `${ratio}%`;
+
+    // コンボ称号バッジ（3コンボ：ほりほりマスター、5コンボ：しまのたんけんか、7コンボ：でんせつのハンター）
+    const comboPill = document.getElementById('combo-title-pill');
+    if (currentCombo >= 7) {
+      comboPill.textContent = `👑 ${currentCombo}コンボ！でんせつのハンター`;
+      comboPill.classList.add('show');
+    } else if (currentCombo >= 5) {
+      comboPill.textContent = `🌟 ${currentCombo}コンボ！しまのたんけんか`;
+      comboPill.classList.add('show');
+    } else if (currentCombo >= 3) {
+      comboPill.textContent = `🔥 ${currentCombo}コンボ！ほりほりマスター`;
+      comboPill.classList.add('show');
+    } else {
+      comboPill.classList.remove('show');
+    }
+  }
+
+  // バーチャルスティック：倒した方向（画面基準）へ歩き続ける
+  let joyActive = false;
+  let joyVec = { x: 0, y: 0 }; // 画面上の倒し量（x: 右+ / y: 下+、-1〜1）
+  let joyStepTimer = 0;
+  let joyEvalTimer = 0;
+
+  function setupJoystick() {
+    const base = document.getElementById('joystick-base');
+    const knob = document.getElementById('joystick-knob');
+    if (!base || !knob) return;
+    const R = 32;
+    function setKnob(dx, dy) { knob.style.transform = `translate(${dx}px, ${dy}px)`; }
+    function handlePoint(e) {
+      const rect = base.getBoundingClientRect();
+      let dx = e.clientX - (rect.left + rect.width / 2);
+      let dy = e.clientY - (rect.top + rect.height / 2);
+      const len = Math.hypot(dx, dy);
+      if (len > R) { dx = (dx / len) * R; dy = (dy / len) * R; }
+      setKnob(dx, dy);
+      joyVec.x = dx / R;
+      joyVec.y = dy / R;
+      joyActive = Math.hypot(joyVec.x, joyVec.y) > 0.28;
+    }
+    function release() {
+      joyActive = false;
+      joyVec.x = 0;
+      joyVec.y = 0;
+      setKnob(0, 0);
+    }
+    base.addEventListener('pointerdown', (e) => { e.preventDefault(); base.setPointerCapture(e.pointerId); handlePoint(e); });
+    base.addEventListener('pointermove', (e) => { if (e.buttons > 0) handlePoint(e); });
+    base.addEventListener('pointerup', release);
+    base.addEventListener('pointercancel', release);
+  }
+
+  // アニメーションループから毎フレーム呼ばれるスティック歩行処理
+  function updateJoystickWalk(dt) {
+    if (!joyActive || isDigging || isWalkingStep || appScreen !== 'PLAY') {
+      if (!isWalkingStep && !isDigging) playerRoot.userData.pokkePivot.position.y = 0;
+      return;
+    }
+    // カメラの向きを基準に、画面で倒した方向をワールドの移動方向へ変換
+    const fwd = curCamYaw + Math.PI; // 画面の「奥」方向（ワールド角）
+    const rx = joyVec.x;
+    const ry = -joyVec.y; // 上に倒す = 前進
+    const moveAngle = Math.atan2(
+      Math.sin(fwd) * ry + Math.sin(fwd - Math.PI / 2) * rx,
+      Math.cos(fwd) * ry + Math.cos(fwd - Math.PI / 2) * rx
+    );
+    playerHeading = moveAngle;
+    playerRoot.userData.pokkePivot.rotation.y = moveAngle;
+
+    const speed = 3.1;
+    let nx = playerRoot.position.x + Math.sin(moveAngle) * speed * dt;
+    let nz = playerRoot.position.z + Math.cos(moveAngle) * speed * dt;
+    const r = Math.hypot(nx, nz);
+    if (r > 6.0) { nx = (nx / r) * 6.0; nz = (nz / r) * 6.0; }
+    playerRoot.position.x = nx;
+    playerRoot.position.z = nz;
+    playerRoot.userData.pokkePivot.position.y = Math.abs(Math.sin(performance.now() * 0.02)) * 0.32;
+
+    joyStepTimer += dt;
+    if (joyStepTimer > 0.27) {
+      joyStepTimer = 0;
+      stepsTakenInStage++;
+      sound.playFootstep(stepsTakenInStage);
+      updateStageStatusUI();
+    }
+    joyEvalTimer += dt;
+    if (joyEvalTimer > 0.15) {
+      joyEvalTimer = 0;
+      const wasDig = canDigHere;
+      evaluateProximityAndUI();
+      if (canDigHere && !wasDig) {
+        // 宝物の真上に着いたらスティック歩行を止めて「ほる！」を案内
+        joyActive = false;
+        const knob = document.getElementById('joystick-knob');
+        if (knob) knob.style.transform = 'translate(0px, 0px)';
+        sound.playBark();
+        showToast('✨ ピピピッ！たからものの まうえに きたよ！「ほる！」をおそう！');
+        sound.speak('たからものの まうえに きたよ！ ほるボタンを おしてね！');
+      }
+    }
+  }
+
+  // ==========================================
+  // 7. 主役1ボタンのアクション（移動 ＆ 穴掘り発掘ショー）
+  // ==========================================
+  function handleMainButtonTap() {
+    // 宝物の真上にいる場合は「✨ ここを ほる！」を実行
+    if (canDigHere) {
+      if (!isDigging) executeDigTreasure();
+      return;
+    }
+
+    // 歩行アニメーション中の連打対策（企画書5-③：ボタンは気持ちよく弾み、ポッケが「ワン♪」としっぽを振り、移動自体はそのまま継続）
+    // スティック歩行中も同様（移動はスティック側が担当）
+    if (isWalkingStep || joyActive) {
+      sound.playBark();
+      gsap.fromTo(
+        playerRoot.userData.tailPivot.rotation,
+        { z: -0.5 },
+        { z: 0.5, duration: 0.1, yoyo: true, repeat: 3 }
+      );
+      return;
+    }
+
+    // 1歩前へトコトコ進む（0.32秒）。進む方向は自動誘導ではなく、
+    // ◀▶ボタンで子供が自分で選んだ向き（playerHeading）に進む
+    isWalkingStep = true;
+    stepsTakenInStage++;
+    updateStageStatusUI();
+
+    const pPos = playerRoot.position;
+    const stepLen = 1.75;
+    const moveAngle = playerHeading;
+
+    let nextX = pPos.x + Math.sin(moveAngle) * stepLen;
+    let nextZ = pPos.z + Math.cos(moveAngle) * stepLen;
+
+    // 島の外（半径6.0）には出ない
+    const rNext = Math.hypot(nextX, nextZ);
+    if (rNext > 6.0) {
+      nextX = (nextX / rNext) * 6.0;
+      nextZ = (nextZ / rNext) * 6.0;
+    }
+
+    sound.playFootstep(stepsTakenInStage);
+    gsap.to(playerRoot.userData.pokkePivot.rotation, { y: moveAngle, duration: 0.15 });
+
+    gsap.to(playerRoot.position, {
+      x: nextX,
+      z: nextZ,
+      duration: 0.32,
+      ease: 'power2.out',
+      onUpdate: () => {
+        playerRoot.userData.pokkePivot.position.y = Math.abs(Math.sin( Date.now() * 0.025 )) * 0.45;
+      },
+      onComplete: () => {
+        playerRoot.userData.pokkePivot.position.y = 0;
+        isWalkingStep = false;
+        evaluateProximityAndUI();
+
+        if (canDigHere) {
+          sound.playBark();
+          showToast('✨ ピピピッ！たからものの まうえに きたよ！「ほる！」をおそう！');
+          sound.speak('たからものの まうえに きたよ！ ほるボタンを おしてね！');
+        }
+      }
+    });
+  }
+
+  // ✨ ザクザク穴掘り＆Cannon.js土ブロック飛散＆発見ショー発動！
+  function executeDigTreasure() {
+    isDigging = true;
+    sound.playDigSound();
+    setCharacterEmotionState(4); // 大喜び星目⭐
+
+    // Cannon.js 物理演算で16個の土の粒がパッと四方に飛び散る
+    const digPos = targetTreasurePos.clone();
+    const soilColors = [0x92400e, 0xb45309, 0xd97706, 0xfde047];
+    for (let i = 0; i < 16; i++) {
+      const m = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(0.24, 0),
+        new THREE.MeshStandardMaterial({ color: soilColors[i % soilColors.length] })
+      );
+      scene.add(m);
+      const b = new CANNON.Body({ mass: 0.8, material: soilPhysMat });
+      b.addShape(new CANNON.Sphere(0.22));
+      b.position.set(digPos.x + (Math.random() - 0.5) * 0.6, 0.5, digPos.z + (Math.random() - 0.5) * 0.6);
+      b.velocity.set((Math.random() - 0.5) * 9, 7 + Math.random() * 6, (Math.random() - 0.5) * 9);
+      world.addBody(b);
+      soilChunks.push({ mesh: m, body: b, life: 55 });
+    }
+
+    // ポッケがザクザク掘ってバンザイ大ジャンプ！
+    gsap.fromTo(
+      playerRoot.userData.pokkePivot.position,
+      { y: 0 },
+      { y: 1.25, duration: 0.28, yoyo: true, repeat: 1, delay: 0.25, ease: 'back.out(2)' }
+    );
+
+    setTimeout(() => {
+      openDiscoveryShowModal();
+    }, 680);
+  }
+
+  // 画面④：発見ショー・ポップアップ表示（0.8秒ロック＆連打でキラキラ放出）
+  const discModal = document.getElementById('discovery-modal');
+  const discStage = document.getElementById('disc-3d-stage');
+  let discScene, discCam, discRenderer, discItemMesh;
+
+  function initDiscovery3D() {
+    discScene = new THREE.Scene();
+    discCam = new THREE.PerspectiveCamera(40, 190 / 170, 0.1, 30);
+    discCam.position.set(0, 1.1, 3.2);
+    discCam.lookAt(0, 0.55, 0);
+
+    discRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    discRenderer.setSize(190, 170);
+    discRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    discStage.appendChild(discRenderer.domElement);
+
+    discScene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    const dl = new THREE.DirectionalLight(0xfffbeb, 0.95);
+    dl.position.set(3, 6, 4);
+    discScene.add(dl);
+  }
+  initDiscovery3D();
+
+  function openDiscoveryShowModal() {
+    currentCombo++;
+    if (currentCombo > saveData.comboBest) saveData.comboBest = currentCombo;
+    foundInStage++;
+
+    // Lv.5 または 25%の確率でレア2種（にじいろの宝石／おうごんの王冠）を抽選
+    const normalPool = TREASURE_CATALOG.filter(t => !t.rare);
+    const rarePool = TREASURE_CATALOG.filter(t => t.rare);
+    const isRareDrop = (currentLevel === 5 && Math.random() < 0.6) || Math.random() < 0.22;
+    const pickedTreasure = isRareDrop
+      ? rarePool[Math.floor(Math.random() * rarePool.length)]
+      : normalPool[Math.floor(Math.random() * normalPool.length)];
+
+    saveData.treasures[pickedTreasure.id] = (saveData.treasures[pickedTreasure.id] || 0) + 1;
+
+    // 50%の確率でおともだち生き物（ヤドカリ・カニ・モグラ・小鳥）も一緒にひょっこり登場！
+    let bonusFriend = null;
+    if (Math.random() < 0.55) {
+      bonusFriend = FRIEND_CATALOG[Math.floor(Math.random() * FRIEND_CATALOG.length)];
+      saveData.friends[bonusFriend.id] = (saveData.friends[bonusFriend.id] || 0) + 1;
+    }
+
+    writeSaveData();
+    updateStageStatusUI();
+
+    // 3Dプレビュー構築
+    if (discItemMesh) discScene.remove(discItemMesh);
+    discItemMesh = createItem3DModel(pickedTreasure, false);
+    discScene.add(discItemMesh);
+
+    document.getElementById('disc-rarity-badge').textContent = pickedTreasure.rare
+      ? '🌈 超レアたからもの はっけん！！'
+      : '✨ みーつけた！ たからものゲット！';
+    document.getElementById('disc-item-name').textContent = `${pickedTreasure.emoji} ${pickedTreasure.name}`;
+    document.getElementById('disc-item-desc').textContent = pickedTreasure.desc;
+
+    const friendBox = document.getElementById('disc-friend-bonus');
+    if (bonusFriend) {
+      friendBox.style.display = 'block';
+      friendBox.textContent = `${bonusFriend.emoji} おともだちの「${bonusFriend.name}」も いっしょに でてきたよ！`;
+    } else {
+      friendBox.style.display = 'none';
+    }
+
+    // 0.8秒間は誤タップ即閉じを防ぐためロックし、その間のタップは紙吹雪追加に変換
+    discoveryButtonLocked = true;
+    const nextBtn = document.getElementById('disc-next-btn');
+    nextBtn.style.opacity = '0.55';
+    setTimeout(() => {
+      discoveryButtonLocked = false;
+      nextBtn.style.opacity = '1';
+    }, 800);
+
+    discModal.classList.add('active');
+    gsap.fromTo(
+      '#discovery-card-inner',
+      { scale: 0.4, opacity: 0 },
+      { scale: 1, opacity: 1, duration: 0.42, ease: 'back.out(1.8)' }
+    );
+
+    sound.playFanfare(currentCombo, pickedTreasure.rare);
+    if (typeof confetti === 'function') {
+      confetti({
+        particleCount: pickedTreasure.rare ? 95 : 55,
+        spread: 80,
+        origin: { y: 0.55 }
+      });
+    }
+
+    const friendVoice = bonusFriend ? ` おともだちの ${bonusFriend.name}も いっしょに みつけたよ！` : '';
+    sound.speak(`みーつけた！ ${pickedTreasure.name}！ ${pickedTreasure.desc}${friendVoice}`);
+  }
+
+  // 発見ショー中の連打をキラキラ紙吹雪に変換
+  discModal.addEventListener('pointerdown', () => {
+    if (discoveryButtonLocked && typeof confetti === 'function') {
+      confetti({ particleCount: 18, spread: 60, origin: { y: 0.5 } });
+    }
+  });
+
+  document.getElementById('disc-next-btn').addEventListener('click', () => {
+    if (discoveryButtonLocked) return;
+    discModal.classList.remove('active');
+    isDigging = false;
+
+    // 5個見つけたら島のリフレッシュ＆展示棚更新
+    if (foundInStage >= 5) {
+      foundInStage = 0;
+      stepsTakenInStage = 0;
+      buildIslandEnvironment(currentLevel);
+      showToast('🎉 5こ みつけたよ！ たからばこの だなに ならんだよ！');
+    }
+    updateStageStatusUI();
+    spawnNextTreasureSpot();
+  });
+
+  // 💡 3段階ヒント機能
+  document.getElementById('hint-btn').addEventListener('click', () => {
+    hintLevel = Math.min(3, hintLevel + 1);
+    sound.playWindTransition();
+    if (targetSparkleRing) targetSparkleRing.material.opacity = 0.85;
+    if (targetLightBeam) targetLightBeam.material.opacity = 0.42;
+
+    showToast('💡 ヒント！ ひかりの はしらが たっている ばしょへ すすもう！');
+    sound.speak('ヒントだよ！ キラキラ ひかっている ばしょに たからものが あるよ！ すすむを おしてね！');
+  });
+
+  // ==========================================
+  // 8. 画面③：島マップ（ステージ切替＋雲と虹の0.35秒トランジション）
+  // ==========================================
+  function renderStageMapList() {
+    const list = document.getElementById('stage-map-list');
+    list.innerHTML = '';
+    STAGE_LIST.forEach(st => {
+      const item = document.createElement('div');
+      item.className = `stage-map-item ${st.level === currentLevel ? 'selected' : ''}`;
+      item.innerHTML = `
+        <div class="stage-ico">${st.icon}</div>
+        <div class="stage-info-txt">
+          <div class="st-title">${st.fullName}</div>
+          <div class="st-desc">${st.desc}</div>
+        </div>
+      `;
+      item.addEventListener('click', () => {
+        document.getElementById('map-modal').classList.remove('active');
+        switchStageWithCloudTransition(st.level);
+      });
+      list.appendChild(item);
+    });
+  }
+
+  function switchStageWithCloudTransition(newLv) {
+    const cloudEl = document.getElementById('cloud-transition');
+    cloudEl.classList.add('active');
+    sound.playWindTransition();
+
+    setTimeout(() => {
+      currentLevel = newLv;
+      saveData.currentLevel = newLv;
+      foundInStage = 0;
+      stepsTakenInStage = 0;
+      writeSaveData();
+      playerRoot.position.set(0, 0, 1.5);
+      buildIslandEnvironment(currentLevel);
+      updateStageStatusUI();
+      spawnNextTreasureSpot();
+    }, 320);
+
+    setTimeout(() => {
+      cloudEl.classList.remove('active');
+      const st = STAGE_LIST[newLv - 1];
+      sound.speak(`${st.fullName}に とうちゃくしたよ！ たんけん スタート！`);
+    }, 680);
+  }
+
+  document.getElementById('map-open-btn').addEventListener('click', () => {
+    renderStageMapList();
+    document.getElementById('map-modal').classList.add('active');
+  });
+  document.getElementById('close-map-btn').addEventListener('click', () => {
+    document.getElementById('map-modal').classList.remove('active');
+  });
+
+  // ==========================================
+  // 9. 画面⑤：たからばこ＆ずかん統合画面（タブ切替＋1タップ帰還）
+  // ==========================================
+  const colModal = document.getElementById('collection-modal');
+  const shelfStage = document.getElementById('shelf-3d-stage');
+  let shScene, shCam, shRenderer, shPreviewMesh;
+  let shYaw = 0.4;
+  let activeCollectionTab = 'treasures'; // 'treasures' | 'friends'
+  let selectedShelfItem = TREASURE_CATALOG[0];
+
+  function initShelf3D() {
+    shScene = new THREE.Scene();
+    shCam = new THREE.PerspectiveCamera(40, 1, 0.1, 30);
+    shCam.position.set(0, 1.05, 3.0);
+    shCam.lookAt(0, 0.55, 0);
+
+    shRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    shRenderer.setSize(112, 112);
+    shRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    shelfStage.appendChild(shRenderer.domElement);
+
+    shScene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    const dl = new THREE.DirectionalLight(0xfffbeb, 0.95);
+    dl.position.set(3, 6, 4);
+    shScene.add(dl);
+
+    let drag = false, px = 0;
+    shelfStage.addEventListener('pointerdown', e => { drag = true; px = e.clientX; });
+    window.addEventListener('pointermove', e => {
+      if (!drag) return;
+      shYaw += (e.clientX - px) * 0.02;
+      px = e.clientX;
+    });
+    window.addEventListener('pointerup', () => { drag = false; });
+  }
+  initShelf3D();
+
+  function selectShelfPreview(itemSpec, isFriend, speakNow = false) {
+    selectedShelfItem = itemSpec;
+    if (shPreviewMesh) shScene.remove(shPreviewMesh);
+    shPreviewMesh = createItem3DModel(itemSpec, isFriend);
+    shScene.add(shPreviewMesh);
+
+    const cnt = isFriend ? (saveData.friends[itemSpec.id] || 0) : (saveData.treasures[itemSpec.id] || 0);
+    document.getElementById('shelf-item-title').textContent = `${itemSpec.emoji} ${itemSpec.name} （×${cnt}）`;
+    document.getElementById('shelf-item-desc').textContent = itemSpec.desc;
+
+    if (speakNow) {
+      sound.speak(`${itemSpec.name}！ ${itemSpec.desc}`);
+    }
+  }
+
+  function renderCollectionTab(tabKey) {
+    activeCollectionTab = tabKey;
+    const isFriendTab = tabKey === 'friends';
+    document.getElementById('tab-treasures-btn').classList.toggle('active', !isFriendTab);
+    document.getElementById('tab-friends-btn').classList.toggle('active', isFriendTab);
+
+    const grid = document.getElementById('collection-grid');
+    grid.innerHTML = '';
+    const catalog = isFriendTab ? FRIEND_CATALOG : TREASURE_CATALOG;
+
+    catalog.forEach((spec, idx) => {
+      const cnt = isFriendTab ? (saveData.friends[spec.id] || 0) : (saveData.treasures[spec.id] || 0);
+      const cell = document.createElement('div');
+      cell.className = `col-cell ${cnt > 0 ? 'unlocked' : ''} ${idx === 0 ? 'active-cell' : ''}`;
+      cell.innerHTML = `
+        <span class="c-emo">${spec.emoji}</span>
+        <div>${spec.name.slice(0, 6)}</div>
+        <div style="color:#fde047;">✨×${cnt}</div>
+      `;
+      cell.addEventListener('click', () => {
+        document.querySelectorAll('.col-cell').forEach(el => el.classList.remove('active-cell'));
+        cell.classList.add('active-cell');
+        selectShelfPreview(spec, isFriendTab, true);
+      });
+      grid.appendChild(cell);
+    });
+    selectShelfPreview(catalog[0], isFriendTab, false);
+  }
+
+  document.getElementById('box-open-btn').addEventListener('click', () => {
+    renderCollectionTab('treasures');
+    colModal.classList.add('active');
+  });
+  document.getElementById('tab-treasures-btn').addEventListener('click', () => renderCollectionTab('treasures'));
+  document.getElementById('tab-friends-btn').addEventListener('click', () => renderCollectionTab('friends'));
+  document.getElementById('close-col-btn').addEventListener('click', () => colModal.classList.remove('active'));
+  document.getElementById('shelf-speak-btn').addEventListener('click', () => {
+    selectShelfPreview(selectedShelfItem, activeCollectionTab === 'friends', true);
+  });
+
+  // 迷子防止の「1タップ帰還」ルール：モーダル背景枠外タップでも即座に戻る
+  [colModal, document.getElementById('map-modal'), document.getElementById('settings-modal')].forEach(modal => {
+    modal.addEventListener('pointerdown', (e) => {
+      if (e.target === modal) modal.classList.remove('active');
+    });
+  });
+
+  // ==========================================
+  // 10. 画面⑥：おとな関門（設定1.5秒長押し ＆ リセット2秒長押し＋確認ダイアログ）
+  // ==========================================
+  const settingsGateBtn = document.getElementById('settings-gate-btn');
+  const settingsHoldCircle = document.getElementById('settings-hold-circle');
+  let settingsHoldTimer = null;
+  let settingsHoldStart = 0;
+
+  function startSettingsHold(e) {
+    e.preventDefault();
+    settingsHoldStart = performance.now();
+    clearInterval(settingsHoldTimer);
+    settingsHoldTimer = setInterval(() => {
+      const elapsed = performance.now() - settingsHoldStart;
+      const progress = Math.min(1, elapsed / 1500); // 1.5秒長押し
+      settingsHoldCircle.style.strokeDashoffset = String(180 * (1 - progress));
+      if (progress >= 1) {
+        clearInterval(settingsHoldTimer);
+        settingsHoldCircle.style.strokeDashoffset = '180';
+        document.getElementById('reset-confirm-box').classList.remove('show');
+        document.getElementById('settings-modal').classList.add('active');
+      }
+    }, 30);
+  }
+
+  function cancelSettingsHold() {
+    clearInterval(settingsHoldTimer);
+    const elapsed = performance.now() - settingsHoldStart;
+    settingsHoldCircle.style.strokeDashoffset = '180';
+    if (elapsed > 20 && elapsed < 1450) {
+      showToast('⚙️ おとなのひとと いっしょに 1.5びょう ながおししてね');
+    }
+  }
+
+  settingsGateBtn.addEventListener('pointerdown', startSettingsHold);
+  settingsGateBtn.addEventListener('pointerup', cancelSettingsHold);
+  settingsGateBtn.addEventListener('pointerleave', cancelSettingsHold);
+  settingsGateBtn.addEventListener('pointercancel', cancelSettingsHold);
+
+  document.getElementById('close-settings-btn').addEventListener('click', () => {
+    document.getElementById('settings-modal').classList.remove('active');
+  });
+
+  // 音量ON/OFF・読み上げ速度切替
+  const toggleSoundBtn = document.getElementById('toggle-sound-btn');
+  toggleSoundBtn.addEventListener('click', () => {
+    sound.enabled = !sound.enabled;
+    toggleSoundBtn.textContent = sound.enabled ? 'ON 🔊' : 'OFF 🔇';
+    toggleSoundBtn.classList.toggle('off', !sound.enabled);
+  });
+
+  const toggleRateBtn = document.getElementById('toggle-speech-rate-btn');
+  toggleRateBtn.addEventListener('click', () => {
+    sound.speechRate = sound.speechRate < 0.9 ? 0.98 : 0.82;
+    toggleRateBtn.textContent = sound.speechRate < 0.9 ? 'ゆっくり' : 'ふつう';
+  });
+
+  // 🗑️ データリセット：2秒長押し＋確認ダイアログ（「はい」「いいえ」）
+  const resetHoldBtn = document.getElementById('reset-hold-btn');
+  const resetProgressBar = document.getElementById('reset-progress-bar');
+  let resetTimer = null;
+  let resetStart = 0;
+
+  resetHoldBtn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    resetStart = performance.now();
+    clearInterval(resetTimer);
+    resetTimer = setInterval(() => {
+      const p = Math.min(100, ((performance.now() - resetStart) / 2000) * 100);
+      resetProgressBar.style.width = `${p}%`;
+      if (p >= 100) {
+        clearInterval(resetTimer);
+        resetProgressBar.style.width = '0%';
+        document.getElementById('reset-confirm-box').classList.add('show');
+      }
+    }, 30);
+  });
+
+  const cancelResetHold = () => {
+    clearInterval(resetTimer);
+    resetProgressBar.style.width = '0%';
+  };
+  resetHoldBtn.addEventListener('pointerup', cancelResetHold);
+  resetHoldBtn.addEventListener('pointerleave', cancelResetHold);
+
+  document.getElementById('confirm-reset-no').addEventListener('click', () => {
+    document.getElementById('reset-confirm-box').classList.remove('show');
+  });
+  document.getElementById('confirm-reset-yes').addEventListener('click', () => {
+    saveData = { currentLevel: 1, treasures: {}, friends: {}, comboBest: 0 };
+    currentCombo = 0;
+    foundInStage = 0;
+    stepsTakenInStage = 0;
+    writeSaveData();
+    buildIslandEnvironment(1);
+    updateStageStatusUI();
+    document.getElementById('reset-confirm-box').classList.remove('show');
+    document.getElementById('settings-modal').classList.remove('active');
+    showToast('✨ データを リセットしました！');
+  });
+
+  // ==========================================
+  // 11. タイトル画面・カメラ見回し・エッジ誤タッチ無視制御
+  // ==========================================
+  let camYawOffset = 0;
+  let camPitchOffset = 0;
+  let curCamYaw = 0;
+  let curCamPitch = 0.44;
+  let isSwipingCamera = false;
+  let prevPt = { x: 0, y: 0 };
+  let touchDownTime = 0;
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    // 画面端（エッジ16px以内）の誤タッチは無視する（企画書5-④）
+    if (
+      e.clientX < 16 ||
+      e.clientX > window.innerWidth - 16 ||
+      e.clientY < 16 ||
+      e.clientY > window.innerHeight - 16
+    ) {
+      return;
+    }
+    isSwipingCamera = true;
+    touchDownTime = performance.now();
+    prevPt = { x: e.clientX, y: e.clientY };
+
+    // ポッケ（または青い首輪タグ）をタッチすると「ワン♪」と喜ぶ
+    pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+    const hits = raycaster.intersectObjects(playerRoot.children, true);
+    if (hits.length > 0) {
+      sound.playBark();
+      gsap.fromTo(
+        playerRoot.userData.pokkePivot.position,
+        { y: 0 },
+        { y: 0.75, duration: 0.22, yoyo: true, repeat: 1 }
+      );
+      if (appScreen === 'TITLE') {
+        sound.speak('ぼくは ポッケ！ いっしょに たからじまを たんけんしよう！');
+      }
+    }
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    if (!isSwipingCamera) return;
+    const dx = e.clientX - prevPt.x;
+    const dy = e.clientY - prevPt.y;
+    prevPt = { x: e.clientX, y: e.clientY };
+
+    camYawOffset -= dx * 0.007;
+    camPitchOffset = Math.max(-0.2, Math.min(0.42, camPitchOffset + dy * 0.005));
+
+    // 見回しキョロキョロ：ポッケの頭も少し一緒に向く
+    playerRoot.userData.headGroup.rotation.y = Math.max(-0.5, Math.min(0.5, -dx * 0.02));
+  });
+
+  window.addEventListener('pointerup', () => {
+    isSwipingCamera = false;
+  });
+
+  // タイトル画面からプレイ開始
+  document.getElementById('start-game-btn').addEventListener('click', () => {
+    sound.init();
+    sound.playBark();
+    appScreen = 'PLAY';
+    document.getElementById('title-screen').classList.add('hidden');
+    document.getElementById('play-hud').classList.remove('hidden');
+
+    currentLevel = saveData.currentLevel || 1;
+    buildIslandEnvironment(currentLevel);
+    updateStageStatusUI();
+    spawnNextTreasureSpot();
+
+    sound.speak('たからじま たんけん スタート！ ピピッという おとを ききながら、スティックを たおして あるいてね！');
+  });
+
+  document.getElementById('main-action-btn').addEventListener('click', handleMainButtonTap);
+  setupJoystick();
+  document.getElementById('status-strip').addEventListener('click', () => {
+    if (canDigHere) {
+      sound.speak('たからものの まうえだよ！ ほるボタンを おそう！');
+    } else {
+      sound.speak('ピピッという おとが はやく なったら、たからものが ちかいよ！');
+    }
+  });
+
+  // ==========================================
+  // 12. メインアニメーション＆探知機ピピッ音ループ
+  // ==========================================
+  const clock = new THREE.Clock();
+  let beepTimer = 0;
+
+  loadSaveData();
+  buildIslandEnvironment(saveData.currentLevel || 1);
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.04);
+    const elapsed = clock.getElapsedTime();
+
+    world.step(1 / 60, dt, 3);
+
+    const ud = playerRoot.userData;
+
+    // バーチャルスティック歩行
+    updateJoystickWalk(dt);
+
+    // 足元矢印をゆっくり脈動させて目立たせる
+    if (ud.dirArrowGroup) {
+      const s = 1 + Math.sin(elapsed * 4.5) * 0.08;
+      ud.dirArrowGroup.scale.set(s, 1, s);
+    }
+
+    // プレイ中の探知機「ピピッ」音＆ピピまるのぷるぷる振動マルチモーダル同期
+    if (appScreen === 'PLAY' && !isDigging && !discModal.classList.contains('active')) {
+      // 近さ (0.0〜1.0) に応じてピピッ音の間隔を 0.85秒 → 0.16秒 に連続短縮
+      const interval = Math.max(0.16, 0.85 - currentProximity * 0.68);
+      beepTimer += dt;
+      if (beepTimer >= interval) {
+        beepTimer = 0;
+        sound.playDetectorBeep(currentProximity);
+
+        // ピピまるが音と完全同期してぷるぷる弾み、頭上アンテナリングが波紋のように広がる！
+        const pulseScale = 1.08 + currentProximity * 0.25;
+        gsap.fromTo(
+          ud.pipiBody.scale,
+          { x: pulseScale, y: pulseScale * 0.9, z: pulseScale },
+          { x: 1, y: 1, z: 1, duration: 0.14, ease: 'elastic.out(1.2, 0.4)' }
+        );
+        gsap.fromTo(
+          ud.antWaveRing.scale,
+          { x: 0.6, y: 0.6, z: 0.6 },
+          { x: 2.2, y: 2.2, z: 2.2, duration: Math.min(0.35, interval * 0.9) }
+        );
+
+        // 波動の色変化（遠い＝水色、近い＝黄色、真上＝虹色ピンク）
+        const waveColor = canDigHere ? 0xfde047 : (currentProximity > 0.55 ? 0xfacc15 : 0x38bdf8);
+        ud.antWaveRing.material.color.setHex(waveColor);
+        ud.antTip.material.color.setHex(waveColor);
+
+        // ポッケも耳をピョコッと動かして音を聞く「耳すまし」モーション
+        ud.leftEar.rotation.z = 0.28 + Math.sin(elapsed * 18) * 0.15;
+        ud.rightEar.rotation.z = -0.28 - Math.sin(elapsed * 18) * 0.15;
+      }
+    }
+
+    // ポッケとピピまるの常時呼吸・浮遊アニメーション
+    ud.pipiGroup.position.y = 2.35 + Math.sin(elapsed * 3.5) * 0.15;
+    ud.tailPivot.rotation.z = Math.sin(elapsed * (canDigHere ? 14 : 4.5)) * 0.32;
+
+    if (targetSparkleRing && targetSparkleRing.material.opacity > 0) {
+      targetSparkleRing.rotation.z = elapsed * 2.5;
+    }
+
+    // 飛び散った物理土ブロックの更新
+    for (let i = soilChunks.length - 1; i >= 0; i--) {
+      const s = soilChunks[i];
+      s.mesh.position.copy(s.body.position);
+      s.mesh.quaternion.copy(s.body.quaternion);
+      s.life--;
+      if (s.life <= 0) {
+        scene.remove(s.mesh);
+        world.removeBody(s.body);
+        soilChunks.splice(i, 1);
+      }
+    }
+
+    // モーダル内の3Dプレビュー回転描画
+    if (discModal.classList.contains('active') && discItemMesh) {
+      discItemMesh.rotation.y += 0.035;
+      discRenderer.render(discScene, discCam);
+    }
+    if (colModal.classList.contains('active') && shPreviewMesh) {
+      shPreviewMesh.rotation.y = shYaw + elapsed * 0.75;
+      shRenderer.render(shScene, shCam);
+    }
+
+    // カメラ追従（タイトル画面ではゆっくり回転、プレイ中はポッケを見やすく追従）
+    const aspect = window.innerWidth / window.innerHeight;
+    const portraitZoom = aspect < 0.95 ? Math.min(1.42, 0.92 / aspect) : 1.0;
+
+    if (appScreen === 'TITLE') {
+      const titleYaw = camYawOffset + elapsed * 0.22;
+      const dist = 9.5 * portraitZoom;
+      camera.position.set(
+        Math.sin(titleYaw) * dist,
+        3.2 + camPitchOffset * 3,
+        Math.cos(titleYaw) * dist
+      );
+      camera.lookAt(0, 1.3, 0);
+    } else {
+      curCamYaw += (camYawOffset - curCamYaw) * 0.14;
+      curCamPitch += ((0.46 + camPitchOffset) - curCamPitch) * 0.14;
+      const dist = 10.8 * portraitZoom;
+      const pPos = playerRoot.position;
+      camera.position.set(
+        pPos.x + Math.sin(curCamYaw) * Math.cos(curCamPitch) * dist,
+        pPos.y + Math.sin(curCamPitch) * dist,
+        pPos.z + Math.cos(curCamYaw) * Math.cos(curCamPitch) * dist
+      );
+      camera.lookAt(pPos.x, 1.1, pPos.z - 0.5);
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  animate();
+})();
+</script>
+</body>
+</html>

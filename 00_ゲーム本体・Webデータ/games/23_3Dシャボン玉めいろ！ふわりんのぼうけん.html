@@ -1,0 +1,2718 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>3Dシャボン玉めいろ！ふわりんのぼうけん</title>
+<meta name="description" content="ふわふわ浮かぶシャボン玉の「ふわりん」をスティックでそっと動かして3Dの迷路をゴールまで運ぼう！星のかけら集めや風の通り道で空間認識と思考力が楽しく育つ幼児〜低学年向け3Dパズルゲーム。" />
+<meta name="game-icon" content="🫧" />
+<meta name="game-category" content="puzzle" />
+<meta name="game-age" content="baby" />
+<meta name="game-tag" content="めいろ" />
+
+<!-- Google Fonts: 丸ゴシック体 (M PLUS Rounded 1c / Zen Maru Gothic) -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800&family=Zen+Maru+Gothic:wght@700;900&display=swap" rel="stylesheet" />
+
+<style>
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    margin: 0;
+    padding: 0;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: linear-gradient(180deg, #38bdf8 0%, #bae6fd 52%, #dcfce7 100%);
+    font-family: 'M PLUS Rounded 1c', "Hiragino Maru Gothic ProN", sans-serif;
+    touch-action: none;
+    transition: background 0.6s ease;
+  }
+
+  /* ステージ別背景グラデーション */
+  body.stage-1 { background: linear-gradient(180deg, #38bdf8 0%, #bae6fd 50%, #dcfce7 100%); }
+  body.stage-2 { background: linear-gradient(180deg, #60a5fa 0%, #fbcfe8 52%, #fef9c3 100%); }
+  body.stage-3 { background: linear-gradient(180deg, #0ea5e9 0%, #a7f3d0 52%, #ecfccb 100%); }
+  body.stage-4 { background: linear-gradient(180deg, #f97316 0%, #fdba74 48%, #fef08a 100%); }
+  body.stage-5 { background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 52%, #312e81 100%); }
+
+  /* 背景のインラインSVG模様（シャボン玉・雲・星・お花の透かし模様 opacity 0.16） */
+  #bg-svg-pattern {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.16;
+    background-image: url("data:image/svg+xml,%3Csvg width='160' height='160' viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='2.5'%3E%3Ccircle cx='36' cy='36' r='16' fill='%23ffffff' fill-opacity='0.25'/%3E%3Ccircle cx='30' cy='30' r='4' fill='%23ffffff' stroke='none'/%3E%3Ccircle cx='122' cy='46' r='11' fill='%23fef08a' fill-opacity='0.3'/%3E%3Cpath d='M78 22l3 7 7 3-7 3-3 7-3-7-7-3 7-3z' fill='%23fef08a' stroke='none'/%3E%3Cpath d='M25 120c0-6 5-11 11-11 4 0 8 2 10 6 2-1 4-1 6-1 5 0 9 4 9 9s-4 9-9 9H27c-5 0-9-4-9-9z' fill='%23ffffff' stroke='none'/%3E%3Ccircle cx='118' cy='122' r='14' fill='%23fbcfe8' fill-opacity='0.25'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 160px 160px;
+  }
+
+  #canvas-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    z-index: 2;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+  canvas:active {
+    cursor: grabbing;
+  }
+
+  /* ぽっこり立体ボタン共通スタイル（2色グラデーション＋厚さ6px底面影） */
+  .pokkori-btn {
+    border: 2.5px solid rgba(255, 255, 255, 0.92);
+    border-radius: 999px;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-weight: 900;
+    color: #ffffff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-shadow: 0 2px 2px rgba(0, 0, 0, 0.38);
+    transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.2s ease;
+    position: relative;
+    white-space: nowrap;
+  }
+  .pokkori-btn:active {
+    transform: translateY(4px) !important;
+  }
+
+  /* =========================================================
+     画面①：タイトル＆スタート画面（第1層）
+     ========================================================= */
+  #title-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: max(24px, env(safe-area-inset-top)) 20px max(28px, env(safe-area-inset-bottom));
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+  }
+  #title-screen.hidden {
+    opacity: 0;
+    pointer-events: none !important;
+    visibility: hidden;
+  }
+  .title-banner {
+    pointer-events: auto;
+    background: linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%);
+    border: 4px solid #38bdf8;
+    border-radius: 28px;
+    padding: 14px 22px;
+    text-align: center;
+    box-shadow: 0 8px 0 #0284c7, 0 14px 30px rgba(0, 0, 0, 0.28);
+    max-width: 92vw;
+  }
+  .title-sub {
+    font-size: 13px;
+    font-weight: 800;
+    color: #0284c7;
+  }
+  .title-main {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 24px;
+    font-weight: 900;
+    color: #1e293b;
+    line-height: 1.25;
+    margin-top: 2px;
+    text-shadow: 0 2px 0 #ffffff;
+  }
+  .title-hint-pill {
+    margin-top: 6px;
+    display: inline-block;
+    background: #fef9c3;
+    color: #b45309;
+    border: 1.5px solid #facc15;
+    border-radius: 999px;
+    padding: 3px 12px;
+    font-size: 11.5px;
+    font-weight: 800;
+  }
+  .title-bottom-box {
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+  /* メインボタン規定：幅220px以上 × 高さ68px以上 */
+  #start-game-btn {
+    min-width: 260px;
+    height: 74px;
+    padding: 0 32px;
+    font-size: 22px;
+    background: linear-gradient(180deg, #ec4899 0%, #db2777 100%);
+    border: 3px solid #fef08a;
+    box-shadow: 0 7px 0 #831843, 0 12px 28px rgba(0, 0, 0, 0.35);
+  }
+  #start-game-btn:active {
+    box-shadow: 0 2px 0 #831843;
+  }
+  #resume-badge {
+    background: rgba(15, 23, 42, 0.78);
+    color: #fde047;
+    padding: 4px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    border: 1px solid rgba(253, 224, 71, 0.5);
+  }
+
+  /* =========================================================
+     画面②：プレイ画面（メイン迷路フィールド・第2層）
+     画面端16px余白、サブボタン52px以上・間隔12px以上
+     ========================================================= */
+  #play-hud {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+  }
+  #play-hud.hidden {
+    display: none;
+  }
+
+  /* 上部バー（画面端から16px安全余白、ボタン間隔12px以上） */
+  #top-bar {
+    position: fixed;
+    top: max(16px, env(safe-area-inset-top));
+    left: 16px;
+    right: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    pointer-events: none;
+  }
+  .top-left-group, .top-right-group {
+    display: flex;
+    align-items: center;
+    gap: 12px; /* 最低12px以上の間隔 */
+    pointer-events: auto;
+  }
+
+  /* サブボタン規定：最低 52px × 52px 以上 */
+  .sub-icon-btn {
+    min-width: 54px;
+    height: 54px;
+    padding: 0 14px;
+    border-radius: 18px;
+    font-size: 13px;
+    box-shadow: 0 5px 0 rgba(0, 0, 0, 0.35), 0 6px 14px rgba(0, 0, 0, 0.22);
+  }
+  .sub-icon-btn.square {
+    width: 54px;
+    padding: 0;
+    font-size: 22px;
+  }
+  #map-open-btn {
+    background: linear-gradient(180deg, #fb923c 0%, #ea580c 100%);
+    box-shadow: 0 5px 0 #9a3412, 0 6px 14px rgba(0,0,0,0.22);
+  }
+  #zukan-open-btn {
+    background: linear-gradient(180deg, #ec4899 0%, #db2777 100%);
+    box-shadow: 0 5px 0 #831843, 0 6px 14px rgba(0,0,0,0.22);
+  }
+  #hint-btn {
+    background: linear-gradient(180deg, #facc15 0%, #ca8a04 100%);
+    color: #713f12;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.7);
+    box-shadow: 0 5px 0 #854d0e, 0 6px 14px rgba(0,0,0,0.22);
+  }
+  #settings-gate-btn {
+    background: linear-gradient(180deg, #64748b 0%, #334155 100%);
+    box-shadow: 0 5px 0 #0f172a, 0 6px 14px rgba(0,0,0,0.22);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* おとな関門：1.5秒長押し進捗を示す青い円形リング */
+  .hold-ring-svg {
+    position: absolute;
+    inset: -2px;
+    width: calc(100% + 4px);
+    height: calc(100% + 4px);
+    pointer-events: none;
+    transform: rotate(-90deg);
+  }
+  .hold-ring-circle {
+    fill: none;
+    stroke: #38bdf8;
+    stroke-width: 6;
+    stroke-dasharray: 180;
+    stroke-dashoffset: 180;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.05s linear;
+  }
+
+  /* 上部第2段：星のかけらカウンター（Lv別総数＋ひみつ・レア別カウント）＆ガイド */
+  #status-strip {
+    position: fixed;
+    top: calc(max(16px, env(safe-area-inset-top)) + 64px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(92vw, 430px);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 249, 255, 0.94) 100%);
+    border: 3px solid #38bdf8;
+    border-radius: 20px;
+    padding: 6px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    box-shadow: 0 4px 0 #0284c7, 0 6px 16px rgba(0,0,0,0.18);
+    pointer-events: auto;
+    cursor: pointer;
+  }
+  #guide-status-text {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .star-counters-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .star-pill {
+    background: #fef9c3;
+    border: 2px solid #f59e0b;
+    color: #b45309;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    padding: 2px 9px;
+    border-radius: 999px;
+  }
+  .star-pill.secret {
+    background: #fce7f3;
+    border-color: #ec4899;
+    color: #be185d;
+    display: none;
+  }
+  .star-pill.secret.visible {
+    display: inline-block;
+  }
+
+  /* トースト通知 */
+  #info-toast {
+    position: fixed;
+    top: calc(max(16px, env(safe-area-inset-top)) + 118px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-6px);
+    z-index: 38;
+    background: rgba(15, 23, 42, 0.9);
+    color: #fef08a;
+    border: 2px solid #38bdf8;
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 12.5px;
+    font-weight: 900;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    white-space: nowrap;
+    max-width: 92vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #info-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* =========================================================
+     左下：バーチャルスティック（外枠120px・ノブ56px・左下180×200pxセミフローティング）
+     ========================================================= */
+  #stick-touch-zone {
+    position: fixed;
+    left: 16px;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    width: 180px;
+    height: 200px;
+    z-index: 25;
+    pointer-events: auto;
+    touch-action: none;
+  }
+  #stick-base {
+    position: absolute;
+    left: 8px; /* 16px + 8px = 左端から24px */
+    bottom: 8px; /* 下端からmax(24px, safe-area) */
+    width: 120px;  /* 確定事項9：外枠直径120px */
+    height: 120px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.35) 0%, rgba(56, 189, 248, 0.45) 100%);
+    border: 3px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22), inset 0 2px 6px rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  /* 上下左右の小さなガイド三角マーク */
+  .stick-dir-mark {
+    position: absolute;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 900;
+    pointer-events: none;
+  }
+  .stick-dir-mark.up    { top: 5px; left: 50%; transform: translateX(-50%); }
+  .stick-dir-mark.down  { bottom: 5px; left: 50%; transform: translateX(-50%); }
+  .stick-dir-mark.left  { left: 6px; top: 50%; transform: translateY(-50%); }
+  .stick-dir-mark.right { right: 6px; top: 50%; transform: translateY(-50%); }
+
+  #stick-knob {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 56px;   /* 確定事項9：ノブ直径56px */
+    height: 56px;
+    margin-left: -28px;
+    margin-top: -28px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #f472b6 0%, #db2777 100%);
+    border: 3px solid #fef08a;
+    box-shadow: 0 5px 0 #9d174d, 0 6px 14px rgba(0, 0, 0, 0.35), inset 0 3px 5px rgba(255, 255, 255, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    pointer-events: none;
+  }
+
+  /* 右下：見回しガイドラベル（ボタンではなく控えめな案内バッジ） */
+  #camera-drag-guide {
+    position: fixed;
+    right: 20px;
+    bottom: max(24px, env(safe-area-inset-bottom));
+    background: rgba(15, 23, 42, 0.52);
+    color: rgba(255, 255, 255, 0.92);
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 800;
+    pointer-events: none;
+  }
+
+  /* =========================================================
+     モーダル共通背景（画面③・④・⑤・⑥）
+     ========================================================= */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .modal-backdrop.active {
+    display: flex;
+  }
+  .dialog-card {
+    width: min(94vw, 460px);
+    max-height: 86vh;
+    background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+    border: 4px solid #f59e0b;
+    border-radius: 28px;
+    padding: 16px;
+    color: #1e293b;
+    box-shadow: 0 10px 0 #b45309, 0 20px 45px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+  }
+  .dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .dialog-header h2 {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 19px;
+    font-weight: 900;
+    color: #b45309;
+  }
+  .close-big-btn {
+    min-width: 54px;
+    height: 54px;
+    padding: 0 16px;
+    background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 4px 0 #7f1d1d;
+    font-size: 14px;
+  }
+
+  /* 画面③：めいろマップリスト */
+  .stage-map-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .stage-map-item {
+    min-height: 62px;
+    background: #ffffff;
+    border: 3px solid #38bdf8;
+    border-radius: 20px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #0284c7;
+    transition: transform 0.1s;
+  }
+  .stage-map-item:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 #0284c7;
+  }
+  .stage-map-item.selected {
+    background: linear-gradient(135deg, #e0f2fe, #fef08a);
+    border-color: #ea580c;
+  }
+  .stage-ico {
+    font-size: 30px;
+    flex-shrink: 0;
+  }
+  .stage-info-txt {
+    flex: 1;
+    text-align: left;
+  }
+  .stage-info-txt .st-title {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 15px;
+    font-weight: 900;
+    color: #1e293b;
+  }
+  .stage-info-txt .st-desc {
+    font-size: 11.5px;
+    font-weight: 800;
+    color: #0369a1;
+  }
+
+  /* =========================================================
+     画面④：ゴール花開きショー・ポップアップ（0.8秒ロック付）
+     ========================================================= */
+  #goal-modal {
+    z-index: 48;
+  }
+  .goal-card {
+    width: min(92vw, 395px);
+    background: linear-gradient(180deg, #1e1b4b 0%, #312e81 100%);
+    border: 4px solid #fde047;
+    border-radius: 30px;
+    padding: 18px 16px;
+    text-align: center;
+    color: #ffffff;
+    box-shadow: 0 12px 0 #ca8a04, 0 22px 50px rgba(0, 0, 0, 0.65);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .goal-badge {
+    background: linear-gradient(135deg, #ec4899, #f97316);
+    border: 2px solid #fef08a;
+    padding: 4px 16px;
+    border-radius: 999px;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 14px;
+    font-weight: 900;
+  }
+  #goal-3d-stage {
+    width: 185px;
+    height: 165px;
+    border-radius: 20px;
+    background: radial-gradient(circle, rgba(244, 114, 182, 0.35) 0%, rgba(15, 23, 42, 0.2) 75%);
+    cursor: pointer;
+  }
+  #goal-unlock-title {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 22px;
+    font-weight: 900;
+    color: #fde047;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+  #goal-unlock-desc {
+    font-size: 13px;
+    font-weight: 800;
+    color: #e0f2fe;
+    line-height: 1.4;
+  }
+  /* メインボタン規定：幅220px以上 × 高さ68px以上 */
+  #goal-next-btn {
+    min-width: 244px;
+    height: 70px;
+    font-size: 20px;
+    margin-top: 6px;
+    background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+    border: 3px solid #fef08a;
+    box-shadow: 0 6px 0 #14532d;
+  }
+
+  /* =========================================================
+     画面⑤：シャボン玉ずかん（10種）＆ ほしぞら星座（3種）統合画面
+     ========================================================= */
+  .collection-card {
+    width: min(95vw, 510px);
+    max-height: 88vh;
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    border: 3.5px solid #fde047;
+    border-radius: 28px;
+    padding: 15px;
+    color: #ffffff;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.65);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden;
+  }
+  .tab-switch-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .tab-pokkori-btn {
+    min-height: 54px;
+    border-radius: 18px;
+    font-size: 13.5px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 2px solid rgba(255, 255, 255, 0.28);
+    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.4);
+  }
+  .tab-pokkori-btn.active {
+    background: linear-gradient(180deg, #ec4899 0%, #db2777 100%);
+    border-color: #fde047;
+    box-shadow: 0 4px 0 #831843;
+  }
+
+  /* タブ1：シャボン玉ずかん（全10種） */
+  #tab-panel-bubbles {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden;
+  }
+  #zukan-preview-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1.5px solid rgba(255, 255, 255, 0.22);
+    border-radius: 18px;
+    padding: 8px 12px;
+  }
+  #zukan-3d-stage {
+    width: 108px;
+    height: 108px;
+    border-radius: 14px;
+    background: radial-gradient(circle, #38bdf8 0%, #1e3a8a 100%);
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .zukan-info {
+    flex: 1;
+  }
+  #zukan-bubble-title {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 17px;
+    font-weight: 900;
+    color: #fde047;
+  }
+  #zukan-bubble-desc {
+    font-size: 11.5px;
+    font-weight: 800;
+    color: #f8fafc;
+    margin-top: 3px;
+    line-height: 1.35;
+  }
+  #zukan-wear-btn {
+    margin-top: 6px;
+    min-height: 40px;
+    padding: 0 14px;
+    font-size: 11.5px;
+    background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+    box-shadow: 0 3px 0 #14532d;
+  }
+  .bubble-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    overflow-y: auto;
+    padding: 2px;
+  }
+  .b-cell {
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.16);
+    border-radius: 14px;
+    padding: 6px 3px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 800;
+    color: #cbd5e1;
+  }
+  .b-cell.unlocked {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.35), rgba(236, 72, 153, 0.35));
+    border-color: #fde047;
+    color: #ffffff;
+  }
+  .b-cell.active-cell {
+    border-color: #ffffff;
+    box-shadow: 0 0 12px rgba(253, 224, 71, 0.75);
+  }
+  .b-cell .b-emo {
+    font-size: 20px;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  /* タブ2：ほしぞら星座ボード（3種：うさぎ座・いるか座・おうかん座） */
+  #tab-panel-constellations {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+  }
+  .constellation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .constellation-card {
+    background: radial-gradient(circle at 50% 30%, #1e1b4b 0%, #090d16 100%);
+    border: 2.5px solid #6366f1;
+    border-radius: 18px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+  }
+  .constellation-card.completed {
+    border-color: #fde047;
+    box-shadow: 0 0 16px rgba(250, 204, 21, 0.35);
+  }
+  .const-svg-box {
+    width: 96px;
+    height: 76px;
+    flex-shrink: 0;
+  }
+  .const-info {
+    flex: 1;
+  }
+  .const-title {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 16px;
+    font-weight: 900;
+    color: #fde047;
+  }
+  .const-desc {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #cbd5e1;
+    margin-top: 2px;
+  }
+
+  /* =========================================================
+     画面⑥：おとな設定メニュー（ペアレンタルゲート＆2秒長押しリセット）
+     ========================================================= */
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #ffffff;
+    border: 2px solid #fcd34d;
+    border-radius: 16px;
+    padding: 10px 14px;
+    font-weight: 800;
+    font-size: 13.5px;
+  }
+  .toggle-pill-btn {
+    min-width: 92px;
+    height: 48px;
+    padding: 0 14px;
+    font-size: 13px;
+    background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+    box-shadow: 0 4px 0 #14532d;
+  }
+  .toggle-pill-btn.off {
+    background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
+    box-shadow: 0 4px 0 #334155;
+  }
+  #reset-hold-btn {
+    width: 100%;
+    height: 54px;
+    background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
+    box-shadow: 0 4px 0 #7f1d1d;
+    font-size: 13.5px;
+    position: relative;
+    overflow: hidden;
+  }
+  #reset-progress-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 0%;
+    background: rgba(56, 189, 248, 0.55);
+    pointer-events: none;
+  }
+  #reset-confirm-box {
+    display: none;
+    background: #fee2e2;
+    border: 2.5px solid #ef4444;
+    border-radius: 16px;
+    padding: 12px;
+    text-align: center;
+  }
+  #reset-confirm-box.show {
+    display: block;
+  }
+  .confirm-btns-row {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 10px;
+  }
+
+  /* シャボン玉バブル・トランジション（0.35秒） */
+  #bubble-transition {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.96) 0%, rgba(186, 230, 253, 0.96) 100%);
+    opacity: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 24px;
+    font-weight: 900;
+    color: #0284c7;
+    transition: opacity 0.35s ease;
+  }
+  #bubble-transition.active {
+    opacity: 1;
+  }
+
+  @media (max-width: 400px) {
+    .title-main { font-size: 20px; }
+    .sub-icon-btn { min-width: 52px; height: 52px; }
+    .bubble-grid { grid-template-columns: repeat(5, 1fr); gap: 4px; }
+  }
+</style>
+</head>
+<body class="stage-1">
+
+<!-- 背景のインラインSVG模様 -->
+<div id="bg-svg-pattern"></div>
+
+<!-- 3Dキャンバス -->
+<div id="canvas-container"></div>
+
+<!-- シャボン玉バブル・トランジション（0.35秒） -->
+<div id="bubble-transition">
+  <div style="font-size:54px;">🫧🌈🫧</div>
+  <div>シュワシュワ〜♪ あたらしい めいろへ！</div>
+</div>
+
+<!-- =========================================================
+     画面①：タイトル＆スタート画面（第1層）
+     ========================================================= -->
+<div id="title-screen">
+  <div class="title-banner">
+    <div class="title-sub">🫧 ぷるんと はずんで ゴールへ はこぼう！</div>
+    <div class="title-main">3Dシャボン玉めいろ！<br />ふわりんのぼうけん</div>
+    <div class="title-hint-pill">👆 ふわりんを タッチすると ぷるんと はずむよ♪</div>
+  </div>
+
+  <div class="title-bottom-box">
+    <div id="resume-badge" style="display:none;">✨ あつめた ほしと シャボン玉の つづきから あそべるよ！</div>
+    <button class="pokkori-btn" id="start-game-btn">
+      🫧 ぼうけん スタート！
+    </button>
+  </div>
+</div>
+
+<!-- =========================================================
+     画面②：プレイ画面（メイン迷路フィールド・第2層）
+     ========================================================= -->
+<div id="play-hud" class="hidden">
+  <!-- 上部サブボタンバー（端16px余白、最低52px以上、間隔12px以上） -->
+  <div id="top-bar">
+    <div class="top-left-group">
+      <button class="pokkori-btn sub-icon-btn" id="map-open-btn" title="めいろマップ（ステージせんたく）">
+        🗺️ <span id="hud-stage-name">Lv.1</span>
+      </button>
+      <button class="pokkori-btn sub-icon-btn" id="zukan-open-btn" title="シャボン玉ずかん＆ほしぞら星座">
+        📖 <span id="hud-zukan-count">1/10</span>
+      </button>
+    </div>
+
+    <div class="top-right-group">
+      <button class="pokkori-btn sub-icon-btn square" id="hint-btn" title="3だんかい おたすけヒント">
+        💡
+      </button>
+      <!-- おとな関門：1.5秒長押しで開く設定ボタン -->
+      <button class="pokkori-btn sub-icon-btn square" id="settings-gate-btn" title="おとなのひとと 1.5びょう ながおし">
+        ⚙️
+        <svg class="hold-ring-svg" viewBox="0 0 60 60">
+          <circle class="hold-ring-circle" id="settings-hold-circle" cx="30" cy="30" r="26"></circle>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 星のかけら表示（各レベルの総数に合わせて変化＋ひみつ・レア別カウント） -->
+  <div id="status-strip" title="タップで音声ガイドをよみあげます">
+    <div id="guide-status-text">🫧 スティックで ゴールのお花へ すすもう！</div>
+    <div class="star-counters-wrap">
+      <span class="star-pill" id="main-star-pill">⭐ 0/3</span>
+      <span class="star-pill secret" id="secret-star-pill">🌟 0/1</span>
+    </div>
+  </div>
+
+  <!-- トースト通知 -->
+  <div id="info-toast">🫧 ぷるん♪ かべで はずんだよ！</div>
+
+  <!-- 左下：バーチャルスティック（外枠120px・ノブ56px・左下180×200pxセミフローティング） -->
+  <div id="stick-touch-zone">
+    <div id="stick-base">
+      <span class="stick-dir-mark up">▲</span>
+      <span class="stick-dir-mark down">▼</span>
+      <span class="stick-dir-mark left">◀</span>
+      <span class="stick-dir-mark right">▶</span>
+      <div id="stick-knob">🫧</div>
+    </div>
+  </div>
+
+  <!-- 右下：見回しドラッグ案内 -->
+  <div id="camera-drag-guide">👆 みぎがわを なぞると みまわせるよ</div>
+</div>
+
+<!-- =========================================================
+     画面③：ステージ選択／めいろマップドロワー（第2層）
+     ========================================================= -->
+<div class="modal-backdrop" id="map-modal">
+  <div class="dialog-card">
+    <div class="dialog-header">
+      <h2>🗺️ めいろ マップ（えらんでね）</h2>
+      <button class="pokkori-btn close-big-btn" id="close-map-btn">✕ もどる</button>
+    </div>
+    <div class="stage-map-list" id="stage-map-list"></div>
+  </div>
+</div>
+
+<!-- =========================================================
+     画面④：ゴール花開きショー・ポップアップ（0.8秒ロック付）
+     ========================================================= -->
+<div class="modal-backdrop" id="goal-modal">
+  <div class="goal-card" id="goal-card-inner">
+    <div class="goal-badge" id="goal-combo-badge">🌸 パッと はなひらいたよ！ゴール！</div>
+    <div id="goal-3d-stage" title="タップでぷるん＆紙吹雪"></div>
+    <div id="goal-unlock-title">🍓 いちごピンク が なかまいり！</div>
+    <div id="goal-unlock-desc">あつめた ほしのかけらで ほしぞらの せいざが ひかるよ！</div>
+    <button class="pokkori-btn" id="goal-next-btn">
+      👆 つぎの めいろへ！
+    </button>
+  </div>
+</div>
+
+<!-- =========================================================
+     画面⑤：シャボン玉ずかん（10種）＆ ほしぞら星座（3種）統合画面
+     ========================================================= -->
+<div class="modal-backdrop" id="collection-modal">
+  <div class="collection-card">
+    <div class="dialog-header">
+      <h2 style="color:#fde047;">📖 シャボン玉ずかん ＆ せいざ</h2>
+      <button class="pokkori-btn close-big-btn" id="close-col-btn">✕ もどる</button>
+    </div>
+
+    <!-- タブ切替 -->
+    <div class="tab-switch-row">
+      <button class="pokkori-btn tab-pokkori-btn active" id="tab-bubbles-btn">
+        🫧 シャボン玉ずかん (10しゅ)
+      </button>
+      <button class="pokkori-btn tab-pokkori-btn" id="tab-stars-btn">
+        🌌 ほしぞら星座 (3しゅ)
+      </button>
+    </div>
+
+    <!-- タブ1：シャボン玉ずかん -->
+    <div id="tab-panel-bubbles">
+      <div id="zukan-preview-box">
+        <div id="zukan-3d-stage" title="タップでぷるんと揺れます"></div>
+        <div class="zukan-info">
+          <div id="zukan-bubble-title">🫧 そらいろふわりん</div>
+          <div id="zukan-bubble-desc">すんだ おそらの いろをした 元気な シャボン玉だよ！</div>
+          <button class="pokkori-btn" id="zukan-wear-btn">✨ このシャボン玉で あそぶ</button>
+        </div>
+      </div>
+      <div class="bubble-grid" id="bubble-grid"></div>
+    </div>
+
+    <!-- タブ2：ほしぞら星座（うさぎ座・いるか座・おうかん座） -->
+    <div id="tab-panel-constellations">
+      <div style="font-size:12.5px; font-weight:800; color:#fef08a; text-align:center;">
+        ⭐ あつめた ほしのかけら ごうけい：<span id="total-stars-count">0</span>こ
+      </div>
+      <div class="constellation-list" id="constellation-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     画面⑥：おとな設定メニュー（ペアレンタルゲート付き）
+     ========================================================= -->
+<div class="modal-backdrop" id="settings-modal">
+  <div class="dialog-card">
+    <div class="dialog-header">
+      <h2>⚙️ おとな せっていメニュー</h2>
+      <button class="pokkori-btn close-big-btn" id="close-settings-btn">✕ もどる</button>
+    </div>
+
+    <div class="settings-row">
+      <span>🔊 おと・こえ の オン/オフ</span>
+      <button class="pokkori-btn toggle-pill-btn" id="toggle-sound-btn">ON 🔊</button>
+    </div>
+
+    <div class="settings-row">
+      <span>🕹️ スティックの はやさ</span>
+      <button class="pokkori-btn toggle-pill-btn" id="toggle-sensitivity-btn">ふつう</button>
+    </div>
+
+    <div class="settings-row" style="flex-direction:column; gap:8px; align-items:stretch;">
+      <div style="font-size:12px; color:#64748b;">
+        ※データを消すときは 下のボタンを 2びょう ながおし してください
+      </div>
+      <button class="pokkori-btn" id="reset-hold-btn">
+        <div id="reset-progress-bar"></div>
+        <span style="position:relative; z-index:2;">🗑️ データを リセット（2びょう長押し）</span>
+      </button>
+
+      <!-- 2秒長押し後に表示される確認ダイアログ -->
+      <div id="reset-confirm-box">
+        <div style="font-weight:900; color:#b91c1c; font-size:14px;">
+          ほんとうに データを リセットする？
+        </div>
+        <div class="confirm-btns-row">
+          <button class="pokkori-btn close-big-btn" id="confirm-reset-yes" style="min-width:95px;">はい</button>
+          <button class="pokkori-btn toggle-pill-btn" id="confirm-reset-no" style="min-width:95px;">いいえ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Three.js / Cannon.js / GSAP / canvas-confetti (CDN) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+<script>
+(() => {
+  // ==========================================
+  // 1. マスターデータ（シャボン玉のなかま全10種・ほしぞら星座3種・全5ステージ）
+  // ==========================================
+  const BUBBLE_FRIENDS = [
+    {
+      id: 'sky_blue', name: 'そらいろふわりん', emoji: '🫧', color: 0x38bdf8, rim: 0xbae6fd, rare: false,
+      desc: 'すんだ おそらの いろをした、いつでも 元気な シャボン玉だよ！'
+    },
+    {
+      id: 'strawberry_pink', name: 'いちごピンク', emoji: '🍓', color: 0xf472b6, rim: 0xfbcfe8, rare: false,
+      desc: 'あまい いちごの かおりが しそうな かわいい ピンクの シャボン玉だよ！'
+    },
+    {
+      id: 'lemon_yellow', name: 'レモンイエロー', emoji: '🍋', color: 0xfacc15, rim: 0xfef08a, rare: false,
+      desc: 'キラキラ おほしさま もようが ひかる 元気な きいろの シャボン玉だよ！'
+    },
+    {
+      id: 'grape_purple', name: 'ぶどうパープル', emoji: '🍇', color: 0xa855f7, rim: 0xe9d5ff, rare: false,
+      desc: 'おしゃれな みずたま ドットもようの むらさきいろの シャボン玉だよ！'
+    },
+    {
+      id: 'melon_green', name: 'メロングリーン', emoji: '🍈', color: 0x4ade80, rim: 0xbbf7d0, rare: false,
+      desc: 'さわやかな メロンソーダみたいな みどりいろの シャボン玉だよ！'
+    },
+    {
+      id: 'orange_sun', name: 'みかんオレンジ', emoji: '🍊', color: 0xf97316, rim: 0xfed7aa, rare: false,
+      desc: 'おひさまみたいに ぽかぽか あたたかい オレンジいろの シャボン玉だよ！'
+    },
+    {
+      id: 'milk_white', name: 'ミルクホワイト', emoji: '🥛', color: 0xf8fafc, rim: 0xe2e8f0, rare: false,
+      desc: 'おそらの ふわふわな くもみたいに まっしろな パールシャボン玉だよ！'
+    },
+    {
+      id: 'sakura_peach', name: 'さくらピーチ', emoji: '🌸', color: 0xfb7185, rim: 0xffe4e6, rare: false,
+      desc: 'はるの さくらの はなびらが なかで まっている ももいろシャボン玉だよ！'
+    },
+    {
+      id: 'starry_navy', name: 'ほしぞらネイビー', emoji: '🌌', color: 0x6366f1, rim: 0xc7d2fe, rare: false,
+      desc: 'なかに きんいろの ほしくずが うかぶ よぞらいろの シャボン玉だよ！'
+    },
+    // レア（Lv.5クリアまたはコンボ・レア取得で解放）
+    {
+      id: 'rainbow_prism', name: 'にじいろシャボン玉', emoji: '🌈', color: 0xe879f9, rim: 0xfef08a, rare: true,
+      desc: 'なないろに キラキラ へんかする、でんせつの レアな シャボン玉だよ！'
+    }
+  ];
+
+  // 確定事項4：星座は3種（うさぎ座・いるか座・おうかん座）各5個の星のかけらで完成
+  const CONSTELLATIONS = [
+    {
+      id: 'rabbit', name: 'ぴょんぴょん うさぎ座', emoji: '🐰', needStars: 5, offsetStars: 0,
+      desc: 'おつきさまの うえで 元気に ジャンプする かわいい うさぎの せいざだよ！',
+      points: [[20, 55], [38, 22], [52, 18], [62, 42], [80, 58]]
+    },
+    {
+      id: 'dolphin', name: 'キラキラ いるか座', emoji: '🐬', needStars: 5, offsetStars: 5,
+      desc: 'ほしぞらの うみを スイスイ およぐ なかよし いるかの せいざだよ！',
+      points: [[16, 48], [36, 26], [58, 30], [78, 48], [52, 62]]
+    },
+    {
+      id: 'crown', name: 'ロイヤル おうかん座', emoji: '👑', needStars: 5, offsetStars: 10,
+      desc: 'めいろを たくさん クリアした たんけんかに かがやく おうかんの せいざだよ！',
+      points: [[16, 26], [34, 56], [50, 22], [66, 56], [84, 26]]
+    }
+  ];
+
+  // 確定事項3：各レベルの星のかけら総数（Lv1:3, Lv2:3+ひみつ1, Lv3:4+ひみつ1, Lv4:4+ひみつ1, Lv5:5+レア1）
+  const STAGE_DEFS = [
+    {
+      level: 1, name: 'Lv.1', fullName: 'Lv.1 ☀️ おひさま公園', icon: '☀️',
+      mainStars: 3, hasSecret: false, isRareSecret: false,
+      wallColor: 0x4ade80, floorColor: 0xfef9c3,
+      desc: 'かべに あたっても ぷるんと はずむ やさしい めいろだよ！（ほし 3つ）'
+    },
+    {
+      level: 2, name: 'Lv.2', fullName: 'Lv.2 🌷 そよかぜのお花畑', icon: '🌷',
+      mainStars: 3, hasSecret: true, isRareSecret: false,
+      wallColor: 0xf472b6, floorColor: 0xdcfce7,
+      desc: 'わかれみちと お花のトンネルが あるよ！ひみつのへやも さがそう！（ほし 3＋ひみつ1）'
+    },
+    {
+      level: 3, name: 'Lv.3', fullName: 'Lv.3 🍃 風の丘', icon: '🍃',
+      mainStars: 4, hasSecret: true, isRareSecret: false,
+      wallColor: 0x38bdf8, floorColor: 0xecfccb,
+      desc: 'かぜの とおりみちで くるくる きらきらダンス！（ほし 4＋ひみつ1）'
+    },
+    {
+      level: 4, name: 'Lv.4', fullName: 'Lv.4 🌇 夕やけの森', icon: '🌇',
+      mainStars: 4, hasSecret: true, isRareSecret: false,
+      wallColor: 0xf97316, floorColor: 0xfef08a,
+      desc: 'ふわふわ うごく タンポポの わたげを よけて すすもう！（ほし 4＋ひみつ1）'
+    },
+    {
+      level: 5, name: 'Lv.5', fullName: 'Lv.5 🌌 ほしの夜空', icon: '🌌',
+      mainStars: 5, hasSecret: true, isRareSecret: true,
+      wallColor: 0x6366f1, floorColor: 0x1e1b4b,
+      desc: 'トゲトゲのほしに 気をつけて にじいろシャボン玉を みつけよう！（ほし 5＋レア1）'
+    }
+  ];
+
+  // ローカルストレージ保存管理
+  const STORAGE_KEY = 'bubble_maze_fuwarin_v2';
+  let saveData = {
+    currentLevel: 1,
+    activeBubbleId: 'sky_blue',
+    unlockedBubbles: { sky_blue: true },
+    totalStars: 0,
+    comboCount: 0
+  };
+
+  function loadSaveData() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      if (raw && typeof raw === 'object') {
+        saveData.currentLevel = raw.currentLevel || 1;
+        saveData.activeBubbleId = raw.activeBubbleId || 'sky_blue';
+        saveData.unlockedBubbles = raw.unlockedBubbles || { sky_blue: true };
+        saveData.unlockedBubbles.sky_blue = true;
+        saveData.totalStars = raw.totalStars || 0;
+        saveData.comboCount = raw.comboCount || 0;
+      }
+    } catch (e) {}
+    updateHudBadges();
+  }
+
+  function writeSaveData() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
+    } catch (e) {}
+    updateHudBadges();
+  }
+
+  function updateHudBadges() {
+    const unlockedCount = BUBBLE_FRIENDS.filter(b => saveData.unlockedBubbles[b.id]).length;
+    document.getElementById('hud-zukan-count').textContent = `${unlockedCount}/10`;
+    if (saveData.totalStars > 0 || unlockedCount > 1) {
+      document.getElementById('resume-badge').style.display = 'inline-block';
+    }
+  }
+
+  // ==========================================
+  // 2. Web Audio API（ぷるん音・風のキラキラ音・プーちゃんの息・ファンファーレ合成）＋ Web Speech API
+  // ==========================================
+  class BubbleSoundEngine {
+    constructor() {
+      this.ctx = null;
+      this.enabled = true;
+      this.lastBounceSound = 0;
+    }
+    init() {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) this.ctx = new AudioCtx();
+      }
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+    }
+    speak(text) {
+      if (!this.enabled || !('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'ja-JP';
+        u.rate = 0.98;
+        u.pitch = 1.18;
+        window.speechSynthesis.speak(u);
+      } catch (e) {}
+    }
+    playTone(freq, dur = 0.14, type = 'sine', vol = 0.15) {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, now);
+      g.gain.setValueAtTime(vol, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      o.connect(g).connect(this.ctx.destination);
+      o.start(now);
+      o.stop(now + dur);
+    }
+    playPurunBounce() {
+      // 壁に当たったときの「ぷるん♪」ゼリーバウンス音
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      if (now - this.lastBounceSound < 0.18) return;
+      this.lastBounceSound = now;
+
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(340, now);
+      o.frequency.exponentialRampToValueAtTime(680, now + 0.09);
+      o.frequency.exponentialRampToValueAtTime(480, now + 0.18);
+      g.gain.setValueAtTime(0.18, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      o.connect(g).connect(this.ctx.destination);
+      o.start(now);
+      o.stop(now + 0.21);
+    }
+    playStarGet(starIdx) {
+      const notes = [587.33, 659.25, 783.99, 880.0, 1046.5, 1174.66];
+      const f = notes[starIdx % notes.length];
+      this.playTone(f, 0.16, 'triangle', 0.18);
+      setTimeout(() => this.playTone(f * 1.25, 0.2, 'triangle', 0.16), 70);
+    }
+    playWindSpin() {
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+        setTimeout(() => this.playTone(f, 0.12, 'sine', 0.11), i * 45);
+      });
+    }
+    playPopAndRespawn() {
+      // 「ぷちっ…」の小さな音 ＋ 0.15秒後にプーちゃんの「ぷぅ〜っ♪ぽわん！」膨張音
+      this.playTone(520, 0.06, 'sine', 0.12);
+      setTimeout(() => {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(280, now);
+        o.frequency.exponentialRampToValueAtTime(740, now + 0.25);
+        g.gain.setValueAtTime(0.16, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.27);
+        o.connect(g).connect(this.ctx.destination);
+        o.start(now);
+        o.stop(now + 0.28);
+      }, 150);
+    }
+    playGoalBloomFanfare() {
+      const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98];
+      notes.forEach((f, i) => {
+        setTimeout(() => this.playTone(f, 0.28, 'triangle', 0.2), i * 85);
+      });
+    }
+  }
+  const sound = new BubbleSoundEngine();
+
+  // ==========================================
+  // 3. Three.js + Cannon.js 3D迷路空間＆物理ワールド構築
+  // ==========================================
+  const container = document.getElementById('canvas-container');
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0xbae6fd, 0.011);
+
+  const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 180);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  container.appendChild(renderer.domElement);
+
+  const ambientLight = new THREE.AmbientLight(0xfffbeb, 0.86);
+  scene.add(ambientLight);
+
+  const sunLight = new THREE.DirectionalLight(0xfff7ed, 0.95);
+  sunLight.position.set(10, 28, 16);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.width = 1024;
+  sunLight.shadow.mapSize.height = 1024;
+  scene.add(sunLight);
+
+  // Cannon.js 物理ワールド（壁とのぷるんバウンス＆滑らかな移動）
+  const world = new CANNON.World();
+  world.gravity.set(0, 0, 0); // 空中を一定高さでふわふわ浮遊する設計
+  const bubblePhysMat = new CANNON.Material('bubble');
+  const wallPhysMat = new CANNON.Material('wall');
+  world.addContactMaterial(new CANNON.ContactMaterial(bubblePhysMat, wallPhysMat, {
+    friction: 0.02,
+    restitution: 0.85
+  }));
+
+  const mazeGroup = new THREE.Group();
+  scene.add(mazeGroup);
+
+  // ==========================================
+  // 4. 主人公「ふわりん」＆相棒の小鳥「プーちゃん」3Dモデル構築（5段階表情＋7種モーション＋足元楕円影）
+  // ==========================================
+  function createFuwarinAndPoochan3D(bubbleSpec) {
+    const root = new THREE.Group();
+
+    // ① 足元の楕円形ドロップシャドウ（浮遊高さがひと目でわかる接地影）
+    const dropShadow = new THREE.Mesh(
+      new THREE.CircleGeometry(0.95, 28),
+      new THREE.MeshBasicMaterial({ color: 0x0f172a, transparent: true, opacity: 0.26 })
+    );
+    dropShadow.rotation.x = -Math.PI / 2;
+    dropShadow.scale.set(1.05, 0.92, 1);
+    dropShadow.position.y = 0.05;
+    root.add(dropShadow);
+
+    // ふわりん浮遊ピボット（高さ Y = 1.25 を基準に上下フロート）
+    const fuwarinPivot = new THREE.Group();
+    fuwarinPivot.position.y = 1.25;
+    root.add(fuwarinPivot);
+
+    // ぷるんゼリー変形（スクワッシュ＆ストレッチ）用グループ
+    const jellyGroup = new THREE.Group();
+    fuwarinPivot.add(jellyGroup);
+
+    // ② シャボン玉の透明ツヤツヤ外殻
+    const shellMat = new THREE.MeshPhysicalMaterial({
+      color: bubbleSpec.color,
+      emissive: bubbleSpec.rim,
+      emissiveIntensity: 0.18,
+      roughness: 0.08,
+      metalness: 0.05,
+      transmission: 0.45,
+      transparent: true,
+      opacity: 0.86,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.05
+    });
+    const shellMesh = new THREE.Mesh(new THREE.SphereGeometry(0.88, 28, 24), shellMat);
+    jellyGroup.add(shellMesh);
+
+    // 頭頂部の「天使のわっか（王冠の泡リング）」
+    const haloRing = new THREE.Mesh(
+      new THREE.TorusGeometry(0.36, 0.06, 10, 24),
+      new THREE.MeshBasicMaterial({ color: 0xfef08a })
+    );
+    haloRing.rotation.x = Math.PI / 2;
+    haloRing.position.y = 0.98;
+    jellyGroup.add(haloRing);
+
+    // ゴール到着時にパッと開く「6枚の虹色花びらシェル」
+    const bloomPetalsGroup = new THREE.Group();
+    bloomPetalsGroup.visible = false;
+    const petalColors = [0xf43f5e, 0xf97316, 0xfacc15, 0x4ade80, 0x38bdf8, 0xc084fc];
+    const petals = [];
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const pHolder = new THREE.Group();
+      pHolder.rotation.y = a;
+      const petal = new THREE.Mesh(
+        new THREE.SphereGeometry(0.45, 12, 10),
+        new THREE.MeshBasicMaterial({ color: petalColors[i], transparent: true, opacity: 0.85 })
+      );
+      petal.scale.set(0.7, 0.2, 1.3);
+      petal.position.z = 0.7;
+      pHolder.add(petal);
+      bloomPetalsGroup.add(pHolder);
+      petals.push(petal);
+    }
+    jellyGroup.add(bloomPetalsGroup);
+
+    // ③ ふわりんの5段階表情パーツ（1:通常、2:＞＜ぷるん、3:わぁ〜ワクワク、4:ぷちっ、5:⭐大喜び）
+    const faceGroup = new THREE.Group();
+    jellyGroup.add(faceGroup);
+
+    const darkMat = new THREE.MeshBasicMaterial({ color: 0x111827 });
+    const whiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const cheekMat = new THREE.MeshBasicMaterial({ color: 0xfb7185 });
+
+    const normalEyes = new THREE.Group();
+    const winceEyes = new THREE.Group(); // ＞ ＜ ぷるん目
+    const starEyes = new THREE.Group();  // ⭐ 大喜び目
+    winceEyes.visible = false;
+    starEyes.visible = false;
+    faceGroup.add(normalEyes, winceEyes, starEyes);
+
+    [-0.28, 0.28].forEach((ex, idx) => {
+      // 通常黒目＋白ハイライト2つ
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), darkMat);
+      eye.position.set(ex, 0.1, 0.8);
+      const s1 = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), whiteMat);
+      s1.position.set(ex + 0.035, 0.15, 0.89);
+      const s2 = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), whiteMat);
+      s2.position.set(ex - 0.03, 0.06, 0.89);
+      normalEyes.add(eye, s1, s2);
+
+      // ＞ ＜ ぷるん目
+      const bar1 = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.045, 0.04), darkMat);
+      bar1.position.set(ex, 0.12, 0.84);
+      bar1.rotation.z = idx === 0 ? -0.4 : 0.4;
+      const bar2 = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.045, 0.04), darkMat);
+      bar2.position.set(ex, 0.06, 0.84);
+      bar2.rotation.z = idx === 0 ? 0.4 : -0.4;
+      winceEyes.add(bar1, bar2);
+
+      // ⭐ 大喜び星目
+      const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 0), new THREE.MeshBasicMaterial({ color: 0xfde047 }));
+      star.position.set(ex, 0.12, 0.84);
+      starEyes.add(star);
+
+      // ピンクの楕円ほっぺ
+      const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 10), cheekMat);
+      cheek.scale.set(1.3, 0.75, 0.4);
+      cheek.position.set(ex * 1.52, -0.06, 0.77);
+      faceGroup.add(cheek);
+    });
+
+    // にっこり口 ＆ わぁ〜（〇）口
+    const smileMouth = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.026, 8, 14, Math.PI), darkMat);
+    smileMouth.rotation.x = Math.PI;
+    smileMouth.position.set(0, -0.08, 0.84);
+    const wowMouth = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 10), new THREE.MeshBasicMaterial({ color: 0xf43f5e }));
+    wowMouth.scale.set(1, 1.2, 0.4);
+    wowMouth.position.set(0, -0.11, 0.84);
+    wowMouth.visible = false;
+    faceGroup.add(smileMouth, wowMouth);
+
+    // ④ 相棒キャラ「そよかぜの小鳥・プーちゃん」（赤いシャボン玉ストロー付き）
+    const poochanGroup = new THREE.Group();
+    poochanGroup.position.set(-1.15, 2.05, 0.65);
+    root.add(poochanGroup);
+
+    const birdMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.3 });
+    const birdBody = new THREE.Mesh(new THREE.SphereGeometry(0.36, 16, 14), birdMat);
+    poochanGroup.add(birdBody);
+
+    [-0.12, 0.12].forEach(bx => {
+      const bEye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), darkMat);
+      bEye.position.set(bx, 0.06, 0.32);
+      poochanGroup.add(bEye);
+    });
+
+    // くちばし＆赤いシャボン玉ストロー（ラッパ）
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.2, 8), new THREE.MeshStandardMaterial({ color: 0xf97316 }));
+    beak.rotation.x = Math.PI / 2;
+    beak.position.set(0, -0.02, 0.38);
+    const straw = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.07, 0.32, 10), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+    straw.rotation.x = Math.PI / 2;
+    straw.position.set(0, -0.04, 0.52);
+    poochanGroup.add(beak, straw);
+
+    // パタパタ羽
+    const leftWing = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), birdMat);
+    leftWing.scale.set(1.2, 0.2, 0.8);
+    leftWing.position.set(-0.36, 0.02, 0);
+    const rightWing = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), birdMat);
+    rightWing.scale.set(1.2, 0.2, 0.8);
+    rightWing.position.set(0.36, 0.02, 0);
+    poochanGroup.add(leftWing, rightWing);
+
+    // ヒント第1段階：足元の「キラキラ虹色ゴール矢印」
+    const hintArrowGroup = new THREE.Group();
+    hintArrowGroup.position.y = 0.15;
+    hintArrowGroup.visible = false;
+    const arrowMesh = new THREE.Mesh(
+      new THREE.ConeGeometry(0.38, 0.85, 12),
+      new THREE.MeshBasicMaterial({ color: 0xfde047 })
+    );
+    arrowMesh.rotation.x = -Math.PI / 2;
+    arrowMesh.position.z = -1.55;
+    hintArrowGroup.add(arrowMesh);
+    root.add(hintArrowGroup);
+
+    root.userData = {
+      dropShadow,
+      fuwarinPivot,
+      jellyGroup,
+      shellMesh,
+      shellMat,
+      bloomPetalsGroup,
+      petals,
+      normalEyes,
+      winceEyes,
+      starEyes,
+      smileMouth,
+      wowMouth,
+      poochanGroup,
+      leftWing,
+      rightWing,
+      hintArrowGroup
+    };
+    return root;
+  }
+
+  let playerRoot = createFuwarinAndPoochan3D(BUBBLE_FRIENDS[0]);
+  scene.add(playerRoot);
+
+  // ふわりんの物理球体ボディ
+  const playerBody = new CANNON.Body({
+    mass: 1.0,
+    material: bubblePhysMat,
+    linearDamping: 0.15,
+    angularDamping: 0.99
+  });
+  playerBody.addShape(new CANNON.Sphere(0.85));
+  playerBody.position.set(0, 1.25, 0);
+  world.addBody(playerBody);
+
+  // 壁との衝突時に「ぷるん♪」ゼリー変形＆音を発火
+  playerBody.addEventListener('collide', (e) => {
+    if (appScreen !== 'PLAY' || isGoalTriggered || isRespawning) return;
+    sound.playPurunBounce();
+    setFuwarinEmotion(2); // 2: ぷるん！（＞ ＜）
+
+    const jg = playerRoot.userData.jellyGroup;
+    gsap.killTweensOf(jg.scale);
+    gsap.fromTo(
+      jg.scale,
+      { x: 1.32, y: 0.72, z: 1.32 },
+      {
+        x: 1.0, y: 1.0, z: 1.0,
+        duration: 0.48,
+        ease: 'elastic.out(1.2, 0.35)',
+        onComplete: () => {
+          if (!isGoalTriggered) setFuwarinEmotion(1);
+        }
+      }
+    );
+  });
+
+  // 5段階の表情切り替え関数
+  // 1:通常 / 2:ぷるん(＞＜) / 3:ワクワク(〇口) / 4:ぷちっ＆復活 / 5:大喜び(⭐目)
+  function setFuwarinEmotion(state) {
+    const ud = playerRoot.userData;
+    ud.normalEyes.visible = (state === 1 || state === 3 || state === 4);
+    ud.winceEyes.visible = (state === 2);
+    ud.starEyes.visible = (state === 5);
+    ud.smileMouth.visible = (state !== 3);
+    ud.wowMouth.visible = (state === 3);
+  }
+
+  function applyBubbleSkin(bubbleId) {
+    const spec = BUBBLE_FRIENDS.find(b => b.id === bubbleId) || BUBBLE_FRIENDS[0];
+    saveData.activeBubbleId = spec.id;
+    writeSaveData();
+    const ud = playerRoot.userData;
+    ud.shellMat.color.setHex(spec.color);
+    ud.shellMat.emissive.setHex(spec.rim);
+  }
+
+  // ==========================================
+  // 5. 全5ステージの3D迷路＆仕掛け（花のトンネル・ひみつのへや・風の通り道・動く綿毛・トゲトゲ星）生成
+  // ==========================================
+  const wallBodies = [];
+  const starItems = [];      // { mesh, pos, isSecret, isRare, collected, beamMesh }
+  const windZones = [];      // { pos, dir, mesh }
+  const movingHazards = [];  // { mesh, basePos, axis, amp, speed, isSpiky }
+  let goalGatePos = new THREE.Vector3(0, 1.25, -18);
+  let goalGateGroup = null;
+  let lastSafePos = new THREE.Vector3(0, 1.25, 0);
+
+  function clearMazeStage() {
+    while (mazeGroup.children.length > 0) {
+      mazeGroup.remove(mazeGroup.children[0]);
+    }
+    wallBodies.forEach(b => world.removeBody(b));
+    wallBodies.length = 0;
+    starItems.length = 0;
+    windZones.length = 0;
+    movingHazards.length = 0;
+  }
+
+  function addMazeWall(x, z, w, d, colorHex, isPassableCurtain = false) {
+    const h = 2.1;
+    const mat = new THREE.MeshStandardMaterial({
+      color: isPassableCurtain ? 0xf9a8d4 : colorHex,
+      roughness: 0.45,
+      transparent: isPassableCurtain,
+      opacity: isPassableCurtain ? 0.55 : 1.0
+    });
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    mesh.position.set(x, h / 2, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mazeGroup.add(mesh);
+
+    // 通り抜けられる「お花のカーテン（ひみつのへや入口）」は物理コライダーを付けない
+    if (!isPassableCurtain) {
+      const body = new CANNON.Body({ mass: 0, material: wallPhysMat });
+      body.addShape(new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)));
+      body.position.set(x, h / 2, z);
+      world.addBody(body);
+      wallBodies.push(body);
+    } else {
+      // お花の飾りを目印として付ける
+      for (let i = -1; i <= 1; i++) {
+        const fl = new THREE.Mesh(
+          new THREE.SphereGeometry(0.28, 10, 10),
+          new THREE.MeshBasicMaterial({ color: 0xfef08a })
+        );
+        fl.position.set(x, 1.4, z + i * 0.9);
+        mazeGroup.add(fl);
+      }
+    }
+  }
+
+  function addStarCollectible(x, z, isSecret = false, isRare = false) {
+    const g = new THREE.Group();
+    g.position.set(x, 1.25, z);
+
+    const col = isRare ? 0xe879f9 : (isSecret ? 0xf43f5e : 0xfacc15);
+    const starMesh = new THREE.Mesh(
+      new THREE.OctahedronGeometry(isSecret || isRare ? 0.68 : 0.52, 0),
+      new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.35, roughness: 0.15 })
+    );
+    g.add(starMesh);
+
+    // ヒント第2段階用の光の柱
+    const beamMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.55, 0.75, 4.2, 16, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0xfef08a, side: THREE.DoubleSide, transparent: true, opacity: 0.0 })
+    );
+    beamMesh.position.y = 1.0;
+    g.add(beamMesh);
+
+    mazeGroup.add(g);
+    starItems.push({
+      mesh: g,
+      pos: new THREE.Vector3(x, 1.25, z),
+      isSecret,
+      isRare,
+      collected: false,
+      beamMesh
+    });
+  }
+
+  function buildMazeStage(lv) {
+    clearMazeStage();
+    const st = STAGE_DEFS[lv - 1];
+    document.body.className = `stage-${lv}`;
+    scene.fog.color.setHex(lv === 5 ? 0x1e1b4b : 0xbae6fd);
+
+    // 迷路の床ボード（幅18 × 奥行28）
+    const floor = new THREE.Mesh(
+      new THREE.BoxGeometry(18, 0.5, 28),
+      new THREE.MeshStandardMaterial({ color: st.floorColor, roughness: 0.7 })
+    );
+    floor.position.set(0, -0.25, -10);
+    floor.receiveShadow = true;
+    mazeGroup.add(floor);
+
+    // 外周の4辺生垣壁（Lv.2以降は右壁の一部を「ひみつのへや」へ続くお花のカーテンにする）
+    addMazeWall(0, 3.6, 14.0, 0.9, st.wallColor);   // 手前壁
+    addMazeWall(0, -23.6, 14.0, 0.9, st.wallColor); // 奥壁
+    addMazeWall(-6.6, -10.0, 0.9, 28.0, st.wallColor); // 左外壁
+
+    if (st.hasSecret) {
+      // 右外壁の z = -10 付近にお花のカーテン（隠し通路）を開ける＋外側にひみつの小部屋を作る
+      addMazeWall(6.6, -1.5, 0.9, 11.0, st.wallColor);
+      addMazeWall(6.6, -10.0, 0.4, 3.4, st.wallColor, true); // お花のカーテン（通過可能）
+      addMazeWall(6.6, -18.5, 0.9, 11.0, st.wallColor);
+      // ひみつのへや外枠
+      addMazeWall(10.5, -10.0, 0.8, 5.2, st.wallColor);
+      addMazeWall(8.6, -7.4, 4.2, 0.8, st.wallColor);
+      addMazeWall(8.6, -12.6, 4.2, 0.8, st.wallColor);
+      // ひみつのへやの中のボーナス星（またはLv.5レア）
+      addStarCollectible(8.8, -10.0, true, st.isRareSecret);
+    } else {
+      addMazeWall(6.6, -10.0, 0.9, 28.0, st.wallColor);
+    }
+
+    // 内部の迷路仕切り壁（道幅約 4.2〜4.8 で幼児が気持ちよく通れる広さ）
+    addMazeWall(-2.2, -4.5, 7.8, 0.9, st.wallColor);
+    addMazeWall(2.2, -11.5, 7.8, 0.9, st.wallColor);
+    addMazeWall(-2.2, -17.5, 7.8, 0.9, st.wallColor);
+
+    // Lv.2以降：お花のトンネル（くぐり抜ける可愛いアーチ）
+    if (lv >= 2) {
+      const arch = new THREE.Mesh(
+        new THREE.TorusGeometry(2.3, 0.36, 12, 24, Math.PI),
+        new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.35 })
+      );
+      arch.position.set(3.2, 0.2, -4.5);
+      mazeGroup.add(arch);
+    }
+
+    // Lv.3：風の通り道（光る風の矢印ゾーン）
+    if (lv === 3) {
+      const windPositions = [
+        { pos: new THREE.Vector3(0, 0.2, -8.0), dir: new THREE.Vector3(-1, 0, -0.4).normalize() },
+        { pos: new THREE.Vector3(0, 0.2, -14.5), dir: new THREE.Vector3(1, 0, -0.4).normalize() }
+      ];
+      windPositions.forEach(wz => {
+        const wGroup = new THREE.Group();
+        wGroup.position.copy(wz.pos);
+        const pad = new THREE.Mesh(
+          new THREE.PlaneGeometry(4.2, 2.6),
+          new THREE.MeshBasicMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.45, side: THREE.DoubleSide })
+        );
+        pad.rotation.x = -Math.PI / 2;
+        wGroup.add(pad);
+        mazeGroup.add(wGroup);
+        windZones.push({ pos: wz.pos, dir: wz.dir, mesh: wGroup });
+      });
+    }
+
+    // Lv.4：動く障害物（ふわふわ往復するタンポポの綿毛・割れない）
+    if (lv === 4) {
+      [-8.0, -14.5].forEach((hz, i) => {
+        const fluff = new THREE.Mesh(
+          new THREE.SphereGeometry(0.95, 14, 14),
+          new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, transparent: true, opacity: 0.88 })
+        );
+        fluff.position.set(0, 1.25, hz);
+        mazeGroup.add(fluff);
+        movingHazards.push({
+          mesh: fluff,
+          basePos: new THREE.Vector3(0, 1.25, hz),
+          amp: 3.4,
+          speed: 1.6 + i * 0.4,
+          isSpiky: false
+        });
+      });
+    }
+
+    // Lv.5：トゲトゲの星（触れると「ぷちっ」と割れて0.4秒でその場復活する罠）
+    if (lv === 5) {
+      [-8.0, -14.5].forEach((hz, i) => {
+        const spiky = new THREE.Mesh(
+          new THREE.OctahedronGeometry(0.88, 0),
+          new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0x991b1b, emissiveIntensity: 0.5 })
+        );
+        spiky.position.set(0, 1.25, hz);
+        mazeGroup.add(spiky);
+        movingHazards.push({
+          mesh: spiky,
+          basePos: new THREE.Vector3(0, 1.25, hz),
+          amp: 3.2,
+          speed: 1.5 + i * 0.35,
+          isSpiky: true
+        });
+      });
+    }
+
+    // メインの星のかけら配置（Lv1〜2: 3個、Lv3〜4: 4個、Lv5: 5個）
+    const starCoords = [
+      [0, -2.0],
+      [3.4, -7.8],
+      [-3.4, -14.2],
+      [3.4, -19.8],
+      [-2.8, -21.2]
+    ];
+    for (let i = 0; i < st.mainStars; i++) {
+      const [sx, sz] = starCoords[i];
+      addStarCollectible(sx, sz, false, false);
+    }
+
+    // ゴールのお花ゲート（z = -21.0, x = 0.0）
+    goalGatePos.set(0, 1.25, -21.0);
+    goalGateGroup = new THREE.Group();
+    goalGateGroup.position.copy(goalGatePos);
+
+    const goalRing = new THREE.Mesh(
+      new THREE.TorusGeometry(1.45, 0.22, 14, 32),
+      new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xf59e0b, emissiveIntensity: 0.4 })
+    );
+    goalGateGroup.add(goalRing);
+
+    for (let p = 0; p < 8; p++) {
+      const a = (p / 8) * Math.PI * 2;
+      const petal = new THREE.Mesh(
+        new THREE.SphereGeometry(0.42, 10, 10),
+        new THREE.MeshBasicMaterial({ color: p % 2 === 0 ? 0xf472b6 : 0xfef08a })
+      );
+      petal.position.set(Math.cos(a) * 1.55, Math.sin(a) * 1.55, 0);
+      goalGateGroup.add(petal);
+    }
+    mazeGroup.add(goalGateGroup);
+
+    // プレイヤーをスタート位置へ配置
+    playerBody.position.set(0, 1.25, 0.8);
+    playerBody.velocity.set(0, 0, 0);
+    lastSafePos.set(0, 1.25, 0.8);
+    playerRoot.position.set(0, 0, 0.8);
+    playerRoot.userData.shellMesh.visible = true;
+    playerRoot.userData.bloomPetalsGroup.visible = false;
+    setFuwarinEmotion(1);
+
+    updatePlayHudStarText();
+  }
+
+  // ==========================================
+  // 6. バーチャルスティック制御（外枠120px・ノブ56px・左下セミフローティング・0.25秒滑らか減速）
+  // ==========================================
+  const stickZone = document.getElementById('stick-touch-zone');
+  const stickBase = document.getElementById('stick-base');
+  const stickKnob = document.getElementById('stick-knob');
+
+  let stickActive = false;
+  let stickPointerId = null;
+  let stickOrigin = { x: 68, y: 132 }; // ゾーン内での中心座標
+  const stickInput = { x: 0, y: 0 };   // -1.0 〜 +1.0
+  let stickSensitivity = 1.0;
+
+  stickZone.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    sound.init();
+    stickActive = true;
+    stickPointerId = e.pointerId;
+    stickZone.setPointerCapture(e.pointerId);
+
+    // セミフローティング：左下ゾーン内のタッチ位置へ外枠(120px)の中心を合わせる
+    const rect = stickZone.getBoundingClientRect();
+    const localX = Math.max(60, Math.min(rect.width - 60, e.clientX - rect.left));
+    const localY = Math.max(60, Math.min(rect.height - 60, e.clientY - rect.top));
+    stickOrigin = { x: localX, y: localY };
+
+    stickBase.style.left = `${localX - 60}px`;
+    stickBase.style.bottom = `${rect.height - localY - 60}px`;
+    stickKnob.style.transform = `translate(0px, 0px)`;
+    stickInput.x = 0;
+    stickInput.y = 0;
+  });
+
+  stickZone.addEventListener('pointermove', (e) => {
+    if (!stickActive || e.pointerId !== stickPointerId) return;
+    const rect = stickZone.getBoundingClientRect();
+    const curX = e.clientX - rect.left;
+    const curY = e.clientY - rect.top;
+
+    const dx = curX - stickOrigin.x;
+    const dy = curY - stickOrigin.y;
+    const maxRadius = 38; // 外枠120px(半径60) - ノブ半径28 = 最大ストローク約38px
+    const dist = Math.hypot(dx, dy);
+    const clampedDist = Math.min(maxRadius, dist);
+    const angle = Math.atan2(dy, dx);
+
+    const kx = Math.cos(angle) * clampedDist;
+    const ky = Math.sin(angle) * clampedDist;
+    stickKnob.style.transform = `translate(${kx}px, ${ky}px)`;
+
+    stickInput.x = kx / maxRadius;
+    stickInput.y = ky / maxRadius;
+  });
+
+  function releaseStick(e) {
+    if (!stickActive || (e && e.pointerId !== stickPointerId)) return;
+    stickActive = false;
+    stickPointerId = null;
+    stickInput.x = 0;
+    stickInput.y = 0;
+    // 定位置（左端から24px、下端から24px）へ戻す
+    stickBase.style.left = '8px';
+    stickBase.style.bottom = '8px';
+    stickKnob.style.transform = 'translate(0px, 0px)';
+  }
+  stickZone.addEventListener('pointerup', releaseStick);
+  stickZone.addEventListener('pointercancel', releaseStick);
+
+  // ==========================================
+  // 7. ゲーム進行・0.4秒即復活・ゴール花開きショー（0.8秒ロック）
+  // ==========================================
+  let appScreen = 'TITLE';
+  let currentLevel = 1;
+  let isGoalTriggered = false;
+  let isRespawning = false;
+  let goalBtnLocked = false;
+  let hintStep = 0;
+
+  // 小さな虹色シャボン玉パーティクル（連打時・風のダンス時）
+  const miniBubbles = [];
+  function spawnMiniBubbleParticles(pos, count = 8) {
+    const cols = [0x38bdf8, 0xf472b6, 0xfacc15, 0x4ade80, 0xc084fc];
+    for (let i = 0; i < count; i++) {
+      const m = new THREE.Mesh(
+        new THREE.SphereGeometry(0.18 + Math.random() * 0.12, 10, 10),
+        new THREE.MeshBasicMaterial({ color: cols[i % cols.length], transparent: true, opacity: 0.8 })
+      );
+      m.position.copy(pos).add(new THREE.Vector3((Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 1.2));
+      scene.add(m);
+      miniBubbles.push({
+        mesh: m,
+        vel: new THREE.Vector3((Math.random() - 0.5) * 0.08, 0.06 + Math.random() * 0.08, (Math.random() - 0.5) * 0.08),
+        life: 45
+      });
+    }
+  }
+
+  function showToast(msg) {
+    const el = document.getElementById('info-toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => el.classList.remove('show'), 2200);
+  }
+
+  function updatePlayHudStarText() {
+    const st = STAGE_DEFS[currentLevel - 1];
+    document.getElementById('hud-stage-name').textContent = st.name;
+
+    const mainCollected = starItems.filter(s => !s.isSecret && s.collected).length;
+    document.getElementById('main-star-pill').textContent = `⭐ ${mainCollected}/${st.mainStars}`;
+
+    const secretPill = document.getElementById('secret-star-pill');
+    if (st.hasSecret) {
+      secretPill.classList.add('visible');
+      const secCollected = starItems.filter(s => s.isSecret && s.collected).length;
+      secretPill.textContent = st.isRareSecret ? `🌈 ${secCollected}/1` : `🌟 ${secCollected}/1`;
+    } else {
+      secretPill.classList.remove('visible');
+    }
+  }
+
+  // ★ 確定事項8：Lv.5のトゲトゲ星に触れて割れたとき、0.4秒でプーちゃんがその場のすぐ手前で新しいふわりんをふくらませて再開
+  function triggerPopAndInstantRespawn() {
+    if (isRespawning || isGoalTriggered) return;
+    isRespawning = true;
+    setFuwarinEmotion(4);
+    sound.playPopAndRespawn();
+
+    const popPos = playerRoot.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+    spawnMiniBubbleParticles(popPos, 14);
+
+    const jg = playerRoot.userData.jellyGroup;
+    jg.scale.set(0.01, 0.01, 0.01);
+    playerBody.velocity.set(0, 0, 0);
+
+    // 割れた場所の少し手前（lastSafePos）へ置き、プーちゃんが「ぷぅ〜っ♪」と息を吹き込む
+    playerBody.position.set(lastSafePos.x, 1.25, lastSafePos.z);
+    playerRoot.position.set(lastSafePos.x, 0, lastSafePos.z);
+
+    showToast('🐣 プーちゃん「ぷぅ〜っ♪ あたらしい シャボン玉だよ！」');
+
+    // 0.4秒でぽわん！と再膨張して即復帰
+    gsap.to(jg.scale, {
+      x: 1.0, y: 1.0, z: 1.0,
+      duration: 0.38,
+      ease: 'elastic.out(1.2, 0.4)',
+      onComplete: () => {
+        isRespawning = false;
+        setFuwarinEmotion(1);
+      }
+    });
+  }
+
+  // 🌸 ゴール到着時の自動花開きアニメーション＆画面④ポップアップ
+  const goalModal = document.getElementById('goal-modal');
+  const goal3dStage = document.getElementById('goal-3d-stage');
+  let glScene, glCam, glRenderer, glPreviewMesh;
+
+  function initGoalModal3D() {
+    glScene = new THREE.Scene();
+    glCam = new THREE.PerspectiveCamera(40, 185 / 165, 0.1, 30);
+    glCam.position.set(0, 1.2, 3.3);
+    glCam.lookAt(0, 1.2, 0);
+
+    glRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    glRenderer.setSize(185, 165);
+    glRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    goal3dStage.appendChild(glRenderer.domElement);
+
+    glScene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    const dl = new THREE.DirectionalLight(0xfffbeb, 0.95);
+    dl.position.set(3, 6, 4);
+    glScene.add(dl);
+  }
+  initGoalModal3D();
+
+  function triggerGoalBloomSequence() {
+    if (isGoalTriggered) return;
+    isGoalTriggered = true;
+    stickActive = false;
+    stickInput.x = 0;
+    stickInput.y = 0;
+    playerBody.velocity.set(0, 0, 0);
+
+    setFuwarinEmotion(5); // 5: ⭐大喜び目
+    sound.playGoalBloomFanfare();
+
+    // ぱっと花開きモーション（外殻が6枚の虹色花びらになって開く）
+    const ud = playerRoot.userData;
+    ud.bloomPetalsGroup.visible = true;
+    ud.petals.forEach(p => {
+      p.position.z = 0.4;
+      gsap.to(p.position, { z: 1.45, duration: 0.55, ease: 'back.out(2)' });
+    });
+    gsap.fromTo(
+      ud.fuwarinPivot.position,
+      { y: 1.25 },
+      { y: 2.3, duration: 0.35, yoyo: true, repeat: 1, ease: 'power2.out' }
+    );
+
+    if (typeof confetti === 'function') {
+      confetti({ particleCount: 75, spread: 80, origin: { y: 0.55 } });
+    }
+
+    setTimeout(() => {
+      openGoalShowPopup();
+    }, 650);
+  }
+
+  function openGoalShowPopup() {
+    saveData.comboCount++;
+
+    // 新しいシャボン玉のなかまを1つ解放（Lv.5クリアまたは3コンボ以上でレアの「にじいろシャボン玉」も解放）
+    let unlockedSpec = null;
+    if (currentLevel === 5 || saveData.comboCount >= 3) {
+      const rainbow = BUBBLE_FRIENDS.find(b => b.id === 'rainbow_prism');
+      if (!saveData.unlockedBubbles[rainbow.id]) {
+        saveData.unlockedBubbles[rainbow.id] = true;
+        unlockedSpec = rainbow;
+      }
+    }
+    if (!unlockedSpec) {
+      const lockedList = BUBBLE_FRIENDS.filter(b => !b.rare && !saveData.unlockedBubbles[b.id]);
+      if (lockedList.length > 0) {
+        unlockedSpec = lockedList[0];
+        saveData.unlockedBubbles[unlockedSpec.id] = true;
+      } else {
+        unlockedSpec = BUBBLE_FRIENDS[(currentLevel) % BUBBLE_FRIENDS.length];
+      }
+    }
+
+    writeSaveData();
+
+    if (glPreviewMesh) glScene.remove(glPreviewMesh);
+    glPreviewMesh = createFuwarinAndPoochan3D(unlockedSpec);
+    glScene.add(glPreviewMesh);
+
+    document.getElementById('goal-combo-badge').textContent =
+      saveData.comboCount >= 2
+        ? `🌈 ${saveData.comboCount}れんぞくゴール！ コンボボーナス！`
+        : '🌸 パッと はなひらいたよ！ゴール！';
+    document.getElementById('goal-unlock-title').textContent =
+      `${unlockedSpec.emoji} ${unlockedSpec.name} が なかまいり！`;
+    document.getElementById('goal-unlock-desc').textContent = unlockedSpec.desc;
+
+    // 確定事項10：開いてから0.8秒間は「つぎの めいろへ！」ボタンをロックし、連打は紙吹雪追加発射に変換
+    goalBtnLocked = true;
+    const nextBtn = document.getElementById('goal-next-btn');
+    nextBtn.style.opacity = '0.55';
+    setTimeout(() => {
+      goalBtnLocked = false;
+      nextBtn.style.opacity = '1';
+    }, 800);
+
+    goalModal.classList.add('active');
+    gsap.fromTo(
+      '#goal-card-inner',
+      { scale: 0.4, opacity: 0 },
+      { scale: 1, opacity: 1, duration: 0.42, ease: 'back.out(1.8)' }
+    );
+
+    sound.speak(`ゴール！ パッと はなひらいたね！ ${unlockedSpec.name}が なかまいりしたよ！`);
+  }
+
+  goalModal.addEventListener('pointerdown', () => {
+    if (goalBtnLocked && typeof confetti === 'function') {
+      confetti({ particleCount: 20, spread: 65, origin: { y: 0.5 } });
+    }
+  });
+
+  document.getElementById('goal-next-btn').addEventListener('click', () => {
+    if (goalBtnLocked) return;
+    goalModal.classList.remove('active');
+    const nextLv = (currentLevel % 5) + 1;
+    switchStageWithBubbleTransition(nextLv);
+  });
+
+  // 💡 3段階のおたすけヒント
+  document.getElementById('hint-btn').addEventListener('click', () => {
+    hintStep = Math.min(3, hintStep + 1);
+    sound.playWindSpin();
+
+    // 第1段階：足元のキラキラゴール矢印を表示
+    playerRoot.userData.hintArrowGroup.visible = true;
+
+    // 第2段階：残っている星のかけらに光の柱を立てる
+    if (hintStep >= 2) {
+      starItems.forEach(s => {
+        if (!s.collected) s.beamMesh.material.opacity = 0.45;
+      });
+    }
+
+    // 第3段階：プーちゃんが先へ飛んでお手本ルートを案内
+    if (hintStep >= 3) {
+      const poo = playerRoot.userData.poochanGroup;
+      gsap.fromTo(
+        poo.position,
+        { z: 0.65, y: 2.05 },
+        { z: -3.5, y: 2.8, duration: 0.65, yoyo: true, repeat: 1, ease: 'power2.inOut' }
+      );
+    }
+
+    showToast('💡 ヒント！ 矢印と ひかる ほしの ほうへ すすもう！');
+    sound.speak('ヒントだよ！ ひかっている 矢印と ほしの ほうへ、スティックを たおして すすんでみてね！');
+  });
+
+  // ==========================================
+  // 8. 画面③：めいろマップ ＆ 0.35秒シャボン玉バブルトランジション
+  // ==========================================
+  function renderMazeMapModal() {
+    const list = document.getElementById('stage-map-list');
+    list.innerHTML = '';
+    STAGE_DEFS.forEach(st => {
+      const item = document.createElement('div');
+      item.className = `stage-map-item ${st.level === currentLevel ? 'selected' : ''}`;
+      item.innerHTML = `
+        <div class="stage-ico">${st.icon}</div>
+        <div class="stage-info-txt">
+          <div class="st-title">${st.fullName}</div>
+          <div class="st-desc">${st.desc}</div>
+        </div>
+      `;
+      item.addEventListener('click', () => {
+        document.getElementById('map-modal').classList.remove('active');
+        switchStageWithBubbleTransition(st.level);
+      });
+      list.appendChild(item);
+    });
+  }
+
+  function switchStageWithBubbleTransition(newLv) {
+    const transEl = document.getElementById('bubble-transition');
+    transEl.classList.add('active');
+    sound.playWindSpin();
+
+    setTimeout(() => {
+      currentLevel = newLv;
+      saveData.currentLevel = newLv;
+      isGoalTriggered = false;
+      hintStep = 0;
+      playerRoot.userData.hintArrowGroup.visible = false;
+      writeSaveData();
+      buildMazeStage(currentLevel);
+    }, 320);
+
+    setTimeout(() => {
+      transEl.classList.remove('active');
+      const st = STAGE_DEFS[newLv - 1];
+      sound.speak(`${st.fullName} スタート！ ゴールのお花まで ふわりんを はこぼう！`);
+    }, 680);
+  }
+
+  document.getElementById('map-open-btn').addEventListener('click', () => {
+    renderMazeMapModal();
+    document.getElementById('map-modal').classList.add('active');
+  });
+  document.getElementById('close-map-btn').addEventListener('click', () => {
+    document.getElementById('map-modal').classList.remove('active');
+  });
+
+  // ==========================================
+  // 9. 画面⑤：シャボン玉ずかん（10種）＆ ほしぞら星座（3種）統合画面
+  // ==========================================
+  const colModal = document.getElementById('collection-modal');
+  const zukan3dStage = document.getElementById('zukan-3d-stage');
+  let zkScene, zkCam, zkRenderer, zkPreviewMesh;
+  let selectedZukanSpec = BUBBLE_FRIENDS[0];
+
+  function initZukan3D() {
+    zkScene = new THREE.Scene();
+    zkCam = new THREE.PerspectiveCamera(40, 1, 0.1, 30);
+    zkCam.position.set(0, 1.25, 3.2);
+    zkCam.lookAt(0, 1.25, 0);
+
+    zkRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    zkRenderer.setSize(108, 108);
+    zkRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    zukan3dStage.appendChild(zkRenderer.domElement);
+
+    zkScene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    const dl = new THREE.DirectionalLight(0xfffbeb, 0.95);
+    dl.position.set(3, 6, 4);
+    zkScene.add(dl);
+  }
+  initZukan3D();
+
+  function selectZukanBubble(spec, speakIt = false) {
+    selectedZukanSpec = spec;
+    if (zkPreviewMesh) zkScene.remove(zkPreviewMesh);
+    zkPreviewMesh = createFuwarinAndPoochan3D(spec);
+    zkScene.add(zkPreviewMesh);
+
+    // ぷるん♪と弾むアニメーション
+    sound.playPurunBounce();
+    gsap.fromTo(
+      zkPreviewMesh.userData.jellyGroup.scale,
+      { x: 1.28, y: 0.75, z: 1.28 },
+      { x: 1, y: 1, z: 1, duration: 0.45, ease: 'elastic.out(1.2, 0.35)' }
+    );
+
+    document.getElementById('zukan-bubble-title').textContent = `${spec.emoji} ${spec.name}`;
+    document.getElementById('zukan-bubble-desc').textContent = spec.desc;
+
+    if (speakIt) {
+      sound.speak(`${spec.name}！ ${spec.desc}`);
+    }
+  }
+
+  function renderBubbleZukanGrid() {
+    const grid = document.getElementById('bubble-grid');
+    grid.innerHTML = '';
+    BUBBLE_FRIENDS.forEach(spec => {
+      const isUnlocked = !!saveData.unlockedBubbles[spec.id];
+      const cell = document.createElement('div');
+      cell.className = `b-cell ${isUnlocked ? 'unlocked' : ''} ${spec.id === selectedZukanSpec.id ? 'active-cell' : ''}`;
+      cell.innerHTML = `
+        <span class="b-emo">${isUnlocked ? spec.emoji : '❓'}</span>
+        <div>${spec.name.slice(0, 5)}</div>
+      `;
+      cell.addEventListener('click', () => {
+        document.querySelectorAll('.b-cell').forEach(el => el.classList.remove('active-cell'));
+        cell.classList.add('active-cell');
+        selectZukanBubble(spec, true);
+      });
+      grid.appendChild(cell);
+    });
+    selectZukanBubble(
+      BUBBLE_FRIENDS.find(b => b.id === saveData.activeBubbleId) || BUBBLE_FRIENDS[0],
+      false
+    );
+  }
+
+  // ほしぞら星座ボード（3種：うさぎ座・いるか座・おうかん座）描画
+  function renderConstellationsBoard() {
+    document.getElementById('total-stars-count').textContent = String(saveData.totalStars);
+    const list = document.getElementById('constellation-list');
+    list.innerHTML = '';
+
+    CONSTELLATIONS.forEach(cs => {
+      const litStars = Math.max(0, Math.min(cs.needStars, saveData.totalStars - cs.offsetStars));
+      const isComplete = litStars >= cs.needStars;
+
+      // 星座ラインと星のSVG生成
+      let linesHtml = '';
+      for (let i = 0; i < cs.points.length - 1; i++) {
+        const [x1, y1] = cs.points[i];
+        const [x2, y2] = cs.points[i + 1];
+        const lineLit = litStars > i + 1;
+        linesHtml += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${lineLit ? '#fde047' : '#475569'}" stroke-width="2.5" stroke-dasharray="${lineLit ? 'none' : '3,3'}" />`;
+      }
+      let starsHtml = '';
+      cs.points.forEach(([px, py], idx) => {
+        const isLit = idx < litStars;
+        starsHtml += `<circle cx="${px}" cy="${py}" r="${isLit ? 5.5 : 3.5}" fill="${isLit ? '#fef08a' : '#64748b'}" />`;
+      });
+
+      const card = document.createElement('div');
+      card.className = `constellation-card ${isComplete ? 'completed' : ''}`;
+      card.innerHTML = `
+        <svg class="const-svg-box" viewBox="0 0 100 76">
+          ${linesHtml}
+          ${starsHtml}
+        </svg>
+        <div class="const-info">
+          <div class="const-title">${cs.emoji} ${cs.name} （⭐ ${litStars}/${cs.needStars}）</div>
+          <div class="const-desc">${cs.desc}</div>
+        </div>
+      `;
+      card.addEventListener('click', () => {
+        sound.playStarGet(2);
+        sound.speak(`${cs.name}！ ${cs.desc}`);
+      });
+      list.appendChild(card);
+    });
+  }
+
+  document.getElementById('zukan-open-btn').addEventListener('click', () => {
+    renderBubbleZukanGrid();
+    renderConstellationsBoard();
+    colModal.classList.add('active');
+  });
+  document.getElementById('close-col-btn').addEventListener('click', () => colModal.classList.remove('active'));
+
+  document.getElementById('tab-bubbles-btn').addEventListener('click', () => {
+    document.getElementById('tab-bubbles-btn').classList.add('active');
+    document.getElementById('tab-stars-btn').classList.remove('active');
+    document.getElementById('tab-panel-bubbles').style.display = 'flex';
+    document.getElementById('tab-panel-constellations').style.display = 'none';
+  });
+  document.getElementById('tab-stars-btn').addEventListener('click', () => {
+    document.getElementById('tab-stars-btn').classList.add('active');
+    document.getElementById('tab-bubbles-btn').classList.remove('active');
+    document.getElementById('tab-panel-bubbles').style.display = 'none';
+    document.getElementById('tab-panel-constellations').style.display = 'flex';
+    renderConstellationsBoard();
+  });
+
+  document.getElementById('zukan-wear-btn').addEventListener('click', () => {
+    saveData.unlockedBubbles[selectedZukanSpec.id] = true;
+    applyBubbleSkin(selectedZukanSpec.id);
+    sound.playPurunBounce();
+    showToast(`✨ ${selectedZukanSpec.name} に きせかえたよ！`);
+    colModal.classList.remove('active');
+  });
+  zukan3dStage.addEventListener('click', () => selectZukanBubble(selectedZukanSpec, true));
+
+  // 迷子防止の「1タップ帰還」ルール：モーダル枠外タップで即プレイ画面に戻る
+  [colModal, document.getElementById('map-modal'), document.getElementById('settings-modal')].forEach(modal => {
+    modal.addEventListener('pointerdown', (e) => {
+      if (e.target === modal) modal.classList.remove('active');
+    });
+  });
+
+  // ==========================================
+  // 10. 画面⑥：おとな関門（設定1.5秒長押し ＆ リセット2秒長押し＋確認ダイアログ）
+  // ==========================================
+  const settingsGateBtn = document.getElementById('settings-gate-btn');
+  const settingsHoldCircle = document.getElementById('settings-hold-circle');
+  let settingsHoldTimer = null;
+  let settingsHoldStart = 0;
+
+  function startSettingsHold(e) {
+    e.preventDefault();
+    settingsHoldStart = performance.now();
+    clearInterval(settingsHoldTimer);
+    settingsHoldTimer = setInterval(() => {
+      const elapsed = performance.now() - settingsHoldStart;
+      const p = Math.min(1, elapsed / 1500); // 1.5秒長押し
+      settingsHoldCircle.style.strokeDashoffset = String(180 * (1 - p));
+      if (p >= 1) {
+        clearInterval(settingsHoldTimer);
+        settingsHoldCircle.style.strokeDashoffset = '180';
+        document.getElementById('reset-confirm-box').classList.remove('show');
+        document.getElementById('settings-modal').classList.add('active');
+      }
+    }, 30);
+  }
+
+  function cancelSettingsHold() {
+    clearInterval(settingsHoldTimer);
+    const elapsed = performance.now() - settingsHoldStart;
+    settingsHoldCircle.style.strokeDashoffset = '180';
+    if (elapsed > 20 && elapsed < 1450) {
+      showToast('⚙️ おとなのひとと 1.5びょう ながおししてね');
+    }
+  }
+
+  settingsGateBtn.addEventListener('pointerdown', startSettingsHold);
+  settingsGateBtn.addEventListener('pointerup', cancelSettingsHold);
+  settingsGateBtn.addEventListener('pointerleave', cancelSettingsHold);
+  settingsGateBtn.addEventListener('pointercancel', cancelSettingsHold);
+
+  document.getElementById('close-settings-btn').addEventListener('click', () => {
+    document.getElementById('settings-modal').classList.remove('active');
+  });
+
+  const toggleSoundBtn = document.getElementById('toggle-sound-btn');
+  toggleSoundBtn.addEventListener('click', () => {
+    sound.enabled = !sound.enabled;
+    toggleSoundBtn.textContent = sound.enabled ? 'ON 🔊' : 'OFF 🔇';
+    toggleSoundBtn.classList.toggle('off', !sound.enabled);
+  });
+
+  const toggleSensBtn = document.getElementById('toggle-sensitivity-btn');
+  toggleSensBtn.addEventListener('click', () => {
+    stickSensitivity = stickSensitivity < 0.9 ? 1.0 : 0.72;
+    toggleSensBtn.textContent = stickSensitivity < 0.9 ? 'ゆっくり' : 'ふつう';
+  });
+
+  // 🗑️ データリセット：2秒長押し＋確認ダイアログ（「はい」「いいえ」）
+  const resetHoldBtn = document.getElementById('reset-hold-btn');
+  const resetProgressBar = document.getElementById('reset-progress-bar');
+  let resetTimer = null;
+  let resetStart = 0;
+
+  resetHoldBtn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    resetStart = performance.now();
+    clearInterval(resetTimer);
+    resetTimer = setInterval(() => {
+      const p = Math.min(100, ((performance.now() - resetStart) / 2000) * 100);
+      resetProgressBar.style.width = `${p}%`;
+      if (p >= 100) {
+        clearInterval(resetTimer);
+        resetProgressBar.style.width = '0%';
+        document.getElementById('reset-confirm-box').classList.add('show');
+      }
+    }, 30);
+  });
+
+  const cancelResetHold = () => {
+    clearInterval(resetTimer);
+    resetProgressBar.style.width = '0%';
+  };
+  resetHoldBtn.addEventListener('pointerup', cancelResetHold);
+  resetHoldBtn.addEventListener('pointerleave', cancelResetHold);
+
+  document.getElementById('confirm-reset-no').addEventListener('click', () => {
+    document.getElementById('reset-confirm-box').classList.remove('show');
+  });
+  document.getElementById('confirm-reset-yes').addEventListener('click', () => {
+    saveData = {
+      currentLevel: 1,
+      activeBubbleId: 'sky_blue',
+      unlockedBubbles: { sky_blue: true },
+      totalStars: 0,
+      comboCount: 0
+    };
+    writeSaveData();
+    applyBubbleSkin('sky_blue');
+    buildMazeStage(1);
+    document.getElementById('reset-confirm-box').classList.remove('show');
+    document.getElementById('settings-modal').classList.remove('active');
+    showToast('✨ データを リセットしました！');
+  });
+
+  // ==========================================
+  // 11. カメラ見回しドラッグ＆画面連打ミニシャボン玉リアクション＆エッジ16px無視
+  // ==========================================
+  let camYawOffset = 0;
+  let camPitchOffset = 0;
+  let curCamYaw = 0;
+  let curCamPitch = 0.62;
+  let isDraggingCam = false;
+  let prevCamPt = { x: 0, y: 0 };
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    // 確定事項6：画面端16px以内の誤タッチは効果音なしで静かに無視
+    if (
+      e.clientX < 16 ||
+      e.clientX > window.innerWidth - 16 ||
+      e.clientY < 16 ||
+      e.clientY > window.innerHeight - 16
+    ) {
+      return;
+    }
+    isDraggingCam = true;
+    prevCamPt = { x: e.clientX, y: e.clientY };
+
+    // タップした時、ふわりんの周りに小さな虹色の泡が「ポワン♪」と浮かび上がる気持ちよい反応
+    spawnMiniBubbleParticles(playerRoot.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 4);
+    if (appScreen === 'TITLE') {
+      sound.playPurunBounce();
+      gsap.fromTo(
+        playerRoot.userData.jellyGroup.scale,
+        { x: 1.3, y: 0.74, z: 1.3 },
+        { x: 1, y: 1, z: 1, duration: 0.45, ease: 'elastic.out(1.2, 0.35)' }
+      );
+    }
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    if (!isDraggingCam) return;
+    const dx = e.clientX - prevCamPt.x;
+    const dy = e.clientY - prevCamPt.y;
+    prevCamPt = { x: e.clientX, y: e.clientY };
+
+    camYawOffset = Math.max(-0.9, Math.min(0.9, camYawOffset - dx * 0.0065));
+    camPitchOffset = Math.max(-0.22, Math.min(0.45, camPitchOffset + dy * 0.0055));
+  });
+
+  window.addEventListener('pointerup', () => {
+    isDraggingCam = false;
+  });
+
+  // タイトル画面「🫧 ぼうけん スタート！」ボタン
+  document.getElementById('start-game-btn').addEventListener('click', () => {
+    sound.init();
+    sound.playGoalBloomFanfare();
+    appScreen = 'PLAY';
+    document.getElementById('title-screen').classList.add('hidden');
+    document.getElementById('play-hud').classList.remove('hidden');
+
+    currentLevel = saveData.currentLevel || 1;
+    applyBubbleSkin(saveData.activeBubbleId);
+    buildMazeStage(currentLevel);
+
+    sound.speak('ふわりんの ぼうけん スタート！ ひだりしたの スティックを そっと うごかして、ゴールのお花まで はこぼう！');
+  });
+
+  document.getElementById('status-strip').addEventListener('click', () => {
+    const st = STAGE_DEFS[currentLevel - 1];
+    sound.speak(st.desc);
+  });
+
+  // ==========================================
+  // 12. メイン物理＆アニメーションループ（0.25秒減速・星収集・風ダンス・ゴール判定）
+  // ==========================================
+  const clock = new THREE.Clock();
+
+  loadSaveData();
+  applyBubbleSkin(saveData.activeBubbleId);
+  buildMazeStage(saveData.currentLevel || 1);
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.04);
+    const elapsed = clock.getElapsedTime();
+
+    world.step(1 / 60, dt, 3);
+
+    const ud = playerRoot.userData;
+
+    if (appScreen === 'PLAY' && !isGoalTriggered && !isRespawning) {
+      // ★ 確定事項9：スティック入力に応じた滑らかな加減速（離すと0.25秒で速度ゼロまで減速）
+      const maxSpeed = 6.2 * stickSensitivity;
+      const targetVx = stickInput.x * maxSpeed;
+      const targetVz = stickInput.y * maxSpeed;
+
+      // 0.25秒で収束する指数減衰フィルタ (dt / 0.06 ≒ 4フレーム時定数、約0.25秒でほぼ完全停止)
+      const smoothFactor = Math.min(1.0, dt / 0.055);
+      playerBody.velocity.x += (targetVx - playerBody.velocity.x) * smoothFactor;
+      playerBody.velocity.z += (targetVz - playerBody.velocity.z) * smoothFactor;
+      playerBody.position.y = 1.25;
+
+      // 進行方向へふわりんの体を少し傾ける
+      ud.jellyGroup.rotation.z = -playerBody.velocity.x * 0.035;
+      ud.jellyGroup.rotation.x = playerBody.velocity.z * 0.035;
+
+      // スティック操作中はカメラの見回しオフセットを緩やかに正面へ戻す
+      if (stickActive) {
+        camYawOffset *= 0.94;
+      }
+
+      // 1) 風の通り道（Lv.3）判定＆きらきらスピンダンス
+      windZones.forEach(wz => {
+        const d = Math.hypot(playerBody.position.x - wz.pos.x, playerBody.position.z - wz.pos.z);
+        if (d < 2.2) {
+          playerBody.velocity.x += wz.dir.x * 0.35;
+          playerBody.velocity.z += wz.dir.z * 0.35;
+          ud.jellyGroup.rotation.y += 0.22; // きらきらスピンダンス
+          if (Math.random() < 0.25) {
+            spawnMiniBubbleParticles(playerRoot.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 1);
+          }
+        }
+      });
+
+      // 2) 動く障害物（Lv.4 綿毛 ／ Lv.5 トゲトゲの星）との距離判定
+      let nearDanger = false;
+      movingHazards.forEach((hz, idx) => {
+        hz.mesh.position.x = hz.basePos.x + Math.sin(elapsed * hz.speed + idx) * hz.amp;
+        hz.mesh.rotation.y = elapsed * 2;
+        const dist = Math.hypot(playerBody.position.x - hz.mesh.position.x, playerBody.position.z - hz.mesh.position.z);
+        if (dist < 2.6) nearDanger = true;
+
+        if (dist < 1.38) {
+          if (hz.isSpiky) {
+            // Lv.5のトゲトゲ星：ぷちっ＆0.4秒その場復活！
+            triggerPopAndInstantRespawn();
+          } else {
+            // Lv.4の綿毛：ぷるんと優しく押し返される
+            const pushAngle = Math.atan2(playerBody.position.x - hz.mesh.position.x, playerBody.position.z - hz.mesh.position.z);
+            playerBody.velocity.x = Math.sin(pushAngle) * 7.5;
+            playerBody.velocity.z = Math.cos(pushAngle) * 7.5;
+            sound.playPurunBounce();
+          }
+        }
+      });
+
+      // 安全な場所にいるときは復帰座標（lastSafePos）を更新
+      if (!nearDanger) {
+        lastSafePos.set(playerBody.position.x, 1.25, playerBody.position.z);
+      }
+
+      // 3) 星のかけら（＆ひみつ・レア星）の収集判定
+      starItems.forEach((stItem, idx) => {
+        stItem.mesh.rotation.y = elapsed * 2.2 + idx;
+        if (!stItem.collected) {
+          const d = Math.hypot(playerBody.position.x - stItem.pos.x, playerBody.position.z - stItem.pos.z);
+          if (d < 1.45) {
+            stItem.collected = true;
+            stItem.mesh.visible = false;
+            saveData.totalStars++;
+            if (stItem.isRare) {
+              saveData.unlockedBubbles.rainbow_prism = true;
+            }
+            writeSaveData();
+            updatePlayHudStarText();
+            sound.playStarGet(saveData.totalStars);
+            setFuwarinEmotion(3); // 3: ワクワク（〇口）
+            spawnMiniBubbleParticles(stItem.pos, 10);
+
+            if (stItem.isRare) {
+              showToast('🌈 レアな「にじいろシャボン玉」の ほしを みつけたよ！');
+              sound.speak('やったあ！ にじいろに かがやく レアな ほしを みつけたよ！');
+            } else if (stItem.isSecret) {
+              showToast('🌟 ひみつの へやの ボーナスぼしを みつけたよ！');
+              sound.speak('ひみつの へやを みつけたね！ すごい！');
+            } else {
+              showToast('⭐ キラキラ！ ほしのかけらを ゲット！');
+            }
+          }
+        }
+      });
+
+      // 4) ゴール手前膨張（「もうすぐだよ！」）＆ ゴール到着自動花開き判定
+      const distToGoal = Math.hypot(playerBody.position.x - goalGatePos.x, playerBody.position.z - goalGatePos.z);
+      if (distToGoal < 1.65) {
+        triggerGoalBloomSequence();
+      } else if (distToGoal < 4.5) {
+        // ゴール直前でシャボン玉が少し大きくなって知らせる
+        const nearScale = 1.14 + Math.sin(elapsed * 8) * 0.04;
+        ud.shellMesh.scale.set(nearScale, nearScale, nearScale);
+        setFuwarinEmotion(3);
+      } else {
+        ud.shellMesh.scale.set(1, 1, 1);
+      }
+
+      // ヒント矢印をゴール方向へ向ける
+      if (ud.hintArrowGroup.visible) {
+        const goalAngle = Math.atan2(goalGatePos.x - playerBody.position.x, goalGatePos.z - playerBody.position.z);
+        ud.hintArrowGroup.rotation.y = goalAngle + Math.PI;
+      }
+    }
+
+    // ふわりんと相棒プーちゃんの常時ふわりフロート＆足元影の連動
+    playerRoot.position.x = playerBody.position.x;
+    playerRoot.position.z = playerBody.position.z;
+
+    const floatOffset = Math.sin(elapsed * 3.2) * 0.14;
+    if (!isGoalTriggered) {
+      ud.fuwarinPivot.position.y = 1.25 + floatOffset;
+    }
+    const shadowScale = 1.0 - floatOffset * 0.25;
+    ud.dropShadow.scale.set(shadowScale * 1.05, shadowScale * 0.92, 1);
+
+    // プーちゃんのパタパタ羽ばたき
+    ud.poochanGroup.position.y = 2.05 + Math.cos(elapsed * 4.5) * 0.15;
+    const flap = Math.sin(elapsed * 16) * 0.55;
+    ud.leftWing.rotation.z = flap;
+    ud.rightWing.rotation.z = -flap;
+
+    if (goalGateGroup) {
+      goalGateGroup.rotation.z = elapsed * 1.2;
+    }
+
+    // ミニシャボン玉パーティクル更新
+    for (let i = miniBubbles.length - 1; i >= 0; i--) {
+      const b = miniBubbles[i];
+      b.mesh.position.add(b.vel);
+      b.life--;
+      b.mesh.material.opacity = (b.life / 45) * 0.8;
+      if (b.life <= 0) {
+        scene.remove(b.mesh);
+        miniBubbles.splice(i, 1);
+      }
+    }
+
+    // モーダル内の3Dプレビュー回転描画
+    if (goalModal.classList.contains('active') && glPreviewMesh) {
+      glPreviewMesh.rotation.y += 0.03;
+      glRenderer.render(glScene, glCam);
+    }
+    if (colModal.classList.contains('active') && zkPreviewMesh) {
+      zkPreviewMesh.rotation.y += 0.025;
+      zkRenderer.render(zkScene, zkCam);
+    }
+
+    // カメラ追従（スマホ縦画面オートフレーミング対応）
+    const aspect = window.innerWidth / window.innerHeight;
+    const portraitZoom = aspect < 0.95 ? Math.min(1.42, 0.92 / aspect) : 1.0;
+
+    if (appScreen === 'TITLE') {
+      const titleYaw = camYawOffset + elapsed * 0.25;
+      const dist = 8.5 * portraitZoom;
+      camera.position.set(
+        playerRoot.position.x + Math.sin(titleYaw) * dist,
+        3.2 + camPitchOffset * 2.5,
+        playerRoot.position.z + Math.cos(titleYaw) * dist
+      );
+      camera.lookAt(playerRoot.position.x, 1.3, playerRoot.position.z);
+    } else {
+      curCamYaw += (camYawOffset - curCamYaw) * 0.14;
+      curCamPitch += ((0.64 + camPitchOffset) - curCamPitch) * 0.14;
+      const dist = 12.2 * portraitZoom;
+      const px = playerRoot.position.x;
+      const pz = playerRoot.position.z;
+      camera.position.set(
+        px + Math.sin(curCamYaw) * Math.cos(curCamPitch) * dist,
+        Math.sin(curCamPitch) * dist,
+        pz + Math.cos(curCamYaw) * Math.cos(curCamPitch) * dist
+      );
+      camera.lookAt(px, 0.9, pz - 1.8);
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  animate();
+})();
+</script>
+</body>
+</html>
