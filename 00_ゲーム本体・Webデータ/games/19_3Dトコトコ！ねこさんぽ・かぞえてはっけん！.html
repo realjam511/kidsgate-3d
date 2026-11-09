@@ -666,14 +666,20 @@
   <button class="pokkori-btn tr-pill-btn" id="quick-cam-btn" title="カメラ視点を切り替え">
     🎥 <span id="cam-label">さんぽ</span>
   </button>
-  <button class="pokkori-btn tr-pill-btn" id="open-settings-btn" title="設定（おたすけ設定をひらく）">
-    ⚙️
+  <button class="pokkori-btn tr-pill-btn relative w-9 h-9 flex items-center justify-center p-0 rounded-full overflow-hidden select-none shrink-0" id="open-settings-btn" title="おとなのひとと 1びょう ながおし" aria-label="せってい">
+    <span class="pointer-events-none select-none text-sm">⚙️</span>
+    <svg class="absolute inset-0 w-full h-full pointer-events-none -rotate-90" viewBox="0 0 36 36">
+        <circle id="settings-hold-circle" cx="18" cy="18" r="15" fill="none" stroke="#38bdf8" stroke-width="3" stroke-dasharray="94.2" stroke-dashoffset="94.2" style="transition: stroke-dashoffset 0.04s linear;"></circle>
+    </svg>
   </button>
   <button class="pokkori-btn tr-pill-btn icon-only" id="sound-toggle-btn" title="音声・効果音ON/OFF">🔊</button>
   <button class="pokkori-btn tr-pill-btn icon-only" id="ui-min-btn" title="すっきり表示（UI最小化）">👁️</button>
 </div>
 
 <!-- 右上：収納設定ドロワー -->
+  <!-- 長押し案内用トースト -->
+  <div id="game-toast-overlay" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-900/95 text-white px-4 py-2.5 rounded-full font-black text-xs sm:text-sm shadow-2xl border border-white/20 pointer-events-none z-50 transition-opacity duration-200 opacity-0 hidden"></div>
+
 <div id="settings-drawer">
   <div class="drawer-section">
     <div class="drawer-title">
@@ -2181,10 +2187,56 @@
   // 右上ドロワー開閉
   const drawerEl = document.getElementById('settings-drawer');
   const openSettingsBtn = document.getElementById('open-settings-btn');
-  openSettingsBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    drawerEl.classList.toggle('open');
-  });
+  const settingsHoldCircle = document.getElementById('settings-hold-circle');
+  const gameToastEl = document.getElementById('game-toast-overlay');
+  let gameToastTimer = null;
+
+  function showSettingsToast(msg) {
+    if (!gameToastEl) return;
+    gameToastEl.textContent = msg;
+    gameToastEl.classList.remove('hidden');
+    gameToastEl.style.opacity = '1';
+    clearTimeout(gameToastTimer);
+    gameToastTimer = setTimeout(() => {
+      gameToastEl.style.opacity = '0';
+      setTimeout(() => gameToastEl.classList.add('hidden'), 200);
+    }, 2000);
+  }
+
+  let settingsHoldTimer = null;
+  let settingsHoldStart = 0;
+  const SETTINGS_HOLD_DURATION = 1000; // 1秒長押し
+
+  function startSettingsHold(e) {
+    e.preventDefault();
+    settingsHoldStart = performance.now();
+    clearInterval(settingsHoldTimer);
+    settingsHoldTimer = setInterval(() => {
+      const elapsed = performance.now() - settingsHoldStart;
+      const p = Math.min(1, elapsed / SETTINGS_HOLD_DURATION);
+      if (settingsHoldCircle) settingsHoldCircle.style.strokeDashoffset = String(94.2 * (1 - p));
+      if (p >= 1) {
+        clearInterval(settingsHoldTimer);
+        if (settingsHoldCircle) settingsHoldCircle.style.strokeDashoffset = '94.2';
+        drawerEl.classList.add('open');
+      }
+    }, 25);
+  }
+
+  function cancelSettingsHold() {
+    clearInterval(settingsHoldTimer);
+    const elapsed = performance.now() - settingsHoldStart;
+    if (settingsHoldCircle) settingsHoldCircle.style.strokeDashoffset = '94.2';
+    if (elapsed > 40 && elapsed < SETTINGS_HOLD_DURATION) {
+      showSettingsToast('⚙️ おとなのひとと 1びょう ながおししてね');
+    }
+  }
+
+  openSettingsBtn.addEventListener('pointerdown', startSettingsHold);
+  openSettingsBtn.addEventListener('pointerup', cancelSettingsHold);
+  openSettingsBtn.addEventListener('pointerleave', cancelSettingsHold);
+  openSettingsBtn.addEventListener('pointercancel', cancelSettingsHold);
+  openSettingsBtn.addEventListener('click', (e) => e.preventDefault());
   document.getElementById('close-drawer-btn').addEventListener('click', () => {
     drawerEl.classList.remove('open');
   });
