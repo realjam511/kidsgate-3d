@@ -885,7 +885,7 @@
         💡
       </button>
       <!-- おとな関門：1.5秒長押しで開く設定ボタン -->
-      <button class="pokkori-btn sub-icon-btn square" id="settings-gate-btn" title="おとなのひとと 1.5びょう ながおし">
+      <button class="pokkori-btn sub-icon-btn square" id="settings-gate-btn" title="おとなのひとと 1びょう ながおし">
         ⚙️
         <svg class="hold-ring-svg" viewBox="0 0 60 60">
           <circle class="hold-ring-circle" id="settings-hold-circle" cx="30" cy="30" r="26"></circle>
@@ -2469,7 +2469,7 @@ _stopVoice() {
     clearInterval(settingsHoldTimer);
     settingsHoldTimer = setInterval(() => {
       const elapsed = performance.now() - settingsHoldStart;
-      const p = Math.min(1, elapsed / 1500); // 1.5秒長押し
+      const p = Math.min(1, elapsed / 1000); // 1秒長押し
       settingsHoldCircle.style.strokeDashoffset = String(180 * (1 - p));
       if (p >= 1) {
         clearInterval(settingsHoldTimer);
@@ -2484,8 +2484,8 @@ _stopVoice() {
     clearInterval(settingsHoldTimer);
     const elapsed = performance.now() - settingsHoldStart;
     settingsHoldCircle.style.strokeDashoffset = '180';
-    if (elapsed > 20 && elapsed < 1450) {
-      showToast('⚙️ おとなのひとと 1.5びょう ながおししてね');
+    if (elapsed > 20 && elapsed < 1000) {
+      showToast('⚙️ おとなのひとと 1びょう ながおししてね');
     }
   }
 
