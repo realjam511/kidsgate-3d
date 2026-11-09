@@ -124,15 +124,17 @@
                 <!-- 上部コントロールボタン群（誤タップ防止のため上部に集約） -->
                 <div class="flex items-center gap-1.5 sm:gap-2">
                     <!-- もういっかい！ボタン -->
-                    <button id="reset-btn" class="btn-toy bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-amber-950 font-black py-1.5 px-3 sm:px-4 rounded-full border-2 border-white flex items-center gap-1 text-xs sm:text-sm cursor-pointer">
+                    <button id="reset-btn" class="btn-toy bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-amber-950 font-black py-1.5 px-3 sm:px-4 rounded-full border-2 border-white flex items-center gap-1 text-xs sm:text-sm cursor-pointer whitespace-nowrap shrink-0">
                         <span>✨</span>
                         <span>もういっかい！</span>
                     </button>
 
                     <!-- せっていボタン -->
-                    <button id="settings-btn" class="btn-toy-slate bg-gradient-to-b from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white font-black py-1.5 px-3 sm:px-4 rounded-full border-2 border-white flex items-center gap-1 text-xs sm:text-sm cursor-pointer">
-                        <span>⚙️</span>
-                        <span>せってい</span>
+                    <button id="settings-btn" class="btn-toy-slate relative w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-b from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white font-black rounded-full border-2 border-white flex items-center justify-center text-sm sm:text-base cursor-pointer shrink-0 shadow-sm overflow-hidden select-none" title="おとなのひとと 1びょう ながおし" aria-label="せってい">
+                        <span class="pointer-events-none select-none">⚙️</span>
+                        <svg class="absolute inset-0 w-full h-full pointer-events-none -rotate-90" viewBox="0 0 36 36">
+                            <circle id="settings-hold-circle" cx="18" cy="18" r="15" fill="none" stroke="#38bdf8" stroke-width="3" stroke-dasharray="94.2" stroke-dashoffset="94.2" style="transition: stroke-dashoffset 0.04s linear;"></circle>
+                        </svg>
                     </button>
                 </div>
             </div>
@@ -230,7 +232,10 @@
     <!-- ==========================================
          ⚙️ せっていモーダル（動物園・水族館デザイン、盤面サイズ、対戦モード、音設定）
          ========================================== -->
-    <div id="settings-modal" class="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden">
+        <!-- 長押し案内用トースト -->
+    <div id="game-toast-overlay" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-900/95 text-white px-4 py-2.5 rounded-full font-black text-xs sm:text-sm shadow-2xl border border-white/20 pointer-events-none z-50 transition-opacity duration-200 opacity-0 hidden"></div>
+
+<div id="settings-modal" class="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden">
         <div class="modal-pop bg-amber-50 border-4 border-amber-400 rounded-3xl max-w-lg w-full max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden">
             
             <!-- モーダルヘッダー -->
@@ -2469,7 +2474,60 @@
                 checkAndTriggerCpuMove();
             };
 
-            document.getElementById('settings-btn').addEventListener('click', openSettings);
+            // 設定ボタン（約1秒長押し機構）
+            const settingsBtn = document.getElementById('settings-btn');
+            const settingsHoldCircle = document.getElementById('settings-hold-circle');
+            const gameToastEl = document.getElementById('game-toast-overlay');
+            let gameToastTimer = null;
+
+            function showSettingsToast(msg) {
+                if (!gameToastEl) return;
+                gameToastEl.textContent = msg;
+                gameToastEl.classList.remove('hidden');
+                gameToastEl.style.opacity = '1';
+                clearTimeout(gameToastTimer);
+                gameToastTimer = setTimeout(() => {
+                    gameToastEl.style.opacity = '0';
+                    setTimeout(() => gameToastEl.classList.add('hidden'), 200);
+                }, 2000);
+            }
+
+            let settingsHoldTimer = null;
+            let settingsHoldStart = 0;
+            const SETTINGS_HOLD_DURATION = 1000; // 1秒長押し
+
+            function startSettingsHold(e) {
+                e.preventDefault();
+                settingsHoldStart = performance.now();
+                clearInterval(settingsHoldTimer);
+                settingsHoldTimer = setInterval(() => {
+                    const elapsed = performance.now() - settingsHoldStart;
+                    const p = Math.min(1, elapsed / SETTINGS_HOLD_DURATION);
+                    if (settingsHoldCircle) settingsHoldCircle.style.strokeDashoffset = String(94.2 * (1 - p));
+                    if (p >= 1) {
+                        clearInterval(settingsHoldTimer);
+                        if (settingsHoldCircle) settingsHoldCircle.style.strokeDashoffset = '94.2';
+                        openSettings();
+                    }
+                }, 25);
+            }
+
+            function cancelSettingsHold() {
+                clearInterval(settingsHoldTimer);
+                const elapsed = performance.now() - settingsHoldStart;
+                if (settingsHoldCircle) settingsHoldCircle.style.strokeDashoffset = '94.2';
+                if (elapsed > 40 && elapsed < SETTINGS_HOLD_DURATION) {
+                    showSettingsToast('⚙️ おとなのひとと 1びょう ながおししてね');
+                }
+            }
+
+            if (settingsBtn) {
+                settingsBtn.addEventListener('pointerdown', startSettingsHold);
+                settingsBtn.addEventListener('pointerup', cancelSettingsHold);
+                settingsBtn.addEventListener('pointerleave', cancelSettingsHold);
+                settingsBtn.addEventListener('pointercancel', cancelSettingsHold);
+                settingsBtn.addEventListener('click', (e) => e.preventDefault());
+            }
             document.getElementById('close-settings-btn').addEventListener('click', closeSettings);
             document.getElementById('ok-settings-btn').addEventListener('click', closeSettings);
             settingsModal.addEventListener('click', (e) => {
