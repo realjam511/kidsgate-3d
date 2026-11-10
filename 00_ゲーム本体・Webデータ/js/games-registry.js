@@ -299,5 +299,31 @@ window.KIDS_GAMES_REGISTRY = [
         file: "games/24_3Dポチャン！みずきりかずかぞえ.html",
         isHero: false,
         tag: "かぞえ"
+    },
+    {
+        id: "game-3Dひかりのドライブ！ほしあつめ",
+        title: "3Dひかりのドライブ！ほしあつめ",
+        desc: "ピカくんの車をスティックで運転して、同じ色に光る星を集めてドライブ！数唱や色のおぼえ、空間認識が楽しく身につく幼児〜低学年向け3Dドライビング学習ゲーム。",
+        icon: "🚗",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "math",
+        categoryLabel: "かず・いろ・のりもの",
+        file: "games/26_3Dひかりのドライブ！ほしあつめ.html",
+        isHero: false,
+        tag: "ほし"
+    },
+    {
+        id: "game-3Dトコトコ！おやつランナー",
+        title: "3Dトコトコ！おやつランナー",
+        desc: "こねこのミャオくんと一緒にスイーツの道をトコトコ走ろう！タッチでジャンプ・ボタンでしゃがんで障害物をよけながら、カラフルなおやつを数えて集める幼児〜低学年向け3Dアクション知育ゲーム。",
+        icon: "🍩",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "action",
+        categoryLabel: "リズム・アクション",
+        file: "games/27_3Dトコトコ！おやつランナー.html",
+        isHero: false,
+        tag: "おやつ"
     }
 ];

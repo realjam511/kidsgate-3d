@@ -1,0 +1,2550 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>3Dトコトコ！おやつランナー</title>
+<meta name="description" content="こねこのミャオくんが走る3Dのお菓子の道で、タッチでジャンプ・ボタンでしゃがんでカラフルなおやつを集めよう！1から10の数と色の名前が楽しく身につく幼児〜低学年向け3Dランナーゲーム。" />
+<meta name="game-icon" content="🍩" />
+<meta name="game-category" content="action" />
+<meta name="game-age" content="baby" />
+<meta name="game-tag" content="おやつ" />
+
+<!-- Google Fonts: 丸ゴシック体 (M PLUS Rounded 1c / Zen Maru Gothic) -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800&family=Zen+Maru+Gothic:wght@700;900&display=swap" rel="stylesheet" />
+
+<style>
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    margin: 0;
+    padding: 0;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: linear-gradient(180deg, #38bdf8 0%, #fbcfe8 52%, #fef08a 100%);
+    font-family: 'M PLUS Rounded 1c', "Hiragino Maru Gothic ProN", sans-serif;
+    touch-action: none;
+    transition: background 0.6s ease;
+  }
+
+  /* レベル別背景グラデーション */
+  body.stage-1 { background: linear-gradient(180deg, #38bdf8 0%, #fbcfe8 52%, #fef9c3 100%); }
+  body.stage-2 { background: linear-gradient(180deg, #60a5fa 0%, #fed7aa 50%, #fde68a 100%); }
+  body.stage-3 { background: linear-gradient(180deg, #818cf8 0%, #f472b6 50%, #fef08a 100%); }
+
+  /* 背景のインラインSVG模様（ドーナツ・キャンディ・雲・星のやさしい透かし模様 opacity 0.16） */
+  #bg-svg-pattern {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.16;
+    background-image: url("data:image/svg+xml,%3Csvg width='160' height='160' viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff'%3E%3Cpath d='M30 34c0-6 5-11 11-11 4 0 8 2 10 6 2-1 4-1 6-1 5 0 9 4 9 9s-4 9-9 9H32c-5 0-9-4-9-9z'/%3E%3Ccircle cx='120' cy='38' r='14' fill='none' stroke='%23ffffff' stroke-width='6'/%3E%3Ccircle cx='42' cy='118' r='10' fill='%23fbcfe8'/%3E%3Cpath d='M26 112l8 6-8 6zM58 112l-8 6 8 6z'/%3E%3Cpath d='M116 108l4 9 9 4-9 4-4 9-4-9-9-4 9-4z' fill='%23fef08a'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 160px 160px;
+  }
+
+  #canvas-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    z-index: 2;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ぽっこり立体ボタン共通スタイル（2色グラデーション＋6px底面影） */
+  .pokkori-btn {
+    border: 2.5px solid rgba(255, 255, 255, 0.92);
+    border-radius: 999px;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-weight: 900;
+    color: #ffffff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-shadow: 0 2px 2px rgba(0, 0, 0, 0.38);
+    transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.2s ease;
+    position: relative;
+    white-space: nowrap;
+  }
+  .pokkori-btn:active, .pokkori-btn.holding {
+    transform: translateY(4px) !important;
+  }
+
+  /* 終了・戻る統一「✕」アイコンボタン（54×54px） */
+  .close-x-btn {
+    width: 54px;
+    height: 54px;
+    min-width: 54px;
+    min-height: 54px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 5px 0 #7f1d1d, 0 6px 14px rgba(0, 0, 0, 0.3);
+    font-size: 22px;
+    padding: 0;
+    flex-shrink: 0;
+  }
+  .close-x-btn:active {
+    box-shadow: 0 1px 0 #7f1d1d;
+  }
+
+  /* =========================================================
+     画面①：タイトル画面（第1層）
+     ========================================================= */
+  #title-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: max(20px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  #title-screen.hidden {
+    opacity: 0;
+    pointer-events: none !important;
+    visibility: hidden;
+  }
+  .title-banner {
+    pointer-events: auto;
+    background: linear-gradient(180deg, #ffffff 0%, #fff1f2 100%);
+    border: 4px solid #ec4899;
+    border-radius: 28px;
+    padding: 14px 20px;
+    text-align: center;
+    box-shadow: 0 8px 0 #be185d, 0 14px 30px rgba(0, 0, 0, 0.3);
+    width: min(92vw, 390px);
+  }
+  .title-sub {
+    font-size: 13px;
+    font-weight: 800;
+    color: #db2777;
+  }
+  .title-main {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 24px;
+    font-weight: 900;
+    color: #1e293b;
+    line-height: 1.25;
+    margin-top: 2px;
+    text-shadow: 0 2px 0 #ffffff;
+  }
+  .title-hint-pill {
+    margin-top: 6px;
+    display: inline-block;
+    background: #fef9c3;
+    color: #b45309;
+    border: 1.5px solid #facc15;
+    border-radius: 999px;
+    padding: 3px 12px;
+    font-size: 11.5px;
+    font-weight: 800;
+  }
+  .title-bottom-box {
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+  /* メインボタン規定：220×68px以上 */
+  #title-start-btn {
+    min-width: 260px;
+    height: 74px;
+    padding: 0 32px;
+    font-size: 22px;
+    background: linear-gradient(180deg, #ec4899 0%, #db2777 100%);
+    border: 3px solid #fef08a;
+    box-shadow: 0 7px 0 #831843, 0 12px 28px rgba(0, 0, 0, 0.35);
+  }
+  #title-start-btn:active {
+    box-shadow: 0 2px 0 #831843;
+  }
+  #resume-badge {
+    background: rgba(15, 23, 42, 0.82);
+    color: #fde047;
+    padding: 4px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    border: 1px solid rgba(253, 224, 71, 0.5);
+  }
+
+  /* =========================================================
+     画面②：あそびかた画面（独立画面・第2層）
+     ========================================================= */
+  #howto-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 44;
+    background: rgba(15, 23, 42, 0.82);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  #howto-screen.active {
+    display: flex;
+  }
+  .howto-card {
+    width: min(92vw, 410px);
+    background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+    border: 4px solid #f59e0b;
+    border-radius: 28px;
+    padding: 16px;
+    color: #1e293b;
+    box-shadow: 0 10px 0 #b45309, 0 20px 45px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .howto-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .howto-header h2 {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 20px;
+    font-weight: 900;
+    color: #b45309;
+  }
+  .howto-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .howto-step-row {
+    background: #ffffff;
+    border: 2.5px solid #fbbf24;
+    border-radius: 18px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .howto-ico {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: #fef9c3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    flex-shrink: 0;
+  }
+  .howto-txt {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: #1e293b;
+    line-height: 1.35;
+  }
+  .howto-action-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 4px;
+  }
+  /* メインボタン規定：220×68px以上 */
+  #howto-go-btn {
+    min-width: 256px;
+    height: 72px;
+    padding: 0 28px;
+    font-size: 21px;
+    background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+    border: 3px solid #fef08a;
+    box-shadow: 0 6px 0 #14532d;
+  }
+
+  /* =========================================================
+     画面③：プレイ画面（第2層・390×844で上部ボタンが重ならない設計）
+     画面端16px余白、サブボタン54×54px、間隔12px以上
+     ========================================================= */
+  #play-hud {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+  }
+  #play-hud.hidden {
+    display: none;
+  }
+
+  #top-bar {
+    position: fixed;
+    top: max(16px, env(safe-area-inset-top));
+    left: 16px;
+    right: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    pointer-events: none;
+  }
+  .top-left-group, .top-right-group {
+    display: flex;
+    align-items: center;
+    gap: 12px; /* 最低12px以上の間隔 */
+    pointer-events: auto;
+  }
+
+  /* サブボタン：最低52×52px以上（実装54px） */
+  .sub-icon-btn {
+    min-width: 54px;
+    height: 54px;
+    padding: 0 12px;
+    border-radius: 18px;
+    font-size: 13px;
+    box-shadow: 0 5px 0 rgba(0, 0, 0, 0.35), 0 6px 14px rgba(0, 0, 0, 0.22);
+  }
+  .sub-icon-btn.square {
+    width: 54px;
+    padding: 0;
+    font-size: 22px;
+  }
+  #level-switch-btn {
+    background: linear-gradient(180deg, #fb923c 0%, #ea580c 100%);
+    box-shadow: 0 5px 0 #9a3412, 0 6px 14px rgba(0,0,0,0.22);
+  }
+  #zukan-open-btn {
+    background: linear-gradient(180deg, #ec4899 0%, #db2777 100%);
+    box-shadow: 0 5px 0 #831843, 0 6px 14px rgba(0,0,0,0.22);
+  }
+  #hint-btn {
+    background: linear-gradient(180deg, #facc15 0%, #ca8a04 100%);
+    color: #713f12;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.7);
+    box-shadow: 0 5px 0 #854d0e, 0 6px 14px rgba(0,0,0,0.22);
+  }
+  #settings-gate-btn {
+    background: linear-gradient(180deg, #64748b 0%, #334155 100%);
+    box-shadow: 0 5px 0 #0f172a, 0 6px 14px rgba(0,0,0,0.22);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* 約1秒長押し進捗を示す青い円形リング */
+  .hold-ring-svg {
+    position: absolute;
+    inset: -2px;
+    width: calc(100% + 4px);
+    height: calc(100% + 4px);
+    pointer-events: none;
+    transform: rotate(-90deg);
+  }
+  .hold-ring-circle {
+    fill: none;
+    stroke: #38bdf8;
+    stroke-width: 6;
+    stroke-dasharray: 180;
+    stroke-dashoffset: 180;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.05s linear;
+  }
+
+  /* 上部第2段：色あてミッション表示 ＆ おやつカウンター */
+  #status-strip {
+    position: fixed;
+    top: calc(max(16px, env(safe-area-inset-top)) + 64px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(92vw, 410px);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(254, 249, 195, 0.95) 100%);
+    border: 3px solid #f59e0b;
+    border-radius: 20px;
+    padding: 6px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    box-shadow: 0 4px 0 #d97706, 0 6px 16px rgba(0,0,0,0.2);
+    pointer-events: auto;
+    cursor: pointer;
+  }
+  .mission-preview {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    color: #1e293b;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  #mission-color-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ef4444;
+    border: 2px solid #1e293b;
+    display: none;
+    flex-shrink: 0;
+  }
+  #snack-progress-pill {
+    background: linear-gradient(135deg, #ec4899, #db2777);
+    color: #ffffff;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 14px;
+    font-weight: 900;
+    padding: 3px 12px;
+    border-radius: 999px;
+    flex-shrink: 0;
+    box-shadow: inset 0 1px 2px rgba(255,255,255,0.5);
+  }
+
+  /* 画面中央：おやつを取った瞬間の特大数字＆名前ポップ（GSAP制御） */
+  #center-pop-layer {
+    position: fixed;
+    top: 34%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 28;
+    pointer-events: none;
+    text-align: center;
+  }
+  #big-count-number {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 84px;
+    font-weight: 900;
+    color: #fde047;
+    -webkit-text-stroke: 4px #b91c1c;
+    text-shadow: 0 6px 0 #7f1d1d, 0 10px 24px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transform: scale(0.2);
+    line-height: 1;
+  }
+  #snack-pop-ribbon {
+    background: linear-gradient(135deg, #ec4899, #f97316);
+    border: 2.5px solid #fef08a;
+    color: #ffffff;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 18px;
+    font-weight: 900;
+    padding: 4px 18px;
+    border-radius: 999px;
+    box-shadow: 0 4px 0 #9d174d;
+    opacity: 0;
+    transform: scale(0.3);
+    margin-top: 6px;
+    white-space: nowrap;
+  }
+
+  /* トースト通知 */
+  #info-toast {
+    position: fixed;
+    top: calc(max(16px, env(safe-area-inset-top)) + 118px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-6px);
+    z-index: 38;
+    background: rgba(15, 23, 42, 0.9);
+    color: #fef08a;
+    border: 2px solid #38bdf8;
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 12.5px;
+    font-weight: 900;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    white-space: nowrap;
+    max-width: 92vw;
+  }
+  #info-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* =========================================================
+     下部中央：しゃがむボタン（Lv.1は非表示、Lv.2〜3のみ表示・ホールド式・220×68px以上）
+     ========================================================= */
+  #bottom-duck-zone {
+    position: fixed;
+    bottom: max(18px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 25;
+    pointer-events: auto;
+    display: none; /* Lv.1では表示しない */
+    justify-content: center;
+    padding: 12px 24px; /* 周囲の誤タッチ吸収ガードバンド */
+  }
+  #bottom-duck-zone.visible {
+    display: flex;
+  }
+  #duck-hold-btn {
+    min-width: 248px; /* 確定事項：220×68px以上 */
+    height: 72px;
+    padding: 0 28px;
+    font-size: 20px;
+    background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+    border: 3px solid #fef08a;
+    box-shadow: 0 7px 0 #075985, 0 10px 24px rgba(0, 0, 0, 0.35);
+    letter-spacing: 0.5px;
+  }
+  #duck-hold-btn.holding {
+    background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+    box-shadow: 0 2px 0 #075985;
+  }
+
+  /* =========================================================
+     モーダル共通背景（画面④・⑤・⑥）
+     ========================================================= */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    background: rgba(15, 23, 42, 0.82);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .modal-backdrop.active {
+    display: flex;
+  }
+
+  /* =========================================================
+     画面④：クリア画面（0.8秒ロック付・1画面1メインアクション）
+     ========================================================= */
+  #clear-modal {
+    z-index: 48;
+  }
+  .clear-card {
+    width: min(92vw, 395px);
+    background: linear-gradient(180deg, #1e1b4b 0%, #312e81 100%);
+    border: 4px solid #fde047;
+    border-radius: 30px;
+    padding: 18px 16px;
+    text-align: center;
+    color: #ffffff;
+    box-shadow: 0 12px 0 #ca8a04, 0 22px 50px rgba(0, 0, 0, 0.65);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .clear-badge {
+    background: linear-gradient(135deg, #ec4899, #f97316);
+    border: 2px solid #fef08a;
+    padding: 4px 16px;
+    border-radius: 999px;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 14px;
+    font-weight: 900;
+  }
+  .clear-title {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 24px;
+    font-weight: 900;
+    color: #fde047;
+    text-shadow: 0 3px 0 #b45309;
+  }
+  #clear-snacks-showcase {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 18px;
+    padding: 10px;
+    width: 100%;
+    font-size: 26px;
+  }
+  .clear-actions-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    margin-top: 4px;
+  }
+  /* メインボタン規定：220×68px以上 */
+  #clear-next-btn {
+    min-width: 232px;
+    height: 70px;
+    padding: 0 24px;
+    font-size: 20px;
+    background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+    border: 3px solid #fef08a;
+    box-shadow: 0 6px 0 #14532d;
+  }
+  #clear-zukan-sub-btn {
+    width: 58px;
+    height: 58px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #ec4899 0%, #db2777 100%);
+    box-shadow: 0 5px 0 #831843;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+
+  /* =========================================================
+     画面⑤：おやつずかん画面（全8種・8種コンプリートでトロフィー）
+     ========================================================= */
+  .zukan-card {
+    width: min(95vw, 490px);
+    max-height: 88vh;
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    border: 3.5px solid #fde047;
+    border-radius: 28px;
+    padding: 15px;
+    color: #ffffff;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.65);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden;
+  }
+  .dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .dialog-header h2 {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 19px;
+    font-weight: 900;
+    color: #fde047;
+  }
+  /* 8種コンプリートトロフィーバナー */
+  #trophy-banner {
+    background: linear-gradient(135deg, rgba(250, 204, 21, 0.2), rgba(236, 72, 153, 0.25));
+    border: 2px solid #facc15;
+    border-radius: 16px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #trophy-icon {
+    font-size: 34px;
+    filter: grayscale(100%) opacity(0.4);
+    transition: filter 0.3s, transform 0.3s;
+  }
+  #trophy-icon.unlocked {
+    filter: none;
+    transform: scale(1.12);
+  }
+  #zukan-preview-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.09);
+    border: 1.5px solid rgba(255, 255, 255, 0.22);
+    border-radius: 18px;
+    padding: 8px 12px;
+  }
+  #zukan-3d-stage {
+    width: 100px;
+    height: 100px;
+    border-radius: 14px;
+    background: radial-gradient(circle, #f472b6 0%, #1e1b4b 100%);
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .zukan-info {
+    flex: 1;
+  }
+  #zukan-snack-title {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 18px;
+    font-weight: 900;
+    color: #fde047;
+  }
+  #zukan-snack-count {
+    font-size: 12.5px;
+    font-weight: 800;
+    color: #f8fafc;
+    margin-top: 3px;
+  }
+  #zukan-speak-btn {
+    margin-top: 6px;
+    min-height: 40px;
+    padding: 0 14px;
+    font-size: 11.5px;
+    background: linear-gradient(180deg, #fb923c 0%, #ea580c 100%);
+    box-shadow: 0 3px 0 #9a3412;
+  }
+  /* 全8種グリッド（4列×2段） */
+  .zukan-grid-8 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    overflow-y: auto;
+    padding: 2px;
+  }
+  .snack-cell {
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.16);
+    border-radius: 14px;
+    padding: 8px 4px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 10.5px;
+    font-weight: 800;
+    color: #94a3b8;
+    transition: transform 0.1s;
+  }
+  .snack-cell:active {
+    transform: scale(0.93);
+  }
+  .snack-cell.unlocked {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: #fde047;
+    color: #ffffff;
+  }
+  .snack-cell.active-cell {
+    border-color: #ffffff;
+    box-shadow: 0 0 12px rgba(253, 224, 71, 0.8);
+  }
+  .snack-cell .s-emo {
+    font-size: 24px;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  /* =========================================================
+     画面⑥：おとな設定画面（約1秒長押し関門・2秒長押しリセット＋確認）
+     ========================================================= */
+  .settings-card {
+    width: min(94vw, 440px);
+    background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+    border: 4px solid #f59e0b;
+    border-radius: 28px;
+    padding: 16px;
+    color: #1e293b;
+    box-shadow: 0 10px 0 #b45309, 0 20px 45px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
+  .settings-card h2 {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 19px;
+    font-weight: 900;
+    color: #b45309;
+  }
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #ffffff;
+    border: 2px solid #fcd34d;
+    border-radius: 16px;
+    padding: 10px 14px;
+    font-weight: 800;
+    font-size: 13.5px;
+  }
+  .toggle-pill-btn {
+    min-width: 96px;
+    height: 52px;
+    padding: 0 14px;
+    font-size: 13px;
+    background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+    box-shadow: 0 4px 0 #14532d;
+  }
+  .toggle-pill-btn.off {
+    background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
+    box-shadow: 0 4px 0 #334155;
+  }
+  #reset-hold-btn {
+    width: 100%;
+    height: 54px;
+    background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
+    box-shadow: 0 4px 0 #7f1d1d;
+    font-size: 13.5px;
+    position: relative;
+    overflow: hidden;
+  }
+  #reset-progress-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 0%;
+    background: rgba(56, 189, 248, 0.55);
+    pointer-events: none;
+  }
+  #reset-confirm-box {
+    display: none;
+    background: #fee2e2;
+    border: 2.5px solid #ef4444;
+    border-radius: 16px;
+    padding: 12px;
+    text-align: center;
+  }
+  #reset-confirm-box.show {
+    display: block;
+  }
+  .confirm-btns-row {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 10px;
+  }
+
+  @media (max-width: 400px) {
+    .title-main { font-size: 20px; }
+    .sub-icon-btn { min-width: 52px; height: 52px; padding: 0 10px; font-size: 12px; }
+    .sub-icon-btn.square { width: 52px; }
+    #duck-hold-btn { min-width: 224px; height: 68px; font-size: 18.5px; }
+    #clear-next-btn { min-width: 220px; height: 68px; font-size: 18.5px; }
+  }
+</style>
+</head>
+<body class="stage-1">
+
+<!-- 背景のインラインSVG模様 -->
+<div id="bg-svg-pattern"></div>
+
+<!-- 3Dキャンバス -->
+<div id="canvas-container"></div>
+
+<!-- =========================================================
+     画面①：タイトル画面（第1層）
+     ========================================================= -->
+<div id="title-screen">
+  <div class="title-banner">
+    <div class="title-sub">🐱 ジャンプと しゃがむで おやつあつめ！</div>
+    <div class="title-main">3Dトコトコ！<br />おやつランナー</div>
+    <div class="title-hint-pill">👆 ミャオくんと ホイップちゃんを タッチしてね♪</div>
+  </div>
+
+  <div class="title-bottom-box">
+    <div id="resume-badge" style="display:none;">✨ あつめた おやつずかんの つづきから あそべるよ！</div>
+    <button class="pokkori-btn" id="title-start-btn">
+      🍩 ラン スタート！
+    </button>
+  </div>
+</div>
+
+<!-- =========================================================
+     画面②：あそびかた画面（独立画面・第2層）
+     ========================================================= -->
+<div id="howto-screen">
+  <div class="howto-card">
+    <div class="howto-header">
+      <h2>🍩 あそびかた</h2>
+      <button class="pokkori-btn close-x-btn" id="howto-close-x-btn" title="とじる">✕</button>
+    </div>
+
+    <div class="howto-steps">
+      <div class="howto-step-row">
+        <div class="howto-ico">👆</div>
+        <div class="howto-txt">
+          がめんの うえを タッチすると<br />ミャオくんが <b>ピョン！と ジャンプ</b> するよ！
+        </div>
+      </div>
+      <div class="howto-step-row">
+        <div class="howto-ico">👇</div>
+        <div class="howto-txt">
+          したの ボタンを <b>おしている あいだだけ</b><br />しゃがんで トンネルを くぐるよ！
+        </div>
+      </div>
+      <div class="howto-step-row">
+        <div class="howto-ico">🍰</div>
+        <div class="howto-txt">
+          カラフルな おやつを あつめて<br />1から 10まで いっしょに かぞえよう！
+        </div>
+      </div>
+    </div>
+
+    <div class="howto-action-wrap">
+      <button class="pokkori-btn" id="howto-go-btn">
+        🌟 はしりだそう！
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     画面③：プレイ画面（第2層）
+     ========================================================= -->
+<div id="play-hud" class="hidden">
+  <!-- 上部サブボタンバー（画面端16px余白、54×54px、間隔12px以上） -->
+  <div id="top-bar">
+    <div class="top-left-group">
+      <button class="pokkori-btn sub-icon-btn" id="level-switch-btn" title="レベルをきりかえる">
+        🐱 <span id="hud-level-name">Lv.1</span>
+      </button>
+      <button class="pokkori-btn sub-icon-btn" id="zukan-open-btn" title="おやつずかん">
+        📖 <span id="hud-zukan-count">0/8</span>
+      </button>
+    </div>
+
+    <div class="top-right-group">
+      <button class="pokkori-btn sub-icon-btn square" id="hint-btn" title="ホイップちゃんのヒント">
+        💡
+      </button>
+      <!-- おとな関門：約1秒（1.0秒）長押しで開く設定ボタン -->
+      <button class="pokkori-btn sub-icon-btn square" id="settings-gate-btn" title="約1びょう ながおしで せってい">
+        ⚙️
+        <svg class="hold-ring-svg" viewBox="0 0 60 60">
+          <circle class="hold-ring-circle" id="settings-hold-circle" cx="30" cy="30" r="26"></circle>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 上部第2段：色あてミッション表示 ＆ おやつカウント -->
+  <div id="status-strip" title="タップで音声ガイドをよみあげます">
+    <div class="mission-preview">
+      <span id="mission-color-dot"></span>
+      <span id="mission-status-label">👆 うえをタッチで ジャンプ！</span>
+    </div>
+    <div id="snack-progress-pill">🍩 0 / 5</div>
+  </div>
+
+  <!-- 画面中央：おやつ取得時の特大数字＆おやつ名ポップ -->
+  <div id="center-pop-layer">
+    <div id="big-count-number">1</div>
+    <div id="snack-pop-ribbon">あか！ ケーキ！</div>
+  </div>
+
+  <!-- トースト通知 -->
+  <div id="info-toast">🍦 ホイップちゃん「いま！ジャンプだよ！」</div>
+
+  <!-- 下部中央：しゃがむボタン（Lv.1は非表示、Lv.2〜3のみ表示・ホールド式・220×68px以上） -->
+  <div id="bottom-duck-zone">
+    <button class="pokkori-btn" id="duck-hold-btn">
+      👇 おして しゃがむ！
+    </button>
+  </div>
+</div>
+
+<!-- =========================================================
+     画面④：クリア画面（0.8秒ロック付・1画面1メインアクション）
+     ========================================================= -->
+<div class="modal-backdrop" id="clear-modal">
+  <div class="clear-card" id="clear-card-inner">
+    <div class="clear-badge" id="clear-level-badge">🎉 ゴール！クリア！</div>
+    <div class="clear-title">ぜんぶ あつめたね！</div>
+    <div id="clear-snacks-showcase">🍩🍪🍮🍬🍰</div>
+    <div style="font-size:13.5px; font-weight:800; color:#e0f2fe;">
+      とっても おいしそう！ おやつずかんに たまったよ♪
+    </div>
+
+    <div class="clear-actions-row">
+      <button class="pokkori-btn" id="clear-next-btn">
+        🐱 つぎの ランへ！
+      </button>
+      <button class="pokkori-btn" id="clear-zukan-sub-btn" title="おやつずかんをみる">
+        📖
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     画面⑤：おやつずかん画面（全8種・8種コンプリートでトロフィー）
+     ========================================================= -->
+<div class="modal-backdrop" id="zukan-modal">
+  <div class="zukan-card">
+    <div class="dialog-header">
+      <h2>📖 おやつずかん（全8しゅ）</h2>
+      <button class="pokkori-btn close-x-btn" id="close-zukan-x-btn" title="とじる">✕</button>
+    </div>
+
+    <div id="trophy-banner">
+      <div id="trophy-icon">🏆</div>
+      <div style="flex:1;">
+        <div style="font-family:'Zen Maru Gothic',sans-serif; font-size:14.5px; font-weight:900; color:#fde047;" id="trophy-title">
+          おやつおうさま トロフィー
+        </div>
+        <div style="font-size:11px; font-weight:700; color:#e2e8f0;" id="trophy-desc">
+          8しゅるいの おやつを ぜんぶ あつめると かがやくよ！
+        </div>
+      </div>
+    </div>
+
+    <div id="zukan-preview-box">
+      <div id="zukan-3d-stage" title="タップでおやつが弾みます"></div>
+      <div class="zukan-info">
+        <div id="zukan-snack-title">🍩 ドーナツ</div>
+        <div id="zukan-snack-count">あつめた かず：0こ</div>
+        <button class="pokkori-btn" id="zukan-speak-btn">
+          🔊 なまえを きく
+        </button>
+      </div>
+    </div>
+
+    <div class="zukan-grid-8" id="zukan-grid-8"></div>
+  </div>
+</div>
+
+<!-- =========================================================
+     画面⑥：おとな設定画面（約1秒長押し関門・2秒長押しリセット＋確認）
+     ========================================================= -->
+<div class="modal-backdrop" id="settings-modal">
+  <div class="settings-card">
+    <div class="dialog-header">
+      <h2>⚙️ おとな せってい</h2>
+      <button class="pokkori-btn close-x-btn" id="close-settings-x-btn" title="とじる">✕</button>
+    </div>
+
+    <div class="settings-row">
+      <span>🔊 おと・こえ の オン/オフ</span>
+      <button class="pokkori-btn toggle-pill-btn" id="toggle-sound-btn">ON 🔊</button>
+    </div>
+
+    <div class="settings-row">
+      <span>🐱 はしる はやさ</span>
+      <button class="pokkori-btn toggle-pill-btn" id="toggle-speed-btn">ふつう</button>
+    </div>
+
+    <div class="settings-row">
+      <span>📖 あそびかた を みる</span>
+      <button class="pokkori-btn toggle-pill-btn" id="open-howto-from-settings-btn" style="background:linear-gradient(180deg,#38bdf8,#0284c7);box-shadow:0 4px 0 #075985;">ひらく</button>
+    </div>
+
+    <div class="settings-row" style="flex-direction:column; gap:8px; align-items:stretch;">
+      <div style="font-size:12px; color:#64748b;">
+        ※データを消すときは 下のボタンを 2びょう ながおし してください
+      </div>
+      <button class="pokkori-btn" id="reset-hold-btn">
+        <div id="reset-progress-bar"></div>
+        <span style="position:relative; z-index:2;">🗑️ データを リセット（2びょう長押し）</span>
+      </button>
+
+      <!-- 2秒長押し後の確認画面（「はい／いいえ」） -->
+      <div id="reset-confirm-box">
+        <div style="font-weight:900; color:#b91c1c; font-size:14px;">
+          ほんとうに データを リセットしますか？
+        </div>
+        <div class="confirm-btns-row">
+          <button class="pokkori-btn close-x-btn" id="confirm-reset-yes" style="width:auto; padding:0 22px; font-size:15px;">はい</button>
+          <button class="pokkori-btn toggle-pill-btn" id="confirm-reset-no" style="min-width:95px;">いいえ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Three.js / Cannon.js / GSAP / canvas-confetti (CDN) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+<script>
+(() => {
+  // ==========================================
+  // 1. 確定事項：有限パターン・セリフ辞書（数字1〜10＋色名10色＋おやつ名8種＋固定フレーズ22種のみ）
+  // ==========================================
+  const VOICE_CLIPS = {
+    // ① 数字クリップ（1〜10の10種）
+    NUM_01: 'いち！',
+    NUM_02: 'に！',
+    NUM_03: 'さん！',
+    NUM_04: 'よん！',
+    NUM_05: 'ご！',
+    NUM_06: 'ろく！',
+    NUM_07: 'なな！',
+    NUM_08: 'はち！',
+    NUM_09: 'きゅう！',
+    NUM_10: 'じゅう！',
+
+    // ② 色名クリップ（10種）
+    COL_RED: 'あか！',
+    COL_BLUE: 'あお！',
+    COL_YELLOW: 'きいろ！',
+    COL_GREEN: 'みどり！',
+    COL_PINK: 'ピンク！',
+    COL_PURPLE: 'むらさき！',
+    COL_ORANGE: 'オレンジ！',
+    COL_BROWN: 'ちゃいろ！',
+    COL_WHITE: 'しろ！',
+    COL_GOLD: 'きんいろ！',
+
+    // ③ おやつ名クリップ（確定事項：8種のみ）
+    SNK_DONUT: 'ドーナツ！',
+    SNK_COOKIE: 'クッキー！',
+    SNK_PUDDING: 'プリン！',
+    SNK_CANDY: 'キャンディ！',
+    SNK_CAKE: 'ケーキ！',
+    SNK_MUFFIN: 'マフィン！',
+    SNK_CHOCO: 'チョコレート！',
+    SNK_GOLD_DONUT: 'きんのドーナツ！',
+
+    // ④ 固定フレーズクリップ（22種）
+    VO_TITLE: 'トコトコ！ おやつランナー！',
+    VO_HOWTO_1: 'タッチで、ジャンプ！',
+    VO_HOWTO_2: 'ボタンで、しゃがむよ！',
+    VO_START: 'ようい、スタート！',
+    VO_LV1: 'レベル いち！',
+    VO_LV2: 'レベル に！',
+    VO_LV3: 'レベル さん！',
+    VO_JUMP: 'ピョン！',
+    VO_DOUBLE_JUMP: 'にだんジャンプ！',
+    VO_DUCK: 'シュッ！',
+    VO_STUMBLE: 'えへへ！ だいじょうぶ！',
+    VO_HINT_JUMP: 'いま！ ジャンプだよ！',
+    VO_HINT_DUCK: 'いま！ しゃがんで！',
+    VO_MISSION_PREFIX: 'つぎは、このいろを とってね！',
+    VO_MISSION_OK: 'だいせいかい！ すごーい！',
+    VO_GOLD_APPEAR: 'あっ！ きんのドーナツだ！',
+    VO_LAST_ONE: 'あと ひとつ！',
+    VO_CLEAR_1: 'ゴール！ ぜんぶ あつめたね！',
+    VO_CLEAR_2: 'とっても おいしそう！',
+    VO_ZUKAN_OPEN: 'おやつずかんだよ！',
+    VO_ZUKAN_COMP: 'ぜんぶの おやつが そろったよ！ おめでとう！',
+    VO_GOOD_JOB: 'たいへん よくできました！'
+  };
+
+  const NUM_CLIP_KEYS = [
+    'NUM_01', 'NUM_02', 'NUM_03', 'NUM_04', 'NUM_05',
+    'NUM_06', 'NUM_07', 'NUM_08', 'NUM_09', 'NUM_10'
+  ];
+
+  // ==========================================
+  // 2. おやつ全8種 ＆ 色10色 ＆ レベル定義（Lv.1=4.0 / Lv.2=4.4 / Lv.3=4.8）
+  // ==========================================
+  const COLOR_PALETTE = [
+    { id: 'red',    name: 'あか',     clip: 'COL_RED',    hex: 0xef4444, css: '#ef4444' },
+    { id: 'blue',   name: 'あお',     clip: 'COL_BLUE',   hex: 0x3b82f6, css: '#3b82f6' },
+    { id: 'yellow', name: 'きいろ',   clip: 'COL_YELLOW', hex: 0xfacc15, css: '#facc15' },
+    { id: 'green',  name: 'みどり',   clip: 'COL_GREEN',  hex: 0x22c55e, css: '#22c55e' },
+    { id: 'pink',   name: 'ピンク',   clip: 'COL_PINK',   hex: 0xec4899, css: '#ec4899' },
+    { id: 'purple', name: 'むらさき', clip: 'COL_PURPLE', hex: 0xa855f7, css: '#a855f7' },
+    { id: 'orange', name: 'オレンジ', clip: 'COL_ORANGE', hex: 0xf97316, css: '#f97316' },
+    { id: 'brown',  name: 'ちゃいろ', clip: 'COL_BROWN',  hex: 0x92400e, css: '#92400e' },
+    { id: 'white',  name: 'しろ',     clip: 'COL_WHITE',  hex: 0xf8fafc, css: '#cbd5e1' },
+    { id: 'gold',   name: 'きんいろ', clip: 'COL_GOLD',   hex: 0xfde047, css: '#fde047' }
+  ];
+
+  // 確定事項：おやつの種類は8種のみ、おやつずかんは全8種
+  const SNACK_TYPES = [
+    { id: 'donut',      name: 'ドーナツ',       emoji: '🍩', clip: 'SNK_DONUT',      defaultColorId: 'pink',   rare: false },
+    { id: 'cookie',     name: 'クッキー',       emoji: '🍪', clip: 'SNK_COOKIE',     defaultColorId: 'orange', rare: false },
+    { id: 'pudding',    name: 'プリン',         emoji: '🍮', clip: 'SNK_PUDDING',    defaultColorId: 'yellow', rare: false },
+    { id: 'candy',      name: 'キャンディ',     emoji: '🍬', clip: 'SNK_CANDY',      defaultColorId: 'blue',   rare: false },
+    { id: 'cake',       name: 'ケーキ',         emoji: '🍰', clip: 'SNK_CAKE',       defaultColorId: 'red',    rare: false },
+    { id: 'muffin',     name: 'マフィン',       emoji: '🧁', clip: 'SNK_MUFFIN',     defaultColorId: 'green',  rare: false },
+    { id: 'choco',      name: 'チョコレート',   emoji: '🍫', clip: 'SNK_CHOCO',      defaultColorId: 'brown',  rare: false },
+    { id: 'gold_donut', name: '金のドーナツ',   emoji: '🌟', clip: 'SNK_GOLD_DONUT', defaultColorId: 'gold',   rare: true  }
+  ];
+
+  // 確定事項：速度は Lv.1＝毎秒4.0ユニット → Lv.2＝4.4 → Lv.3＝4.8 の微増のみ
+  const LEVEL_DEFS = {
+    1: { level: 1, label: 'Lv.1', targetSnacks: 5,  speed: 4.0, voiceKey: 'VO_LV1', roadColor: 0xfef08a },
+    2: { level: 2, label: 'Lv.2', targetSnacks: 7,  speed: 4.4, voiceKey: 'VO_LV2', roadColor: 0xfde68a },
+    3: { level: 3, label: 'Lv.3', targetSnacks: 10, speed: 4.8, voiceKey: 'VO_LV3', roadColor: 0xfbcfe8 }
+  };
+
+  // ローカルストレージ保存管理
+  const STORAGE_KEY = 'oyatsu_runner_myaokun_v1';
+  let saveData = {
+    currentLevel: 1,
+    snackCounts: {}
+  };
+
+  function loadSaveData() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      if (raw && typeof raw === 'object') {
+        saveData.currentLevel = raw.currentLevel || 1;
+        saveData.snackCounts = raw.snackCounts || {};
+      }
+    } catch (e) {}
+    updateHudZukanBadge();
+  }
+
+  function writeSaveData() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
+    } catch (e) {}
+    updateHudZukanBadge();
+  }
+
+  function updateHudZukanBadge() {
+    const unlocked = SNACK_TYPES.filter(s => (saveData.snackCounts[s.id] || 0) > 0).length;
+    document.getElementById('hud-zukan-count').textContent = `${unlocked}/8`;
+    if (unlocked > 0) {
+      document.getElementById('resume-badge').style.display = 'inline-block';
+    }
+  }
+
+  // ==========================================
+  // 3. Web Audio API（効果音合成）＆ Web Speech API（有限クリップ再生専用）
+  // ==========================================
+  class RunnerAudioEngine {
+    constructor() {
+      this.ctx = null;
+      this.enabled = true;
+    }
+    init() {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) this.ctx = new AudioCtx();
+      }
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+    }
+    // 有限クリップIDの配列のみを順番に読み上げる（自由文の動的生成は一切しない）
+    playClipSequence(clipIds) {
+      if (!this.enabled || !('speechSynthesis' in window)) return;
+      const ids = Array.isArray(clipIds) ? clipIds : [clipIds];
+      try {
+        window.speechSynthesis.cancel();
+        ids.forEach(id => {
+          const text = VOICE_CLIPS[id];
+          if (!text) return;
+          const u = new SpeechSynthesisUtterance(text);
+          u.lang = 'ja-JP';
+          u.rate = 1.1;
+          u.pitch = 1.18;
+          window.speechSynthesis.speak(u);
+        });
+      } catch (e) {}
+    }
+    playTone(freq, dur = 0.14, type = 'triangle', vol = 0.16) {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, now);
+      g.gain.setValueAtTime(vol, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      o.connect(g).connect(this.ctx.destination);
+      o.start(now);
+      o.stop(now + dur);
+    }
+    playJumpSound(isDouble = false) {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = 'sine';
+      const startF = isDouble ? 440 : 320;
+      o.frequency.setValueAtTime(startF, now);
+      o.frequency.exponentialRampToValueAtTime(startF * 2.1, now + 0.15);
+      g.gain.setValueAtTime(0.18, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
+      o.connect(g).connect(this.ctx.destination);
+      o.start(now);
+      o.stop(now + 0.18);
+    }
+    playDuckSound() {
+      this.playTone(280, 0.1, 'sine', 0.14);
+    }
+    playStumbleBoing() {
+      this.playTone(260, 0.12, 'sine', 0.15);
+      setTimeout(() => this.playTone(392, 0.15, 'triangle', 0.15), 80);
+    }
+    playSnackChime(countNum) {
+      const scale = [523.25, 587.33, 659.25, 698.46, 783.99, 880.0, 987.77, 1046.5, 1174.66, 1318.5];
+      const f = scale[(countNum - 1) % scale.length];
+      this.playTone(f, 0.18, 'triangle', 0.22);
+      setTimeout(() => this.playTone(f * 1.25, 0.22, 'triangle', 0.18), 70);
+    }
+    playFanfare() {
+      [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98].forEach((f, i) => {
+        setTimeout(() => this.playTone(f, 0.26, 'triangle', 0.2), i * 80);
+      });
+    }
+  }
+  const sound = new RunnerAudioEngine();
+
+  // ==========================================
+  // 4. Three.js + Cannon.js 3Dお菓子の道＆物理ワールド構築
+  // ==========================================
+  const container = document.getElementById('canvas-container');
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0xfbcfe8, 0.011);
+
+  const camera = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.5, 180);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  container.appendChild(renderer.domElement);
+
+  const ambientLight = new THREE.AmbientLight(0xfffbeb, 0.86);
+  scene.add(ambientLight);
+
+  const sunLight = new THREE.DirectionalLight(0xfff7ed, 0.95);
+  sunLight.position.set(10, 26, 16);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.width = 1024;
+  sunLight.shadow.mapSize.height = 1024;
+  scene.add(sunLight);
+
+  // Cannon.js 物理ワールド（お祝いキャンディ粒の物理バウンス用）
+  const world = new CANNON.World();
+  world.gravity.set(0, -24, 0);
+
+  const courseGroup = new THREE.Group();
+  scene.add(courseGroup);
+
+  // ==========================================
+  // 5. 主人公「ミャオくん（パティシエ帽のこねこ）」＆相棒「ホイップちゃん（クリームの妖精）」3Dモデル構築
+  // ==========================================
+  function createMyaokunAndWhipchan3D() {
+    const root = new THREE.Group();
+
+    // ① 足元の楕円形ドロップシャドウ（ジャンプの高さがひと目でわかる接地影）
+    const dropShadow = new THREE.Mesh(
+      new THREE.CircleGeometry(0.95, 24),
+      new THREE.MeshBasicMaterial({ color: 0x0f172a, transparent: true, opacity: 0.3 })
+    );
+    dropShadow.rotation.x = -Math.PI / 2;
+    dropShadow.position.y = 0.04;
+    root.add(dropShadow);
+
+    // ジャンプ・しゃがみ・転びアニメーション用のボディピボット
+    const bodyPivot = new THREE.Group();
+    root.add(bodyPivot);
+
+    const creamMat = new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.35 });
+    const brownMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.4 });
+    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+    const pinkMat  = new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.35 });
+    const darkMat  = new THREE.MeshBasicMaterial({ color: 0x111827 });
+    const cheekMat = new THREE.MeshBasicMaterial({ color: 0xfb7185 });
+
+    // ② 胴体＆いちご色リボン＆しっぽ
+    const torso = new THREE.Mesh(new THREE.SphereGeometry(0.72, 18, 16), creamMat);
+    torso.scale.set(0.95, 1.02, 0.92);
+    torso.position.y = 0.85;
+    torso.castShadow = true;
+    bodyPivot.add(torso);
+
+    const ribbon = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.24, 0.25), pinkMat);
+    ribbon.position.set(0, 1.25, 0.55);
+    bodyPivot.add(ribbon);
+
+    // 左右の足（トコトコ走る）
+    const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.55, 10), creamMat);
+    leftLeg.position.set(-0.32, 0.28, 0);
+    const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.55, 10), creamMat);
+    rightLeg.position.set(0.32, 0.28, 0);
+    bodyPivot.add(leftLeg, rightLeg);
+
+    // しっぽ
+    const tailPivot = new THREE.Group();
+    tailPivot.position.set(0, 0.78, 0.65);
+    const tailMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 0.85, 10), brownMat);
+    tailMesh.position.set(0, 0.35, 0.22);
+    tailMesh.rotation.x = 0.55;
+    tailPivot.add(tailMesh);
+    bodyPivot.add(tailPivot);
+
+    // ③ 頭部＋白いパティシエ帽＋耳＋両面表情パーツ（カメラ側 +Z からも前側 -Z からも可愛い顔が見える）
+    const headGroup = new THREE.Group();
+    headGroup.position.set(0, 1.78, 0);
+    bodyPivot.add(headGroup);
+
+    const headSphere = new THREE.Mesh(new THREE.SphereGeometry(0.75, 20, 18), creamMat);
+    headSphere.scale.set(1.08, 0.95, 0.98);
+    headSphere.castShadow = true;
+    headGroup.add(headSphere);
+
+    // 猫耳2つ
+    [-0.48, 0.48].forEach((ex, i) => {
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.55, 4), brownMat);
+      ear.position.set(ex, 0.72, 0);
+      ear.rotation.y = Math.PI / 4;
+      ear.rotation.z = i === 0 ? 0.28 : -0.28;
+      headGroup.add(ear);
+    });
+
+    // 白いパティシエ帽（コック帽）
+    const chefHatGroup = new THREE.Group();
+    chefHatGroup.position.set(0, 0.82, 0);
+    const hatBand = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.36, 0.25, 16), whiteMat);
+    const hatPuff = new THREE.Mesh(new THREE.SphereGeometry(0.48, 16, 14), whiteMat);
+    hatPuff.scale.set(1.05, 0.75, 1.05);
+    hatPuff.position.y = 0.28;
+    chefHatGroup.add(hatBand, hatPuff);
+    headGroup.add(chefHatGroup);
+
+    // 顔パーツ（カメラ側 +Z と 進行方向 -Z の両方に配置）
+    const normalEyesList = [];
+    const smileWinceEyesList = []; // 転んでも笑顔（＞ ＜）
+    const starEyesList = [];       // 大喜び（⭐）
+
+    [0.72, -0.72].forEach((fz, sideIdx) => {
+      const faceHolder = new THREE.Group();
+      faceHolder.position.set(0, 0, fz);
+      if (sideIdx === 1) faceHolder.rotation.y = Math.PI;
+      headGroup.add(faceHolder);
+
+      const nGroup = new THREE.Group();
+      const wGroup = new THREE.Group();
+      const sGroup = new THREE.Group();
+      wGroup.visible = false;
+      sGroup.visible = false;
+      faceHolder.add(nGroup, wGroup, sGroup);
+      normalEyesList.push(nGroup);
+      smileWinceEyesList.push(wGroup);
+      starEyesList.push(sGroup);
+
+      [-0.28, 0.28].forEach((ex, idx) => {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), darkMat);
+        eye.position.set(ex, 0.08, 0.02);
+        const shine = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        shine.position.set(ex + 0.035, 0.13, 0.1);
+        nGroup.add(eye, shine);
+
+        // ＞ ＜ 転んでも笑顔目
+        const bar1 = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.045, 0.04), darkMat);
+        bar1.position.set(ex, 0.1, 0.05);
+        bar1.rotation.z = idx === 0 ? -0.35 : 0.35;
+        const bar2 = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.045, 0.04), darkMat);
+        bar2.position.set(ex, 0.05, 0.05);
+        bar2.rotation.z = idx === 0 ? 0.35 : -0.35;
+        wGroup.add(bar1, bar2);
+
+        // ⭐ 大喜び星目
+        const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 0), new THREE.MeshBasicMaterial({ color: 0xfde047 }));
+        star.position.set(ex, 0.1, 0.06);
+        sGroup.add(star);
+
+        const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), cheekMat);
+        cheek.scale.set(1.3, 0.75, 0.4);
+        cheek.position.set(ex * 1.48, -0.06, 0.02);
+        faceHolder.add(cheek);
+      });
+
+      const nose = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.09, 3), pinkMat);
+      nose.rotation.x = Math.PI;
+      nose.position.set(0, -0.02, 0.06);
+      const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.024, 8, 12, Math.PI), darkMat);
+      mouth.rotation.x = Math.PI;
+      mouth.position.set(0, -0.1, 0.04);
+      faceHolder.add(nose, mouth);
+    });
+
+    // ④ 相棒：伴走するクリームの妖精「ホイップちゃん」（頭に赤いさくらんぼ付き）
+    const whipGroup = new THREE.Group();
+    whipGroup.position.set(1.35, 2.15, 0.2);
+    root.add(whipGroup);
+
+    const whipBody = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.78, 14), whiteMat);
+    whipBody.position.y = 0.2;
+    const whipBase = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.14, 10, 16), whiteMat);
+    whipBase.rotation.x = Math.PI / 2;
+    const cherry = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 12), pinkMat);
+    cherry.position.y = 0.65;
+    whipGroup.add(whipBody, whipBase, cherry);
+
+    [-0.12, 0.12].forEach(wx => {
+      const wEye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), darkMat);
+      wEye.position.set(wx, 0.18, 0.32);
+      whipGroup.add(wEye);
+    });
+
+    root.userData = {
+      dropShadow,
+      bodyPivot,
+      leftLeg,
+      rightLeg,
+      tailPivot,
+      normalEyesList,
+      smileWinceEyesList,
+      starEyesList,
+      whipGroup
+    };
+    return root;
+  }
+
+  const playerRoot = createMyaokunAndWhipchan3D();
+  scene.add(playerRoot);
+
+  // 表情切り替え（1:通常、2:転んでも笑顔＞＜、3:大喜び⭐）
+  function setMyaokunEmotion(state) {
+    const ud = playerRoot.userData;
+    ud.normalEyesList.forEach(g => { g.visible = (state === 1); });
+    ud.smileWinceEyesList.forEach(g => { g.visible = (state === 2); });
+    ud.starEyesList.forEach(g => { g.visible = (state === 3); });
+  }
+
+  // ==========================================
+  // 6. おやつ全8種の3Dモデル生成関数（10色のカラーに対応）
+  // ==========================================
+  function createSnack3DModel(snackSpec, colorSpec) {
+    const g = new THREE.Group();
+    const colHex = snackSpec.rare ? 0xfde047 : colorSpec.hex;
+    const colorMat = new THREE.MeshStandardMaterial({
+      color: colHex,
+      emissive: colHex,
+      emissiveIntensity: snackSpec.rare ? 0.45 : 0.18,
+      roughness: 0.2,
+      metalness: snackSpec.rare ? 0.55 : 0.08
+    });
+    const baseDoughMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.45 });
+    const creamWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25 });
+
+    if (snackSpec.id === 'donut' || snackSpec.id === 'gold_donut') {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.26, 14, 24), snackSpec.rare ? colorMat : baseDoughMat);
+      const icing = new THREE.Mesh(new THREE.TorusGeometry(0.56, 0.24, 14, 24), colorMat);
+      icing.position.z = 0.05;
+      g.add(ring, icing);
+    } else if (snackSpec.id === 'cookie') {
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.68, 0.22, 20), baseDoughMat);
+      disc.rotation.x = Math.PI / 2;
+      g.add(disc);
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        const chip = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), colorMat);
+        chip.position.set(Math.cos(a) * 0.35, Math.sin(a) * 0.35, 0.12);
+        g.add(chip);
+      }
+    } else if (snackSpec.id === 'pudding') {
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.68, 0.75, 18), colorMat);
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.49, 0.52, 0.2, 18), new THREE.MeshStandardMaterial({ color: 0x78350f }));
+      top.position.y = 0.38;
+      g.add(cup, top);
+    } else if (snackSpec.id === 'candy') {
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.52, 16, 14), colorMat);
+      [-0.65, 0.65].forEach((cx, i) => {
+        const wrap = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.45, 8), colorMat);
+        wrap.rotation.z = i === 0 ? -Math.PI / 2 : Math.PI / 2;
+        wrap.position.x = cx;
+        g.add(wrap);
+      });
+      g.add(ball);
+    } else if (snackSpec.id === 'cake') {
+      const sponge = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.55, 18), creamWhiteMat);
+      const berry = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.5, 12), colorMat);
+      berry.position.y = 0.5;
+      g.add(sponge, berry);
+    } else if (snackSpec.id === 'muffin') {
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.38, 0.55, 14), creamWhiteMat);
+      cup.position.y = -0.15;
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(0.58, 16, 12), colorMat);
+      dome.position.y = 0.25;
+      g.add(cup, dome);
+    } else if (snackSpec.id === 'choco') {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.85, 0.26), colorMat);
+      const ribbon = new THREE.Mesh(new THREE.BoxGeometry(1.14, 0.22, 0.3), creamWhiteMat);
+      g.add(bar, ribbon);
+    }
+
+    return g;
+  }
+
+  // ==========================================
+  // 7. コース生成・レベル別仕掛け・取り逃がし再出現（リスポーン）・色あてミッション
+  // ==========================================
+  let appScreen = 'TITLE';
+  let currentLevel = 1;
+  let speedMultiplier = 1.0;
+  let playerZ = 0;
+  let playerY = 0;
+  let jumpVy = 0;
+  let isJumping = false;
+  let hasDoubleJumped = false;
+  let isDucking = false;
+  let stumbleTimer = 0;
+  let isStageCleared = false;
+  let clearBtnLocked = false;
+
+  let collectedCount = 0;
+  let stageCollectedIcons = [];
+  let activeMissionColor = null; // 色あてミッションの指定色
+
+  // コース上のオブジェクト配列
+  // { z, y, mesh, snackSpec, colorSpec, collected, isGoldenBonus }
+  const courseSnacks = [];
+  // { z, type: 'hurdle' | 'tunnel' | 'marshmallow', mesh, triggered }
+  const courseObstacles = [];
+  const particles = [];
+
+  function spawnCelebrationParticles(pos, colorHex, count = 20) {
+    const cols = [colorHex, 0xfef08a, 0xf472b6, 0x38bdf8, 0x4ade80];
+    for (let i = 0; i < count; i++) {
+      const m = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.22, 0),
+        new THREE.MeshBasicMaterial({ color: cols[i % cols.length] })
+      );
+      m.position.copy(pos);
+      scene.add(m);
+      particles.push({
+        mesh: m,
+        vel: new THREE.Vector3((Math.random() - 0.5) * 0.34, 0.18 + Math.random() * 0.26, (Math.random() - 0.5) * 0.34),
+        life: 45
+      });
+    }
+  }
+
+  function showToast(msg) {
+    const el = document.getElementById('info-toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => el.classList.remove('show'), 2200);
+  }
+
+  function buildRunnerCourse(lv) {
+    while (courseGroup.children.length > 0) {
+      courseGroup.remove(courseGroup.children[0]);
+    }
+    courseSnacks.length = 0;
+    courseObstacles.length = 0;
+
+    const lvDef = LEVEL_DEFS[lv];
+    document.body.className = `stage-${lv}`;
+    scene.fog.color.setHex(lv === 3 ? 0xfbcfe8 : 0xfef08a);
+
+    // ビスケットの長い一本道（Z = +10 〜 -320）
+    const roadMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(5.2, 0.4, 360),
+      new THREE.MeshStandardMaterial({ color: lvDef.roadColor, roughness: 0.6 })
+    );
+    roadMesh.position.set(0, -0.2, -165);
+    roadMesh.receiveShadow = true;
+    courseGroup.add(roadMesh);
+
+    // 道の両脇のいちごクリーム縁石＆キャンディ街灯
+    [-2.75, 2.75].forEach(rx => {
+      const curb = new THREE.Mesh(
+        new THREE.BoxGeometry(0.35, 0.55, 360),
+        new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.4 })
+      );
+      curb.position.set(rx, -0.1, -165);
+      courseGroup.add(curb);
+    });
+
+    for (let z = -8; z > -320; z -= 14) {
+      [-3.8, 3.8].forEach((tx, idx) => {
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 2.2, 10), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+        pole.position.set(tx, 1.1, z);
+        const top = new THREE.Mesh(new THREE.SphereGeometry(0.65, 12, 12), new THREE.MeshStandardMaterial({ color: idx === 0 ? 0xf43f5e : 0x38bdf8 }));
+        top.position.set(tx, 2.4, z);
+        courseGroup.add(pole, top);
+      });
+    }
+
+    // レベル別の仕掛け＆目標数（Lv1:5こ、Lv2:7こ、Lv3:10こ）のおやつを配置
+    const regularSnacks = SNACK_TYPES.filter(s => !s.rare);
+    const regularColors = COLOR_PALETTE.filter(c => c.id !== 'gold');
+    const spacingZ = 15.5;
+
+    for (let i = 0; i < lvDef.targetSnacks; i++) {
+      const itemZ = -16 - i * spacingZ;
+      const sSpec = regularSnacks[i % regularSnacks.length];
+      const cSpec = regularColors[i % regularColors.length];
+
+      let snackY = 1.0;
+
+      if (lv === 1) {
+        // Lv.1：いちごクリームのミニ柵（ハードル）＋ジャンプで取るおやつ
+        if (i % 2 === 1) {
+          addHurdleObstacle(itemZ);
+          snackY = 2.45; // ジャンプすると気持ちよく取れる高さ
+        }
+      } else if (lv === 2) {
+        // Lv.2：チョコウエハースのトンネル（しゃがんでくぐる）とハードルが交互に登場
+        if (i % 2 === 0) {
+          addTunnelObstacle(itemZ);
+          snackY = 0.78; // しゃがんでくぐると取れる低い位置
+        } else {
+          addHurdleObstacle(itemZ);
+          snackY = 2.45;
+        }
+      } else if (lv === 3) {
+        // Lv.3：ビスケットの橋・マシュマロ台・風船おやつ（2段ジャンプ対応）
+        if (i % 3 === 0) {
+          addBiscuitBridgeAndMarshmallow(itemZ);
+          snackY = 3.65; // 2段ジャンプやマシュマロ台で届く高い位置の風船おやつ
+        } else if (i % 3 === 1) {
+          addTunnelObstacle(itemZ);
+          snackY = 0.78;
+        } else {
+          addHurdleObstacle(itemZ);
+          snackY = 2.45;
+        }
+      }
+
+      spawnCourseSnackItem(itemZ, snackY, sSpec, cSpec, false);
+    }
+
+    // ★ 確定事項：Lv.3プレイ中に1回だけ橋の上に出現する「金のドーナツ（レア・数にカウントしない）」
+    if (lv === 3) {
+      const goldZ = -16 - 4.5 * spacingZ;
+      addBiscuitBridgeAndMarshmallow(goldZ);
+      const goldSpec = SNACK_TYPES.find(s => s.id === 'gold_donut');
+      const goldCol  = COLOR_PALETTE.find(c => c.id === 'gold');
+      spawnCourseSnackItem(goldZ, 3.8, goldSpec, goldCol, true);
+    }
+  }
+
+  // Lv.1〜3：いちごクリームのミニ柵（ハードル）
+  function addHurdleObstacle(zPos) {
+    const g = new THREE.Group();
+    g.position.set(0, 0, zPos);
+    const bar = new THREE.Mesh(
+      new THREE.BoxGeometry(4.2, 0.85, 0.45),
+      new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.35 })
+    );
+    bar.position.y = 0.45;
+    const cream = new THREE.Mesh(
+      new THREE.BoxGeometry(4.3, 0.25, 0.52),
+      new THREE.MeshStandardMaterial({ color: 0xffffff })
+    );
+    cream.position.y = 0.85;
+    g.add(bar, cream);
+    courseGroup.add(g);
+
+    courseObstacles.push({ z: zPos, type: 'hurdle', mesh: g, triggered: false });
+  }
+
+  // Lv.2〜3：チョコウエハースのトンネル（下半分が開いていて、しゃがんでくぐる）
+  function addTunnelObstacle(zPos) {
+    const g = new THREE.Group();
+    g.position.set(0, 0, zPos);
+    const chocoMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.5 });
+    const waferMat = new THREE.MeshStandardMaterial({ color: 0xfde68a, roughness: 0.5 });
+
+    // 左右の柱
+    [-2.1, 2.1].forEach(px => {
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.5, 3.2, 2.2), waferMat);
+      pillar.position.set(px, 1.6, 0);
+      g.add(pillar);
+    });
+    // 上部の低い天井（高さ 1.35 〜 3.2 を塞ぐため、立ったままだと頭がコツンと当たる）
+    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(4.7, 1.85, 2.2), chocoMat);
+    ceiling.position.set(0, 2.28, 0);
+    g.add(ceiling);
+    courseGroup.add(g);
+
+    courseObstacles.push({ z: zPos, type: 'tunnel', mesh: g, triggered: false });
+  }
+
+  // Lv.3：ビスケットの橋 ＆ マシュマロジャンプ台
+  function addBiscuitBridgeAndMarshmallow(zPos) {
+    const g = new THREE.Group();
+    g.position.set(0, 0, zPos);
+
+    // ビスケットの太鼓橋アーチ欄干
+    [-2.3, 2.3].forEach(bx => {
+      const rail = new THREE.Mesh(
+        new THREE.TorusGeometry(2.8, 0.2, 10, 24, Math.PI),
+        new THREE.MeshStandardMaterial({ color: 0xd97706 })
+      );
+      rail.rotation.y = Math.PI / 2;
+      rail.position.set(bx, 0.2, 0);
+      g.add(rail);
+    });
+
+    // 手前の白いぷにぷにマシュマロ台
+    const marshmallow = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.1, 1.2, 0.35, 20),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 })
+    );
+    marshmallow.position.set(0, 0.18, 2.4);
+    g.add(marshmallow);
+    courseGroup.add(g);
+
+    courseObstacles.push({ z: zPos + 2.4, type: 'marshmallow', mesh: g, triggered: false });
+  }
+
+  function spawnCourseSnackItem(zPos, yPos, snackSpec, colorSpec, isGoldenBonus = false) {
+    const holder = new THREE.Group();
+    holder.position.set(0, yPos, zPos);
+
+    const model = createSnack3DModel(snackSpec, colorSpec);
+    holder.add(model);
+
+    // 高い位置（y > 3.0）のおやつには可愛い風船を付ける（Lv.3の風船おやつ）
+    if (yPos > 3.0 && !isGoldenBonus) {
+      const balloon = new THREE.Mesh(
+        new THREE.SphereGeometry(0.55, 14, 12),
+        new THREE.MeshStandardMaterial({ color: colorSpec.hex, roughness: 0.2 })
+      );
+      balloon.position.y = 1.35;
+      const string = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.02, 0.02, 0.8, 6),
+        new THREE.MeshBasicMaterial({ color: 0xffffff })
+      );
+      string.position.y = 0.75;
+      holder.add(balloon, string);
+    }
+
+    courseGroup.add(holder);
+    courseSnacks.push({
+      z: zPos,
+      y: yPos,
+      mesh: holder,
+      snackSpec,
+      colorSpec,
+      collected: false,
+      isGoldenBonus,
+      announcedGold: false
+    });
+  }
+
+  // 色あてミッションの発動（前方の未取得おやつの色を必ず指定する）
+  function triggerColorMission() {
+    const upcoming = courseSnacks.filter(s => !s.collected && !s.isGoldenBonus && s.z < playerZ - 6);
+    if (upcoming.length === 0) return;
+
+    const targetSnack = upcoming[0];
+    activeMissionColor = targetSnack.colorSpec;
+
+    const dotEl = document.getElementById('mission-color-dot');
+    dotEl.style.display = 'inline-block';
+    dotEl.style.background = activeMissionColor.css;
+    document.getElementById('mission-status-label').textContent =
+      `🎯 ミッション：${activeMissionColor.name}の おやつ！`;
+
+    sound.playClipSequence(['VO_MISSION_PREFIX', activeMissionColor.clip]);
+  }
+
+  // ==========================================
+  // 8. ジャンプ＆しゃがむの厳格な相互排他制御（確定事項準拠）
+  // ==========================================
+  // ・画面上部2/3のタップ＝ジャンプ
+  // ・しゃがむボタンは押している間だけしゃがむ（ホールド式、離すとすぐ立つ）
+  // ・ジャンプ中はしゃがむ無効、しゃがみ中はジャンプ無効
+  // ・2段ジャンプはLv.3のみ（ジャンプ中のタップで1回だけ）
+  // ・Lv.1ではしゃがむボタンを表示しない
+
+  function tryExecuteJump() {
+    if (appScreen !== 'PLAY' || isStageCleared || stumbleTimer > 0) return;
+
+    // ★ 確定事項：しゃがみ中はジャンプ無効！
+    if (isDucking) return;
+
+    if (!isJumping) {
+      // 1段目のジャンプ発動
+      isJumping = true;
+      hasDoubleJumped = false;
+      jumpVy = 11.8;
+      sound.playJumpSound(false);
+      sound.playClipSequence('VO_JUMP');
+    } else if (currentLevel === 3 && !hasDoubleJumped) {
+      // ★ 確定事項：2段ジャンプはLv.3のみ（ジャンプ中のタップで1回だけ）
+      hasDoubleJumped = true;
+      jumpVy = 11.2;
+      sound.playJumpSound(true);
+      sound.playClipSequence('VO_DOUBLE_JUMP');
+      gsap.fromTo(
+        playerRoot.userData.bodyPivot.rotation,
+        { x: 0 },
+        { x: -Math.PI * 2, duration: 0.45, ease: 'power1.out' }
+      );
+    }
+  }
+
+  function startDuckHold(e) {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    if (appScreen !== 'PLAY' || isStageCleared || currentLevel === 1) return;
+
+    // ★ 確定事項：ジャンプ中はしゃがむ無効！
+    if (isJumping) return;
+
+    if (!isDucking) {
+      isDucking = true;
+      document.getElementById('duck-hold-btn').classList.add('holding');
+      sound.playDuckSound();
+      sound.playClipSequence('VO_DUCK');
+      // しゃがみ姿勢（高さを低くぺたんこにする）
+      gsap.to(playerRoot.userData.bodyPivot.scale, { x: 1.22, y: 0.52, z: 1.22, duration: 0.1 });
+    }
+  }
+
+  function endDuckHold(e) {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    if (!isDucking) return;
+    isDucking = false;
+    document.getElementById('duck-hold-btn').classList.remove('holding');
+    // 離すとすぐ立つ！
+    gsap.to(playerRoot.userData.bodyPivot.scale, { x: 1.0, y: 1.0, z: 1.0, duration: 0.12 });
+  }
+
+  const duckZone = document.getElementById('bottom-duck-zone');
+  const duckBtn = document.getElementById('duck-hold-btn');
+  [duckZone, duckBtn].forEach(el => {
+    el.addEventListener('pointerdown', startDuckHold);
+    el.addEventListener('pointerup', endDuckHold);
+    el.addEventListener('pointerleave', endDuckHold);
+    el.addEventListener('pointercancel', endDuckHold);
+  });
+
+  // 画面上部2/3のタップ＝ジャンプ判定（画面端16px余白は除外）
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    if (
+      e.clientX < 16 ||
+      e.clientX > window.innerWidth - 16 ||
+      e.clientY < 16 ||
+      e.clientY > window.innerHeight - 16
+    ) {
+      return;
+    }
+    sound.init();
+
+    if (appScreen === 'TITLE') {
+      sound.playJumpSound(false);
+      sound.playClipSequence('VO_TITLE');
+      gsap.fromTo(playerRoot.userData.bodyPivot.position, { y: 0 }, { y: 1.1, duration: 0.24, yoyo: true, repeat: 1 });
+      return;
+    }
+
+    // 確定事項：画面上部2/3のタップ＝ジャンプ
+    if (appScreen === 'PLAY' && e.clientY <= window.innerHeight * (2 / 3)) {
+      tryExecuteJump();
+    }
+  });
+
+  // 上部サブボタンの pointerdown でも必ず stopPropagation + preventDefault してジャンプへ漏らさない
+  document.querySelectorAll('#top-bar button, #status-strip').forEach(el => {
+    el.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+    });
+  });
+
+  // ==========================================
+  // 9. おやつ取得・金のドーナツボーナス・0.4秒つまずき復帰処理
+  // ==========================================
+  function handleSnackCollected(item) {
+    item.collected = true;
+    item.mesh.visible = false;
+
+    const sSpec = item.snackSpec;
+    const cSpec = item.colorSpec;
+
+    saveData.snackCounts[sSpec.id] = (saveData.snackCounts[sSpec.id] || 0) + 1;
+    writeSaveData();
+
+    setMyaokunEmotion(3); // 3: ⭐大喜び目
+    setTimeout(() => { if (!isStageCleared) setMyaokunEmotion(1); }, 650);
+    spawnCelebrationParticles(item.mesh.position, cSpec.hex, 24);
+
+    // ★ 確定事項：金のドーナツはレアボーナス（1〜10のおやつ数にはカウントしない。取ると大花火＋フィーバー！）
+    if (item.isGoldenBonus) {
+      sound.playFanfare();
+      sound.playClipSequence(['COL_GOLD', 'SNK_GOLD_DONUT', 'VO_MISSION_OK']);
+      showToast('🌟 きんのドーナツ ゲット！ フィーバー！！');
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 95, spread: 90, origin: { y: 0.5 } });
+      }
+      return;
+    }
+
+    // 通常おやつ（1〜10の数唱カウント）
+    collectedCount++;
+    stageCollectedIcons.push(sSpec.emoji);
+
+    const lvDef = LEVEL_DEFS[currentLevel];
+    document.getElementById('snack-progress-pill').textContent =
+      `🍩 ${collectedCount} / ${lvDef.targetSnacks}`;
+
+    sound.playSnackChime(collectedCount);
+
+    // 特大数字＆名前ポップ表示
+    const numEl = document.getElementById('big-count-number');
+    const ribEl = document.getElementById('snack-pop-ribbon');
+    numEl.textContent = String(collectedCount);
+    ribEl.textContent = `${cSpec.name}！ ${sSpec.name}！`;
+    ribEl.style.background = cSpec.css;
+
+    gsap.killTweensOf([numEl, ribEl]);
+    gsap.fromTo(numEl, { opacity: 1, scale: 0.2 }, { opacity: 1, scale: 1.1, duration: 0.34, ease: 'back.out(2.2)', onComplete: () => {
+      gsap.to(numEl, { opacity: 0, scale: 0.7, duration: 0.24, delay: 0.38 });
+    }});
+    gsap.fromTo(ribEl, { opacity: 1, scale: 0.3 }, { opacity: 1, scale: 1.0, duration: 0.34, ease: 'back.out(2)', onComplete: () => {
+      gsap.to(ribEl, { opacity: 0, duration: 0.24, delay: 0.42 });
+    }});
+
+    // 有限クリップの連続再生：数字（いち！）→ 色名（あか！）→ おやつ名（ケーキ！）
+    const numKey = NUM_CLIP_KEYS[collectedCount - 1];
+    const clips = [numKey, cSpec.clip, sSpec.clip];
+
+    // 色あてミッション判定（指定色を取ると特別なほめ演出、違う色でも減点・失敗なし）
+    if (activeMissionColor) {
+      if (cSpec.id === activeMissionColor.id) {
+        clips.push('VO_MISSION_OK');
+        showToast('🎉 ミッション だいせいかい！ すごーい！');
+        if (typeof confetti === 'function') {
+          confetti({ particleCount: 45, spread: 70, origin: { y: 0.55 } });
+        }
+      }
+      activeMissionColor = null;
+      document.getElementById('mission-color-dot').style.display = 'none';
+      document.getElementById('mission-status-label').textContent =
+        currentLevel === 1 ? '👆 うえをタッチで ジャンプ！' : '👆 ジャンプ ／ 👇 しゃがむ';
+    } else if (collectedCount === 2 || collectedCount === 5) {
+      // 途中で色あてミッションを発動
+      setTimeout(() => {
+        if (!isStageCleared) triggerColorMission();
+      }, 1100);
+    }
+
+    if (collectedCount === lvDef.targetSnacks - 1) {
+      clips.push('VO_LAST_ONE');
+    }
+
+    sound.playClipSequence(clips);
+
+    if (collectedCount >= lvDef.targetSnacks) {
+      triggerStageClear();
+    }
+  }
+
+  // ハードルやトンネルにつまずいた時（転んで笑うだけ・0.4秒で即復帰・ペナルティなし）
+  function triggerGentleStumble() {
+    if (stumbleTimer > 0 || isStageCleared) return;
+    stumbleTimer = 0.4; // 確定事項：0.4秒で復帰
+    setMyaokunEmotion(2); // 2: ＞＜笑顔
+    sound.playStumbleBoing();
+    sound.playClipSequence('VO_STUMBLE');
+    showToast('🐱 ミャオくん「えへへ！ だいじょうぶ♪」');
+
+    gsap.fromTo(
+      playerRoot.userData.bodyPivot.rotation,
+      { z: -0.35 },
+      {
+        z: 0,
+        duration: 0.4,
+        ease: 'elastic.out(1.2, 0.3)',
+        onComplete: () => setMyaokunEmotion(1)
+      }
+    );
+  }
+
+  // ==========================================
+  // 10. 全6画面の遷移・0.8秒クリアロック・おやつずかん（8種＋トロフィー）・おとな設定
+  // ==========================================
+  function startLevelRun(lv) {
+    currentLevel = lv;
+    saveData.currentLevel = lv;
+    writeSaveData();
+
+    collectedCount = 0;
+    stageCollectedIcons = [];
+    activeMissionColor = null;
+    isStageCleared = false;
+    isJumping = false;
+    hasDoubleJumped = false;
+    isDucking = false;
+    playerZ = 0;
+    playerY = 0;
+    jumpVy = 0;
+    stumbleTimer = 0;
+
+    playerRoot.position.set(0, 0, 0);
+    playerRoot.userData.bodyPivot.scale.set(1, 1, 1);
+    setMyaokunEmotion(1);
+
+    const lvDef = LEVEL_DEFS[lv];
+    document.getElementById('hud-level-name').textContent = lvDef.label;
+    document.getElementById('snack-progress-pill').textContent = `🍩 0 / ${lvDef.targetSnacks}`;
+    document.getElementById('mission-color-dot').style.display = 'none';
+    document.getElementById('mission-status-label').textContent =
+      lv === 1 ? '👆 うえをタッチで ジャンプ！' : '👆 ジャンプ ／ 👇 しゃがむ';
+
+    // ★ 確定事項：Lv.1ではしゃがむボタンを表示しない（Lv.2〜3のみ表示）
+    document.getElementById('bottom-duck-zone').classList.toggle('visible', lv >= 2);
+    document.getElementById('duck-hold-btn').classList.remove('holding');
+
+    buildRunnerCourse(lv);
+    sound.playClipSequence([lvDef.voiceKey, 'VO_START']);
+  }
+
+  // ①タイトル画面 → ②あそびかた画面（独立画面）
+  document.getElementById('title-start-btn').addEventListener('click', () => {
+    sound.init();
+    sound.playJumpSound(false);
+    document.getElementById('title-screen').classList.add('hidden');
+    document.getElementById('howto-screen').classList.add('active');
+    sound.playClipSequence(['VO_HOWTO_1', 'VO_HOWTO_2']);
+  });
+
+  // ②あそびかた画面 → ③プレイ画面
+  function closeHowtoAndStartPlay() {
+    document.getElementById('howto-screen').classList.remove('active');
+    document.getElementById('play-hud').classList.remove('hidden');
+    if (appScreen !== 'PLAY') {
+      appScreen = 'PLAY';
+      startLevelRun(saveData.currentLevel || 1);
+    }
+  }
+  document.getElementById('howto-go-btn').addEventListener('click', closeHowtoAndStartPlay);
+  document.getElementById('howto-close-x-btn').addEventListener('click', closeHowtoAndStartPlay);
+
+  // 左上のレベル切替ボタン
+  document.getElementById('level-switch-btn').addEventListener('click', () => {
+    const nextLv = (currentLevel % 3) + 1;
+    startLevelRun(nextLv);
+  });
+
+  // 💡 ヒントボタン（前方の障害物に合わせて「ジャンプだよ！」「しゃがんで！」と教える）
+  document.getElementById('hint-btn').addEventListener('click', () => {
+    const nextObs = courseObstacles.find(o => o.z < playerZ && o.z > playerZ - 18);
+    if (nextObs && nextObs.type === 'tunnel') {
+      showToast('🍦 ホイップちゃん「いま！ しゃがんで！」');
+      sound.playClipSequence('VO_HINT_DUCK');
+    } else {
+      showToast('🍦 ホイップちゃん「いま！ ジャンプだよ！」');
+      sound.playClipSequence('VO_HINT_JUMP');
+    }
+  });
+
+  // ④ クリア画面（0.8秒ロック付）
+  function triggerStageClear() {
+    isStageCleared = true;
+    endDuckHold();
+
+    setTimeout(() => {
+      sound.playFanfare();
+      sound.playClipSequence(['VO_CLEAR_1', 'VO_CLEAR_2', 'VO_GOOD_JOB']);
+
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 85, spread: 80, origin: { y: 0.55 } });
+      }
+
+      document.getElementById('clear-level-badge').textContent =
+        `🎉 ${LEVEL_DEFS[currentLevel].label} ゴール！`;
+      document.getElementById('clear-snacks-showcase').textContent =
+        stageCollectedIcons.join(' ');
+
+      clearBtnLocked = true;
+      const nextBtn = document.getElementById('clear-next-btn');
+      nextBtn.style.opacity = '0.55';
+      setTimeout(() => {
+        clearBtnLocked = false;
+        nextBtn.style.opacity = '1';
+      }, 800);
+
+      document.getElementById('clear-modal').classList.add('active');
+      gsap.fromTo(
+        '#clear-card-inner',
+        { scale: 0.4, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.42, ease: 'back.out(1.8)' }
+      );
+    }, 550);
+  }
+
+  document.getElementById('clear-modal').addEventListener('pointerdown', () => {
+    if (clearBtnLocked && typeof confetti === 'function') {
+      confetti({ particleCount: 20, spread: 65, origin: { y: 0.5 } });
+    }
+  });
+
+  document.getElementById('clear-next-btn').addEventListener('click', () => {
+    if (clearBtnLocked) return;
+    document.getElementById('clear-modal').classList.remove('active');
+    const nextLv = (currentLevel % 3) + 1;
+    startLevelRun(nextLv);
+  });
+
+  document.getElementById('clear-zukan-sub-btn').addEventListener('click', () => {
+    if (clearBtnLocked) return;
+    document.getElementById('clear-modal').classList.remove('active');
+    openZukanModal();
+  });
+
+  // ⑤ おやつずかん画面（全8種・8種コンプリートでトロフィー）
+  const zukanModal = document.getElementById('zukan-modal');
+  const zukanStage = document.getElementById('zukan-3d-stage');
+  let zkScene, zkCam, zkRenderer, zkSnackMesh;
+  let selectedZukanSnack = SNACK_TYPES[0];
+
+  function initZukan3D() {
+    zkScene = new THREE.Scene();
+    zkCam = new THREE.PerspectiveCamera(40, 1, 0.1, 30);
+    zkCam.position.set(0, 0.6, 2.7);
+    zkCam.lookAt(0, 0.1, 0);
+
+    zkRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    zkRenderer.setSize(100, 100);
+    zkRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    zukanStage.appendChild(zkRenderer.domElement);
+
+    zkScene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    const dl = new THREE.DirectionalLight(0xfffbeb, 0.95);
+    dl.position.set(3, 6, 4);
+    zkScene.add(dl);
+  }
+  initZukan3D();
+
+  function selectZukanSnackCell(sSpec, speakIt = true) {
+    selectedZukanSnack = sSpec;
+    if (zkSnackMesh) zkScene.remove(zkSnackMesh);
+    const colSpec = COLOR_PALETTE.find(c => c.id === sSpec.defaultColorId) || COLOR_PALETTE[0];
+    zkSnackMesh = createSnack3DModel(sSpec, colSpec);
+    zkScene.add(zkSnackMesh);
+
+    const cnt = saveData.snackCounts[sSpec.id] || 0;
+    document.getElementById('zukan-snack-title').textContent = `${sSpec.emoji} ${sSpec.name}`;
+    document.getElementById('zukan-snack-count').textContent = `あつめた かず：${cnt}こ`;
+
+    if (speakIt) {
+      sound.playSnackChime(5);
+      sound.playClipSequence([colSpec.clip, sSpec.clip]);
+    }
+  }
+
+  function openZukanModal() {
+    const grid = document.getElementById('zukan-grid-8');
+    grid.innerHTML = '';
+    let unlockedCount = 0;
+
+    SNACK_TYPES.forEach((sSpec, idx) => {
+      const cnt = saveData.snackCounts[sSpec.id] || 0;
+      if (cnt > 0) unlockedCount++;
+      const cell = document.createElement('div');
+      cell.className = `snack-cell ${cnt > 0 ? 'unlocked' : ''} ${idx === 0 ? 'active-cell' : ''}`;
+      cell.innerHTML = `
+        <span class="s-emo">${cnt > 0 ? sSpec.emoji : '❓'}</span>
+        <div>${sSpec.name}</div>
+        <div style="color:#fde047;">×${cnt}</div>
+      `;
+      cell.addEventListener('click', () => {
+        document.querySelectorAll('.snack-cell').forEach(el => el.classList.remove('active-cell'));
+        cell.classList.add('active-cell');
+        selectZukanSnackCell(sSpec, true);
+      });
+      grid.appendChild(cell);
+    });
+
+    const trophyIcon = document.getElementById('trophy-icon');
+    const trophyTitle = document.getElementById('trophy-title');
+    const trophyDesc = document.getElementById('trophy-desc');
+    if (unlockedCount >= 8) {
+      trophyIcon.classList.add('unlocked');
+      trophyTitle.textContent = '🏆 おやつおうさま トロフィー 完成！';
+      trophyDesc.textContent = '8しゅるい ぜんぶの おやつが そろったよ！ おめでとう！';
+      sound.playClipSequence('VO_ZUKAN_COMP');
+    } else {
+      trophyIcon.classList.remove('unlocked');
+      trophyTitle.textContent = `おやつおうさま トロフィー（${unlockedCount}/8）`;
+      trophyDesc.textContent = '8しゅるいの おやつを ぜんぶ あつめると かがやくよ！';
+      sound.playClipSequence('VO_ZUKAN_OPEN');
+    }
+
+    selectZukanSnackCell(SNACK_TYPES[0], false);
+    zukanModal.classList.add('active');
+  }
+
+  document.getElementById('zukan-open-btn').addEventListener('click', openZukanModal);
+  document.getElementById('close-zukan-x-btn').addEventListener('click', () => {
+    zukanModal.classList.remove('active');
+  });
+  document.getElementById('zukan-speak-btn').addEventListener('click', () => {
+    selectZukanSnackCell(selectedZukanSnack, true);
+  });
+  zukanStage.addEventListener('click', () => {
+    selectZukanSnackCell(selectedZukanSnack, true);
+  });
+
+  // ⑥ おとな設定画面（約1秒＝1000ms長押し関門 ＆ 2秒長押しリセット＋確認）
+  const settingsGateBtn = document.getElementById('settings-gate-btn');
+  const settingsHoldCircle = document.getElementById('settings-hold-circle');
+  let settingsHoldTimer = null;
+  let settingsHoldStart = 0;
+
+  function startSettingsHold(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    settingsHoldStart = performance.now();
+    clearInterval(settingsHoldTimer);
+    settingsHoldTimer = setInterval(() => {
+      const elapsed = performance.now() - settingsHoldStart;
+      const p = Math.min(1, elapsed / 1000); // 約1秒（1000ms）長押し
+      settingsHoldCircle.style.strokeDashoffset = String(180 * (1 - p));
+      if (p >= 1) {
+        clearInterval(settingsHoldTimer);
+        settingsHoldCircle.style.strokeDashoffset = '180';
+        document.getElementById('reset-confirm-box').classList.remove('show');
+        document.getElementById('settings-modal').classList.add('active');
+      }
+    }, 30);
+  }
+
+  function cancelSettingsHold() {
+    clearInterval(settingsHoldTimer);
+    const elapsed = performance.now() - settingsHoldStart;
+    settingsHoldCircle.style.strokeDashoffset = '180';
+    if (elapsed > 20 && elapsed < 950) {
+      showToast('⚙️ おとなのひとと 約1びょう ながおししてね');
+    }
+  }
+
+  settingsGateBtn.addEventListener('pointerdown', startSettingsHold);
+  settingsGateBtn.addEventListener('pointerup', cancelSettingsHold);
+  settingsGateBtn.addEventListener('pointerleave', cancelSettingsHold);
+  settingsGateBtn.addEventListener('pointercancel', cancelSettingsHold);
+
+  document.getElementById('close-settings-x-btn').addEventListener('click', () => {
+    document.getElementById('settings-modal').classList.remove('active');
+  });
+
+  const toggleSoundBtn = document.getElementById('toggle-sound-btn');
+  toggleSoundBtn.addEventListener('click', () => {
+    sound.enabled = !sound.enabled;
+    toggleSoundBtn.textContent = sound.enabled ? 'ON 🔊' : 'OFF 🔇';
+    toggleSoundBtn.classList.toggle('off', !sound.enabled);
+  });
+
+  const toggleSpeedBtn = document.getElementById('toggle-speed-btn');
+  toggleSpeedBtn.addEventListener('click', () => {
+    speedMultiplier = speedMultiplier < 0.9 ? 1.0 : 0.8;
+    toggleSpeedBtn.textContent = speedMultiplier < 0.9 ? 'ゆっくり' : 'ふつう';
+  });
+
+  document.getElementById('open-howto-from-settings-btn').addEventListener('click', () => {
+    document.getElementById('settings-modal').classList.remove('active');
+    document.getElementById('howto-screen').classList.add('active');
+    sound.playClipSequence(['VO_HOWTO_1', 'VO_HOWTO_2']);
+  });
+
+  // 🗑️ データリセット：2秒長押し＋確認画面（「はい／いいえ」）
+  const resetHoldBtn = document.getElementById('reset-hold-btn');
+  const resetProgressBar = document.getElementById('reset-progress-bar');
+  let resetTimer = null;
+  let resetStart = 0;
+
+  resetHoldBtn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    resetStart = performance.now();
+    clearInterval(resetTimer);
+    resetTimer = setInterval(() => {
+      const p = Math.min(100, ((performance.now() - resetStart) / 2000) * 100);
+      resetProgressBar.style.width = `${p}%`;
+      if (p >= 100) {
+        clearInterval(resetTimer);
+        resetProgressBar.style.width = '0%';
+        document.getElementById('reset-confirm-box').classList.add('show');
+      }
+    }, 30);
+  });
+
+  const cancelResetHold = () => {
+    clearInterval(resetTimer);
+    resetProgressBar.style.width = '0%';
+  };
+  resetHoldBtn.addEventListener('pointerup', cancelResetHold);
+  resetHoldBtn.addEventListener('pointerleave', cancelResetHold);
+
+  document.getElementById('confirm-reset-no').addEventListener('click', () => {
+    document.getElementById('reset-confirm-box').classList.remove('show');
+  });
+  document.getElementById('confirm-reset-yes').addEventListener('click', () => {
+    saveData = { currentLevel: 1, snackCounts: {} };
+    writeSaveData();
+    startLevelRun(1);
+    document.getElementById('reset-confirm-box').classList.remove('show');
+    document.getElementById('settings-modal').classList.remove('active');
+  });
+
+  document.getElementById('status-strip').addEventListener('click', () => {
+    if (activeMissionColor) {
+      sound.playClipSequence(['VO_MISSION_PREFIX', activeMissionColor.clip]);
+    } else {
+      sound.playClipSequence('VO_HOWTO_1');
+    }
+  });
+
+  // ==========================================
+  // 11. メイン物理＆アニメーションループ（自動走行・ジャンプ重力・取り逃がし再出現）
+  // ==========================================
+  const clock = new THREE.Clock();
+
+  loadSaveData();
+  buildRunnerCourse(saveData.currentLevel || 1);
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.04);
+    const elapsed = clock.getElapsedTime();
+
+    world.step(1 / 60, dt, 3);
+
+    const ud = playerRoot.userData;
+
+    if (appScreen === 'PLAY' && !isStageCleared) {
+      // つまずき0.4秒タイマー中はその場でコロンと笑ってすぐ復帰
+      if (stumbleTimer > 0) {
+        stumbleTimer = Math.max(0, stumbleTimer - dt);
+      } else {
+        // 確定事項：Lv.1＝4.0 / Lv.2＝4.4 / Lv.3＝4.8 のゆっくり速度で前進
+        const runSpeed = LEVEL_DEFS[currentLevel].speed * speedMultiplier;
+        playerZ -= runSpeed * dt;
+      }
+
+      // ジャンプ物理（放物線）
+      if (isJumping) {
+        playerY += jumpVy * dt;
+        jumpVy -= 28.0 * dt;
+        if (playerY <= 0) {
+          playerY = 0;
+          jumpVy = 0;
+          isJumping = false;
+          hasDoubleJumped = false;
+          ud.bodyPivot.rotation.x = 0;
+        }
+      }
+
+      playerRoot.position.set(0, 0, playerZ);
+      ud.bodyPivot.position.y = playerY;
+
+      // 足元の楕円影サイズをジャンプ高さに応じて連動
+      const shadowScale = Math.max(0.45, 1.0 - playerY * 0.14);
+      ud.dropShadow.scale.set(shadowScale, shadowScale, 1);
+
+      // 走行中の足としっぽのリズム
+      if (!isJumping && !isDucking) {
+        ud.leftLeg.rotation.x = Math.sin(elapsed * 14) * 0.45;
+        ud.rightLeg.rotation.x = -Math.sin(elapsed * 14) * 0.45;
+      }
+      ud.tailPivot.rotation.z = Math.sin(elapsed * 6) * 0.3;
+
+      // 1) 障害物（ハードル・トンネル・マシュマロ台）との判定
+      courseObstacles.forEach(obs => {
+        if (obs.triggered) return;
+        const dz = Math.abs(playerZ - obs.z);
+        if (dz < 0.85) {
+          if (obs.type === 'hurdle') {
+            // ミニ柵（ハードル）：ジャンプしていなければつまずいて笑う
+            if (playerY < 0.7) {
+              obs.triggered = true;
+              triggerGentleStumble();
+            }
+          } else if (obs.type === 'tunnel') {
+            // トンネル：しゃがんでいなければつまずいて笑う
+            if (!isDucking) {
+              obs.triggered = true;
+              triggerGentleStumble();
+            }
+          } else if (obs.type === 'marshmallow') {
+            // Lv.3 マシュマロ台：踏むとボヨンと高くジャンプ！
+            obs.triggered = true;
+            if (!isDucking) {
+              isJumping = true;
+              hasDoubleJumped = false;
+              jumpVy = 14.5;
+              sound.playJumpSound(true);
+            }
+          }
+        }
+      });
+
+      // 2) おやつとの接触判定 ＆ 取り逃がしたおやつのコース後半再出現（リスポーン）
+      courseSnacks.forEach(item => {
+        if (item.collected) return;
+        item.mesh.rotation.y = elapsed * 2.2;
+
+        // 金のドーナツが前方に近づいたら「あっ！きんのドーナツだ！」と知らせる
+        if (item.isGoldenBonus && !item.announcedGold && item.z > playerZ - 14) {
+          item.announcedGold = true;
+          showToast('🌟 あっ！ きんのドーナツだ！ 2だんジャンプで とろう！');
+          sound.playClipSequence('VO_GOLD_APPEAR');
+        }
+
+        const dz = Math.abs(playerZ - item.z);
+        // ミャオくんの現在高さ（しゃがみ時は0.6、通常・ジャンプ時は playerY + 1.2）との距離判定
+        const catCenterY = isDucking ? 0.65 : (playerY + 1.25);
+        const dy = Math.abs(catCenterY - item.y);
+
+        if (dz < 1.15 && dy < 1.35) {
+          handleSnackCollected(item);
+        } else if (item.z > playerZ + 2.5 && !item.isGoldenBonus) {
+          // ★ 確定事項：取り逃がした通常おやつはコース後半（一番奥のおやつのさらに15.5ユニット先）に再出現し、クリア不能にならない！
+          const minZ = Math.min(...courseSnacks.filter(s => !s.collected).map(s => s.z), playerZ - 10);
+          item.z = minZ - 15.5;
+          item.mesh.position.z = item.z;
+
+          // あわせて障害物も一緒に再配置してジャンプ・しゃがみの楽しさを維持
+          if (item.y > 2.0 && item.y < 3.0) {
+            addHurdleObstacle(item.z);
+          } else if (item.y < 0.9) {
+            addTunnelObstacle(item.z);
+          } else if (item.y >= 3.0) {
+            addBiscuitBridgeAndMarshmallow(item.z);
+          }
+        }
+      });
+    } else if (appScreen === 'TITLE') {
+      // タイトル画面ではその場で元気に足踏み
+      ud.leftLeg.rotation.x = Math.sin(elapsed * 8) * 0.35;
+      ud.rightLeg.rotation.x = -Math.sin(elapsed * 8) * 0.35;
+    }
+
+    // 相棒ホイップちゃんのふわふわ伴走アニメーション
+    ud.whipGroup.position.y = (isDucking ? 1.15 : 2.15) + Math.sin(elapsed * 4.5) * 0.14;
+
+    // パーティクル更新
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.mesh.position.add(p.vel);
+      p.vel.y -= 0.01;
+      p.mesh.rotation.y += 0.15;
+      p.life--;
+      if (p.life <= 0) {
+        scene.remove(p.mesh);
+        particles.splice(i, 1);
+      }
+    }
+
+    // ずかんモーダル内の3D回転
+    if (zukanModal.classList.contains('active') && zkSnackMesh) {
+      zkSnackMesh.rotation.y = elapsed * 1.1;
+      zkRenderer.render(zkScene, zkCam);
+    }
+
+    // カメラ追従（スマホ縦画面オートフレーミング）
+    const aspect = window.innerWidth / window.innerHeight;
+    const portraitZoom = aspect < 0.95 ? Math.min(1.36, 0.92 / aspect) : 1.0;
+
+    if (appScreen === 'TITLE') {
+      camera.position.set(Math.sin(elapsed * 0.4) * 2.5, 2.8 * portraitZoom, 6.8 * portraitZoom);
+      camera.lookAt(0, 1.3, 0);
+    } else {
+      camera.position.set(0, 4.2 * portraitZoom, playerZ + 8.5 * portraitZoom);
+      camera.lookAt(0, 1.4, playerZ - 4.5);
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  animate();
+})();
+</script>
+</body>
+</html>

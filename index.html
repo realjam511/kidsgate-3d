@@ -737,13 +737,16 @@
             if (t.includes('たから島') || t.includes('探知機')) return 'たから島たんけん';
             if (t.includes('シャボン玉') || t.includes('ふわりん')) return 'シャボン玉めいろ';
             if (t.includes('みずきり') || t.includes('ポチャン')) return 'みずきりかずかぞえ';
+            if (t.includes('ひかりのドライブ') || t.includes('ほしあつめ')) return 'ひかりのドライブ';
+            if (t.includes('おやつランナー') || t.includes('トコトコ')) return 'おやつランナー';
             return t.replace(/^★\s*|\s*★$/g, '').slice(0, 8);
         }
 
         // 各ゲームのグループ判定（重複を防止・metaタグのcategoryも尊重）
         function getGameGroupId(g) {
             const t = g.title;
-            if (g.id.includes('コインプッシャー') || g.id.includes('クレーン') || g.id.includes('パニック') || 
+            if (g.id.includes('コインプッシャー') || g.id.includes('クレーン') || g.id.includes('パニック') ||
+                t.includes('おやつランナー') || t.includes('トコトコ') || 
                 t.includes('コイン') || t.includes('クレーン') || t.includes('パニック') ||
                 t.includes('ピタゴラ') || t.includes('マーブルコースター') || g.category === 'arcade') {
                 return 'arcade';
@@ -753,7 +756,8 @@
                 t.includes('ジオラマ') || t.includes('特急') || t.includes('くるま') ||
                 t.includes('とけい') || t.includes('新幹線') || t.includes('ステーション') ||
                 t.includes('ねこさんぽ') || t.includes('かぞえて') ||
-                t.includes('みずきり') || t.includes('ポチャン')) {
+                t.includes('みずきり') || t.includes('ポチャン') ||
+                t.includes('ひかりのドライブ') || t.includes('ほしあつめ')) {
                 return 'vehicle';
             }
             if (g.category === 'puzzle' ||
