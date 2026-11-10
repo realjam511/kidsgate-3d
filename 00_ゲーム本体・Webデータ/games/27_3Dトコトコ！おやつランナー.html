@@ -1677,21 +1677,31 @@
   }
 
   // Lv.2〜3：チョコウエハースのトンネル（下半分が開いていて、しゃがんでくぐる）
+  // ※Zファイティング（同一平面による点滅）を完全に解消するため、柱（奥行き2.4m）と梁（奥行き2.0m・幅4.0m）の寸法・位置を段差構造に分離
   function addTunnelObstacle(zPos) {
     const g = new THREE.Group();
     g.position.set(0, 0, zPos);
-    const chocoMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.5 });
-    const waferMat = new THREE.MeshStandardMaterial({ color: 0xfde68a, roughness: 0.5 });
+    const chocoMat = new THREE.MeshStandardMaterial({
+      color: 0x78350f,
+      roughness: 0.5,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1
+    });
+    const waferMat = new THREE.MeshStandardMaterial({
+      color: 0xfde68a,
+      roughness: 0.5
+    });
 
-    // 左右の柱
+    // 左右の柱（奥行き2.4m：手前と奥に0.2m突出し、梁の前面・背面と同一平面にならない設計）
     [-2.1, 2.1].forEach(px => {
-      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.5, 3.2, 2.2), waferMat);
-      pillar.position.set(px, 1.6, 0);
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.55, 3.3, 2.4), waferMat);
+      pillar.position.set(px, 1.65, 0);
       g.add(pillar);
     });
-    // 上部の低い天井（高さ 1.35 〜 3.2 を塞ぐため、立ったままだと頭がコツンと当たる）
-    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(4.7, 1.85, 2.2), chocoMat);
-    ceiling.position.set(0, 2.28, 0);
+    // 上部の低い天井・チョコ梁（奥行き2.0m、幅4.0m：柱の間に納まり、前面・側面・上面の重複面ゼロ）
+    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(4.0, 1.7, 2.0), chocoMat);
+    ceiling.position.set(0, 2.25, 0);
     g.add(ceiling);
     courseGroup.add(g);
 
