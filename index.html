@@ -582,8 +582,11 @@
         <div style="width:100%; height:100%; display:flex; flex-direction:column; background:#000;">
             <div style="background:#2C352D; color:#FFF; padding:6px 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid var(--wood-warm); gap:8px;">
                 <h4 id="modal-game-title" style="margin:0; font-size:0.95rem; font-weight:800; display:flex; align-items:center; gap:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; flex:1;">🎮 ゲーム</h4>
-                <button onclick="closeGameModal()" aria-label="おわる" title="おわる" style="background:#BC6C25; color:#FFF; border:none; width:38px; height:38px; min-width:38px; border-radius:50%; font-weight:900; font-size:1.15rem; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 2px 6px rgba(0,0,0,0.3); transition:transform 0.1s;">
+                <button id="modal-close-game-btn" aria-label="おわる" title="おわる（約1.5秒長押し）" style="background:#BC6C25; color:#FFF; border:none; width:44px; height:44px; min-width:44px; border-radius:50%; font-weight:900; font-size:1.25rem; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 2px 6px rgba(0,0,0,0.3); position:relative; overflow:hidden; touch-action:none; user-select:none; -webkit-user-select:none;">
                     ✕
+                    <svg class="portal-hold-ring-svg" viewBox="0 0 60 60" style="position:absolute; inset:-2px; width:calc(100% + 4px); height:calc(100% + 4px); pointer-events:none; transform:rotate(-90deg);">
+                        <circle class="portal-hold-ring-circle" cx="30" cy="30" r="26" style="fill:none; stroke:#38bdf8; stroke-width:6; stroke-dasharray:180; stroke-dashoffset:180; stroke-linecap:round; transition:stroke-dashoffset 0.04s linear;"></circle>
+                    </svg>
                 </button>
             </div>
             <iframe id="game-iframe" src="about:blank" style="flex:1; width:100%; height:100%; border:none; background:#FFF;" allow="autoplay"></iframe>
@@ -1035,6 +1038,65 @@
             }
         }
 
+        // 【✕ボタン1.5秒長押し化】誤操作防止＆リング進捗＆案内トースト
+        function showPortalToast(msg) {
+            let toast = document.getElementById('portal-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'portal-toast';
+                toast.style.cssText = 'position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:rgba(15,23,42,0.92); color:#fef08a; padding:10px 22px; border-radius:24px; font-size:14px; font-weight:800; z-index:999999; pointer-events:none; transition:opacity 0.25s ease, transform 0.25s ease; box-shadow:0 6px 20px rgba(0,0,0,0.45); border:2px solid #38bdf8;';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = msg;
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(-50%) translateY(0)';
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(-50%) translateY(10px)';
+            }, 2000);
+        }
+
+        function setupPortalCloseButton() {
+            const btn = document.getElementById('modal-close-game-btn');
+            if (!btn) return;
+            const circle = btn.querySelector('.portal-hold-ring-circle');
+            let timer = null;
+            let startTime = 0;
+            const durationMs = 1500;
+
+            const startHold = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                startTime = performance.now();
+                clearInterval(timer);
+                timer = setInterval(() => {
+                    const elapsed = performance.now() - startTime;
+                    const p = Math.min(1, elapsed / durationMs);
+                    if (circle) circle.style.strokeDashoffset = String(180 * (1 - p));
+                    if (p >= 1) {
+                        clearInterval(timer);
+                        if (circle) circle.style.strokeDashoffset = '180';
+                        closeGameModal();
+                    }
+                }, 30);
+            };
+
+            const cancelHold = () => {
+                clearInterval(timer);
+                const elapsed = performance.now() - startTime;
+                if (circle) circle.style.strokeDashoffset = '180';
+                if (elapsed > 40 && elapsed < durationMs - 50) {
+                    showPortalToast('👆 1.5びょう ながおしすると おわるよ');
+                }
+            };
+
+            btn.addEventListener('pointerdown', startHold);
+            btn.addEventListener('pointerup', cancelHold);
+            btn.addEventListener('pointerleave', cancelHold);
+            btn.addEventListener('pointercancel', cancelHold);
+        }
+
         function openSettingsModal() {
             const modal = document.getElementById('settings-modal');
             if (modal) {
@@ -1058,6 +1120,8 @@
                 alert('コピーに失敗しました。');
             });
         }
-    </script>
+    
+        setupPortalCloseButton();
+</script>
 </body>
 </html>
