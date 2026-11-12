@@ -326,4 +326,31 @@ window.KIDS_GAMES_REGISTRY = [
         isHero: false,
         tag: "おやつ"
     }
+,
+    {
+        id: "game-3Dカタカナ・トレイン！どうぶつえきへ しゅっぱつ",
+        title: "3Dカタカナ・トレイン！どうぶつえきへ しゅっぱつ",
+        desc: "カタカナの駅をめぐる3Dの電車旅！ホームで待つ動物たちの名前の文字を完成させて列車に連結しよう。幼児〜小学校低学年が楽しくカタカナを覚えられる3D知育パズルゲーム。",
+        icon: "🚄",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "puzzle",
+        categoryLabel: "もじ・ことば",
+        file: "games/28_3Dカタカナ・トレイン！どうぶつえきへ しゅっぱつ.html",
+        isHero: false,
+        tag: "カタカナ"
+    },
+    {
+        id: "game-3Dおかいものマルシェ！コインで ぴったり おかいもの",
+        title: "3Dおかいものマルシェ！コインで ぴったり おかいもの",
+        desc: "レジうさぎのマロンちゃんと相棒レジのチャリンくんと一緒に3Dマルシェでおかいもの！1円から100円までのコインを使ってぴったりの金額を払う、幼児〜小学校低学年向け生活算数3Dゲーム。",
+        icon: "🪙",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "math",
+        categoryLabel: "かず・けいさん",
+        file: "games/29_3Dおかいものマルシェ！コインで ぴったり おかいもの.html",
+        isHero: false,
+        tag: "おかいもの"
+    }
 ];
