@@ -1978,32 +1978,43 @@ _stopVoice() {
     sound.init();
     stickActive = true;
     stickPointerId = e.pointerId;
-    stickZone.setPointerCapture(e.pointerId);
+    try { stickZone.setPointerCapture(e.pointerId); } catch(err) {}
 
-    // セミフローティング：左下ゾーン内のタッチ位置へ外枠(120px)の中心を合わせる
+    // 【土台完全固定】ゾーン中心（土台の中心）を基準にノブだけを倒す
     const rect = stickZone.getBoundingClientRect();
-    const localX = Math.max(60, Math.min(rect.width - 60, e.clientX - rect.left));
-    const localY = Math.max(60, Math.min(rect.height - 60, e.clientY - rect.top));
-    stickOrigin = { x: localX, y: localY };
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const curX = e.clientX - rect.left;
+    const curY = e.clientY - rect.top;
 
-    stickBase.style.left = `${localX - 60}px`;
-    stickBase.style.bottom = `${rect.height - localY - 60}px`;
-    stickKnob.style.transform = `translate(0px, 0px)`;
-    stickInput.x = 0;
-    stickInput.y = 0;
+    const dx = curX - centerX;
+    const dy = curY - centerY;
+    const maxRadius = 38;
+    const dist = Math.hypot(dx, dy);
+    const clampedDist = Math.min(dist, maxRadius);
+    const angle = Math.atan2(dy, dx);
+
+    const kx = Math.cos(angle) * clampedDist;
+    const ky = Math.sin(angle) * clampedDist;
+    stickKnob.style.transform = `translate(${kx}px, ${ky}px)`;
+
+    stickInput.x = kx / maxRadius;
+    stickInput.y = ky / maxRadius;
   });
 
   stickZone.addEventListener('pointermove', (e) => {
     if (!stickActive || e.pointerId !== stickPointerId) return;
     const rect = stickZone.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
     const curX = e.clientX - rect.left;
     const curY = e.clientY - rect.top;
 
-    const dx = curX - stickOrigin.x;
-    const dy = curY - stickOrigin.y;
-    const maxRadius = 38; // 外枠120px(半径60) - ノブ半径28 = 最大ストローク約38px
+    const dx = curX - centerX;
+    const dy = curY - centerY;
+    const maxRadius = 38;
     const dist = Math.hypot(dx, dy);
-    const clampedDist = Math.min(maxRadius, dist);
+    const clampedDist = Math.min(dist, maxRadius);
     const angle = Math.atan2(dy, dx);
 
     const kx = Math.cos(angle) * clampedDist;
@@ -2020,9 +2031,6 @@ _stopVoice() {
     stickPointerId = null;
     stickInput.x = 0;
     stickInput.y = 0;
-    // 定位置（左端から24px、下端から24px）へ戻す
-    stickBase.style.left = '8px';
-    stickBase.style.bottom = '8px';
     stickKnob.style.transform = 'translate(0px, 0px)';
   }
   stickZone.addEventListener('pointerup', releaseStick);
