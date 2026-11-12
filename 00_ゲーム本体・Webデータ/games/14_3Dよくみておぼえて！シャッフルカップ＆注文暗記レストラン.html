@@ -44,71 +44,88 @@
   /* 左上：モード・レベル・スコア表示バッジ */
   #top-left-hud {
     position: fixed;
-    top: 10px;
-    left: 10px;
-    z-index: 20;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-  .hud-pill {
-    background: rgba(30, 20, 60, 0.65);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    color: #fff;
-    border: 1.5px solid rgba(255, 255, 255, 0.35);
-    border-radius: 999px;
-    padding: 6px 12px;
-    font-size: 12px;
-    font-weight: 800;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-  }
-  #level-pill {
-    background: linear-gradient(135deg, rgba(236, 72, 153, 0.85), rgba(249, 115, 22, 0.85));
-    border-color: #fde047;
-    cursor: pointer;
-  }
-  #score-pill {
-    color: #fde047;
-  }
-
-  /* 右上：ヒント・視点・設定ドロワー・サウンド */
-  #top-right-hud {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    z-index: 30;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .tr-btn {
-    background: rgba(30, 20, 60, 0.68);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    color: #fff;
-    border: 1.5px solid rgba(255, 255, 255, 0.35);
-    border-radius: 999px;
-    padding: 6px 11px;
-    font-size: 12px;
-    font-weight: 800;
-    cursor: pointer;
+    top: max(8px, env(safe-area-inset-top));
+    left: 8px;
+    z-index: 25;
     display: flex;
     align-items: center;
     gap: 4px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-    transition: transform 0.12s, background 0.2s;
+    max-width: calc(100vw - 160px);
+    overflow: hidden;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+    pointer-events: auto;
   }
-  .tr-btn:active {
-    transform: scale(0.94);
+  #top-right-hud {
+    position: fixed;
+    top: max(8px, env(safe-area-inset-top));
+    right: 8px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    pointer-events: auto;
   }
-  .tr-btn.icon-only {
-    padding: 6px 9px;
-    font-size: 13px;
+  .hud-pill {
+    background: rgba(30, 20, 60, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+    border-radius: 999px;
+    padding: 3px 6px;
+    font-size: 10.5px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+    flex-shrink: 0;
+  }
+  #mode-pill {
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tr-btn {
+    background: rgba(88, 28, 135, 0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1.5px solid rgba(255, 255, 255, 0.6);
+    color: #fff;
+    border-radius: 12px;
+    padding: 3px 5px;
+    font-size: 10.5px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+    flex-shrink: 0;
+    height: 30px;
+  }
+  #hint-btn {
+    padding: 3px 5px;
+  }
+  #quick-cam-btn {
+    padding: 3px 5px;
+  }
+  #open-settings-btn {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+  }
+  #sound-btn {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+  }
+  .icon-only {
+    padding: 3px 5px;
+    font-size: 11px;
   }
   #hint-btn {
     background: linear-gradient(135deg, rgba(16, 185, 129, 0.82), rgba(5, 150, 105, 0.82));
@@ -411,7 +428,7 @@
 
 <!-- 左上：モード・レベル・スコア -->
 <div id="top-left-hud">
-  <div class="hud-pill" id="mode-pill">🎩 シャッフルカップ</div>
+  <div class="hud-pill" id="mode-pill">🎩 カップ</div>
   <div class="hud-pill" id="level-pill" title="タップで次のレベルへ">⭐ Lv.1</div>
   <div class="hud-pill" id="score-pill">🏆 0</div>
 </div>
@@ -580,6 +597,22 @@
     }
   }
   const sfx = new SoundFX();
+  // ★ 音声読み上げ（効果音設定連動）
+  function speak(text) {
+    if (!sfx.enabled || !text) return;
+    if ('speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+        const cleanText = text.replace(/<[^>]*>/g, '');
+        const u = new SpeechSynthesisUtterance(cleanText);
+        u.lang = 'ja-JP';
+        u.rate = 1.05;
+        u.pitch = 1.15;
+        window.speechSynthesis.speak(u);
+      } catch (e) {}
+    }
+  }
+
 
   // ==========================================
   // 3. Three.js シーン＆3Dレストラン・カフェ空間構築
@@ -974,7 +1007,9 @@
   let activeSwap = null;
   let hintGlowTimer = 0;
 
-  const CUP_COLORS = [0xf43f5e, 0x38bdf8, 0xfacc15, 0x4ade80, 0xc084fc];
+  // ★ 全カップ同一色・同一形状に完全統一（色で隠し場所が分かる状態を完全解消）
+  const UNIFORM_CUP_COLOR = 0xd9383a;
+  const CUP_COLORS = [UNIFORM_CUP_COLOR];
 
   function createCupMesh(colorHex) {
     const g = new THREE.Group();
@@ -1036,7 +1071,7 @@
       const cupObjGroup = new THREE.Group();
       cupObjGroup.position.set(xPos, 0, 0.8);
 
-      const cupMesh = createCupMesh(CUP_COLORS[i % CUP_COLORS.length]);
+      const cupMesh = createCupMesh(UNIFORM_CUP_COLOR);
       cupMesh.position.y = 1.9; // 初期状態は上がっていて中身が見える
       cupObjGroup.add(cupMesh);
 
@@ -1088,15 +1123,14 @@
     document.getElementById('start-round-btn').style.display = 'none';
     document.getElementById('cup-number-btns').style.display = 'none';
 
-    // まずカップを下ろして隠す
-    cups.forEach(c => {
-      c.liftY = 0;
-      c.cupMesh.userData.bodyMat.opacity = 1.0;
-    });
-    setPrompt('🎩 カップがくるくる入れ替わるよ！目を離さないでね…');
+    // ★ 隠す場面：カップを持ち上げたまま中身を見せ、「ここに入ったよ」を約2秒キープ＆音声案内
     cupPhase = 'REVEAL';
+    if (targetCharSpec) {
+      setPrompt(`👀 ここに入ったよ！ <b>${targetCharSpec.name}</b>をよ〜くおぼえてね！`);
+      speak(`${targetCharSpec.name}はここだよ！よくおぼえてね！`);
+    }
 
-    // シャッフルキューの作成
+    // シャッフルキューを事前準備
     const numCups = cups.length;
     const swapCount = 4 + currentLevel * 2;
     const swapDuration = Math.max(0.28, 0.62 - currentLevel * 0.065);
@@ -1106,14 +1140,26 @@
       let a = Math.floor(Math.random() * numCups);
       let b = Math.floor(Math.random() * numCups);
       while (b === a) b = Math.floor(Math.random() * numCups);
-      // Lv.3以上では30%の確率で「途中まで回って元の場所に戻るフェイント」を混ぜる
       const isFeint = currentLevel >= 3 && s > 1 && Math.random() < 0.28;
       shuffleQueue.push({ slotA: a, slotB: b, duration: swapDuration, isFeint });
     }
 
+    // ★ 約2秒キープ後にカップを下ろし、着地を待ってからシャッフル開始
     setTimeout(() => {
-      cupPhase = 'SHUFFLING';
-    }, 650);
+      setPrompt('🎩 カップが下りて、くるくる入れ替わるよ！目を離さないでね…');
+      sfx.playSwoosh();
+      cups.forEach(c => {
+        c.liftY = 0;
+        if (c.cupMesh && c.cupMesh.userData && c.cupMesh.userData.bodyMat) {
+          c.cupMesh.userData.bodyMat.opacity = 1.0;
+        }
+      });
+
+      // カップが下りきるアニメーション（約500ms）を待ってからシャッフルへ移行
+      setTimeout(() => {
+        cupPhase = 'SHUFFLING';
+      }, 550);
+    }, 2000);
   }
 
   function renderCupNumberButtons() {
