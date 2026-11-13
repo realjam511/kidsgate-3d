@@ -733,7 +733,7 @@
             if (t.includes('シャッフルカップ') || t.includes('暗記レストラン')) return '注文暗記レストラン';
             if (t.includes('ひらがな')) return 'ひらがなボール';
             if (t.includes('ランチタイム') || t.includes('くいしんぼう')) return '動物ランチタイム';
-            if (t.includes('とけい') || t.includes('ステーション')) return 'とけい新幹線';
+            if (t.includes('新幹線ステーション') || (t.includes('とけい') && t.includes('新幹線'))) return 'とけい新幹線';
             if (t.includes('かたちブロック') || t.includes('おもちゃばこ') || t.includes('スポッと')) return 'かたちブロック';
             if (t.includes('ねこさんぽ') || t.includes('かぞえてはっけん')) return 'ねこさんぽ';
             if (t.includes('かくれんぼ') || t.includes('みーつけた')) return 'どうぶつかくれんぼ';
