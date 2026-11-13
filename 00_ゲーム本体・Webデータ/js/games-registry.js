@@ -226,34 +226,6 @@ window.KIDS_GAMES_REGISTRY = [
         tag: "ひきざん"
     },
     {
-        id: "game-3Dチクタク出発進行！とけいタウンの新幹線ステーション",
-        title: "3Dチクタク出発進行！とけいタウンの新幹線ステーション",
-        shortTitle: "とけいステーション",
-        desc: "大きな3D時計塔の針を合わせて新幹線や特急列車を出発させよう！デジタル表示と音声読み上げで楽しく時計の読み方が身につく知育3Dゲーム。",
-        icon: "🕐",
-        age: "baby",
-        ageLabel: "0〜2歳向け",
-        category: "vehicle",
-        categoryLabel: "のりもの・とけい",
-        file: "games/17_3Dチクタク出発進行！とけいタウンの新幹線ステーション.html",
-        isHero: false,
-        tag: "とけい"
-    },
-    {
-        id: "game-3Dスポッと！かたちブロック・おもちゃばこ",
-        title: "3Dスポッと！かたちブロック・おもちゃばこ",
-        shortTitle: "かたちブロック",
-        desc: "まる・さんかく・しかく・ほし・ハートなどのカラフルな3Dかたちブロックを同じ形の穴にスポッとはめよう！音声読み上げと3D図鑑で楽しく図形が身につく幼児〜低学年向け知育パズルゲーム。",
-        icon: "🔺",
-        age: "baby",
-        ageLabel: "0〜2歳向け",
-        category: "puzzle",
-        categoryLabel: "かたち・ずけい",
-        file: "games/18_3Dスポッと！かたちブロック・おもちゃばこ.html",
-        isHero: false,
-        tag: "かたち"
-    },
-    {
         id: "game-3Dトコトコ！ねこさんぽ・かぞえてはっけん！",
         title: "3Dトコトコ！ねこさんぽ・かぞえてはっけん！",
         shortTitle: "ねこさんぽ",
@@ -424,18 +396,18 @@ window.KIDS_GAMES_REGISTRY = [
         isHero: false,
         tag: "かたち"
     },
-    {
-        id: "game-3Dとけいタウン！なんじに あわせよう",
-        title: "3Dとけいタウン！なんじに あわせよう",
-        shortTitle: "とけいタウン",
-        desc: "時計台のフクロウ・チクタク先生と一緒に大きな3D時計の針を回して時刻を合わせよう！町の窓に明かりが灯り、ちょうどの時刻と半の時刻が楽しく身につく幼児〜低学年向け3D時計知育ゲーム。",
-        icon: "🕰️",
-        age: "baby",
-        ageLabel: "0〜2歳向け",
-        category: "math",
-        categoryLabel: "のりもの・とけい",
-        file: "games/33_3Dとけいタウン！なんじに あわせよう.html",
+        {
+        id: "game-3Dチクタクとけいステーション！なんじに しゅっぱつ？",
+        title: "3Dチクタクとけいステーション！なんじに しゅっぱつ？",
+        shortTitle: "とけいステーション",
+        desc: "とけいの針をくるくる回して時間を合わせよう！新幹線が出発進行する楽しい3D時計ステーション！",
+        icon: "⏰",
+        age: "2",
+        ageLabel: "3〜5歳向け",
+        category: "time",
+        categoryLabel: "じかん・とけい",
+        file: "games/33_3Dチクタクとけいステーション！なんじに しゅっぱつ？.html",
         isHero: false,
-        tag: "とけい"
+        tag: "定番"
     }
 ];
