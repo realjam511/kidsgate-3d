@@ -1542,7 +1542,7 @@
   const container = document.getElementById('canvas-container');
   const scene = new THREE.Scene();
 
-  const camera = new THREE.PerspectiveCamera(46, window.innerWidth / window.innerHeight, 0.5, 180);
+  const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.5, 180);
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -1896,7 +1896,7 @@
 
     // カタカナ型の駅シンボル看板
     const signSp = createKanaSignSprite(st.kanaSign);
-    signSp.position.set(3.4, 4.3, -1.5);
+    signSp.position.set(2.0, 3.2, -1.6); signSp.scale.set(1.7, 1.7, 1);
     stageGroup.add(signSp);
   }
 
@@ -1907,7 +1907,7 @@
     coupledCarMeshes.length = 0;
 
     kanamaruMesh = createKanamaruAndPoppokun3D();
-    kanamaruMesh.position.set(1.75, 0.15, 1.6);
+    kanamaruMesh.position.set(2.75, 0.15, 1.6);
     trainGroup.add(kanamaruMesh);
     trainGroup.position.set(0, 0, 0);
   }
@@ -1983,8 +1983,8 @@
     // ホーム上の待機動物3Dモデルを配置
     if (waitingAnimalMesh) stageGroup.remove(waitingAnimalMesh);
     waitingAnimalMesh = createAnimal3D(currentAnimal, isCurrentAnimalGolden);
-    // ホーム上の待機位置：既存の客車と重ならないよう、次に連結される位置の手前に配置
-    const nextWaitX = (questionIndexInStation === 0) ? 1.0 : (2.0 - (questionIndexInStation + 1) * 2.3 + 0.3);
+    // ホーム上の待機位置：客車と重ならないよう、次に連結される位置の手前に配置
+    const nextWaitX = (questionIndexInStation === 0) ? 1.4 : (2.75 - (questionIndexInStation + 1) * 2.15 + 0.3);
     waitingAnimalMesh.position.set(nextWaitX, 0.72, -1.1);
     stageGroup.add(waitingAnimalMesh);
 
@@ -2211,7 +2211,7 @@
 
     const carType = isCurrentAnimalGolden ? 'gold' : (questionIndexInStation % 2 === 0 ? 'blue' : 'green');
     const newCar = createPassengerCar3D(carType, currentAnimal, isCurrentAnimalGolden);
-    const carX = 1.75 - questionIndexInStation * 2.30;
+    const carX = 2.75 - questionIndexInStation * 2.15;
     newCar.position.set(carX - 4.0, 0.15, 1.6);
     trainGroup.add(newCar);
     coupledCarMeshes.push(newCar);
@@ -2673,10 +2673,10 @@
       camera.position.set(Math.sin(elapsed * 0.35) * 3.5, 4.2 * portraitZoom, 11.5 * portraitZoom);
       camera.lookAt(0, 1.5, 0);
     } else {
-      // プレイ中：3両連結時も全員が390px幅に左右均等に収まるよう、カメラ中心を編成中央へシフト＆適度な引き
-      const camCenterX = -1.68;
-      camera.position.set(camCenterX, 5.2 * portraitZoom, 15.6 * portraitZoom);
-      camera.lookAt(camCenterX, 1.35, -0.3);
+      // プレイ中：編成全体（先頭〜最後尾＋動物＋看板）が駅舎中央に美しく収まる完全センタリング
+      const camCenterX = -0.45;
+      camera.position.set(camCenterX, 5.1 * portraitZoom, 15.6 * portraitZoom);
+      camera.lookAt(camCenterX, 1.35, -0.35);
     }
 
     renderer.render(scene, camera);

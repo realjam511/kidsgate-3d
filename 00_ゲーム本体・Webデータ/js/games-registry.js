@@ -353,4 +353,31 @@ window.KIDS_GAMES_REGISTRY = [
         isHero: false,
         tag: "おかいもの"
     }
+,
+    {
+        id: "game-3Dしりとりタワー！つなげて のぼろう",
+        title: "3Dしりとりタワー！つなげて のぼろう",
+        desc: "ことば鳥のコトリーと一緒にしりとりで3Dミニチュアを積み上げよう！最後の音と最初の音をつなげてお空のてっぺんを目指す、幼児〜小学校低学年向け3Dことばパズルゲーム。",
+        icon: "🗼",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "puzzle",
+        categoryLabel: "もじ・ことば",
+        file: "games/30_3Dしりとりタワー！つなげて のぼろう.html",
+        isHero: false,
+        tag: "しりとり"
+    },
+    {
+        id: "game-3Dおとあそびバンド！まねっこリズム",
+        title: "3Dおとあそびバンド！まねっこリズム",
+        desc: "指揮者のホーホー先生と動物バンドのお手本リズムを聞いてまねっこ演奏！正解するたびにバンドの仲間が増えて合奏が豪華になる、幼児〜小学校低学年向け3D音楽リズム知育ゲーム。",
+        icon: "🥁",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "music",
+        categoryLabel: "おんがく・リズム",
+        file: "games/31_3Dおとあそびバンド！まねっこリズム.html",
+        isHero: false,
+        tag: "リズム"
+    }
 ];
