@@ -380,4 +380,31 @@ window.KIDS_GAMES_REGISTRY = [
         isHero: false,
         tag: "リズム"
     }
+,
+    {
+        id: "game-3Dいろとかたち！いれて ぴったん ソートボックス",
+        title: "3Dいろとかたち！いれて ぴったん ソートボックス",
+        desc: "箱の妖精ぴったんと一緒にカラフルな3Dブロックを回して正しい形の穴へスポッ！入れたブロックがかわいい小動物にへんしんする、幼児〜低学年向け3D図形・色彩パズルゲーム。",
+        icon: "📦",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "puzzle",
+        categoryLabel: "かたち・ずけい",
+        file: "games/32_3Dいろとかたち！いれて ぴったん ソートボックス.html",
+        isHero: false,
+        tag: "かたち"
+    },
+    {
+        id: "game-3Dとけいタウン！なんじに あわせよう",
+        title: "3Dとけいタウン！なんじに あわせよう",
+        desc: "時計台のフクロウ・チクタク先生と一緒に大きな3D時計の針を回して時刻を合わせよう！町の窓に明かりが灯り、ちょうどの時刻と半の時刻が楽しく身につく幼児〜低学年向け3D時計知育ゲーム。",
+        icon: "🕰️",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "math",
+        categoryLabel: "のりもの・とけい",
+        file: "games/33_3Dとけいタウン！なんじに あわせよう.html",
+        isHero: false,
+        tag: "とけい"
+    }
 ];
