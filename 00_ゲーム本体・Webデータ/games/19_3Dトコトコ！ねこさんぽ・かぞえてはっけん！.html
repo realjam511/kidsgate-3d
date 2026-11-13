@@ -1181,28 +1181,23 @@
     spot2.position.set(-0.3, 0.88, 0.2);
     bodyPivot.add(spot1, spot2);
 
-    // 赤い首輪＆ゴールドの鈴
+    // 赤い首輪＆ゴールドの鈴（顔のある胸元正面 +Z 側のみに鈴を配置）
     const collar = new THREE.Mesh(
       new THREE.TorusGeometry(0.54, 0.08, 10, 24),
       new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3 })
     );
     collar.rotation.x = Math.PI / 2;
-    collar.position.set(0, 1.25, -0.12);
-    const bell = new THREE.Mesh(
-      new THREE.SphereGeometry(0.15, 12, 12),
-      new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.7, roughness: 0.2 })
-    );
-    bell.position.set(0, 1.18, -0.68);
+    collar.position.set(0, 1.25, 0.08);
     const bellFront = new THREE.Mesh(
       new THREE.SphereGeometry(0.15, 12, 12),
       new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.7, roughness: 0.2 })
     );
-    bellFront.position.set(0, 1.18, 0.48);
-    bodyPivot.add(collar, bell, bellFront);
+    bellFront.position.set(0, 1.18, 0.52);
+    bodyPivot.add(collar, bellFront);
 
-    // ③ 4本の足（歩くときに前後に動く）
+    // ③ 4本の足（後足: z = -0.38, 前足: z = +0.38）
     const legs = [];
-    [[-0.36, -0.35], [0.36, -0.35], [-0.36, 0.35], [0.36, 0.35]].forEach(([lx, lz]) => {
+    [[-0.36, -0.38], [0.36, -0.38], [-0.36, 0.38], [0.36, 0.38]].forEach(([lx, lz]) => {
       const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.65, 10), mainMat);
       leg.position.set(lx, 0.32, lz);
       leg.castShadow = true;
@@ -1210,14 +1205,14 @@
       legs.push(leg);
     });
 
-    // ④ ピンと立ったしっぽ（先っぽ色付き）
+    // ④ ピンと立ったしっぽ（お尻側 -Z に配置し、後ろ上向きにピンと立つ）
     const tailPivot = new THREE.Group();
-    tailPivot.position.set(0, 0.95, 0.72);
+    tailPivot.position.set(0, 0.95, -0.72);
     const tailShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.95, 10), subMat);
-    tailShaft.position.set(0, 0.45, 0.22);
-    tailShaft.rotation.x = 0.48;
+    tailShaft.position.set(0, 0.45, -0.22);
+    tailShaft.rotation.x = -0.48;
     const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 10), patchMat);
-    tailTip.position.set(0, 0.88, 0.42);
+    tailTip.position.set(0, 0.88, -0.42);
     tailPivot.add(tailShaft, tailTip);
     bodyPivot.add(tailPivot);
 
@@ -1582,9 +1577,19 @@
       duration: 0.36,
       ease: 'power2.out',
       onUpdate: () => {
-        // 1歩ジャンプの放物線
+        // 1歩ジャンプの放物線＆手足のピョンと弾む前進アニメーション
         const progress = 1 - Math.abs(catRoot.position.z - targetZ) / STEP_DIST;
-        catRoot.userData.bodyPivot.position.y = Math.sin(progress * Math.PI) * 0.55;
+        const jumpY = Math.sin(progress * Math.PI) * 0.55;
+        catRoot.userData.bodyPivot.position.y = jumpY;
+        // ジャンプ中に前足が前(+Z)、後足が後ろ(-Z)に伸びて着地で戻る
+        const legSwing = Math.sin(progress * Math.PI) * 0.35;
+        const legs = catRoot.userData.legs;
+        if (legs && legs.length === 4) {
+          legs[0].rotation.x = -legSwing; // 後左足
+          legs[1].rotation.x = -legSwing; // 後右足
+          legs[2].rotation.x = legSwing;  // 前左足
+          legs[3].rotation.x = legSwing;  // 前右足
+        }
       },
       onComplete: () => {
         catRoot.userData.bodyPivot.position.y = 0;
