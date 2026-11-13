@@ -41,34 +41,39 @@
     cursor: grabbing;
   }
 
-  /* 左上：レベル＆ごちそうさま図鑑バッジ */
+  /* 左上：レベル＆ごちそうさま図鑑バッジ（横1行・完全非衝突レイアウト） */
   #top-left-hud {
     position: fixed;
-    top: 10px;
-    left: 10px;
-    z-index: 20;
+    top: max(6px, env(safe-area-inset-top));
+    left: 8px;
+    z-index: 25;
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-    flex-wrap: wrap;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    max-width: calc(100vw - 150px);
+    overflow: hidden;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+    pointer-events: auto;
     transition: opacity 0.25s, transform 0.25s;
   }
   .hud-pill {
-    background: rgba(15, 23, 42, 0.7);
+    background: rgba(15, 23, 42, 0.72);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     color: #fff;
     border: 1.5px solid rgba(255, 255, 255, 0.45);
     border-radius: 999px;
-    padding: 6px 12px;
-    font-size: 12px;
+    padding: 3px 7px;
+    font-size: 10.5px;
     font-weight: 800;
     display: flex;
     align-items: center;
-    gap: 5px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+    gap: 3px;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.22);
     cursor: pointer;
+    flex-shrink: 0;
     transition: transform 0.12s, background 0.2s;
   }
   .hud-pill:active {
@@ -83,18 +88,18 @@
     border-color: #fbcfe8;
   }
 
-  /* 右上：視点・設定ドロワー・音量・UI最小化 */
+  /* 右上：視点・設定ドロワー・音量・UI最小化（横1行・完全非衝突レイアウト） */
   #top-right-hud {
     position: fixed;
-    top: 10px;
-    right: 10px;
+    top: max(6px, env(safe-area-inset-top));
+    right: 8px;
     z-index: 30;
     display: flex;
     align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
+    gap: 4px;
+    flex-wrap: nowrap;
     justify-content: flex-end;
-    max-width: 56vw;
+    pointer-events: auto;
   }
   .tr-btn {
     background: rgba(15, 23, 42, 0.72);
@@ -102,27 +107,53 @@
     -webkit-backdrop-filter: blur(8px);
     color: #fff;
     border: 1.5px solid rgba(255, 255, 255, 0.42);
-    border-radius: 999px;
-    padding: 6px 12px;
-    font-size: 12px;
+    border-radius: 12px;
+    padding: 3px 6px;
+    font-size: 10.5px;
     font-weight: 800;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 4px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+    justify-content: center;
+    gap: 2px;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.22);
+    height: 30px;
+    flex-shrink: 0;
     transition: transform 0.12s, background 0.2s;
   }
   .tr-btn:active {
     transform: scale(0.94);
   }
   .tr-btn.icon-only {
-    padding: 8px 11px;
-    font-size: 15px;
+    padding: 3px 6px;
+    font-size: 12px;
+    min-width: 30px;
   }
   .tr-btn.active-toggle {
     background: rgba(37, 99, 235, 0.88);
     border-color: #93c5fd;
+  }
+
+  /* 上部中央：お題＆数式カード（2段目に完全分離配置） */
+  #question-card {
+    position: fixed;
+    top: calc(max(6px, env(safe-area-inset-top)) + 38px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 18;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 3px solid #f97316;
+    border-radius: 20px;
+    padding: 5px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+    cursor: pointer;
+    transition: transform 0.15s, opacity 0.25s;
+    width: min(94vw, 430px);
   }
 
   /* 右上：コンパクト収納設定ドロワー */
@@ -547,10 +578,10 @@
 <!-- 左上：現在レベル＆ごちそうさま図鑑ボタン -->
 <div id="top-left-hud">
   <button class="hud-pill" id="level-badge-btn" title="タップでレベル切り替え">
-    🐰 <span id="current-level-label">Lv.1 5までの数①</span>
+    🐰 <span id="current-level-label">Lv.1</span>
   </button>
   <button class="hud-pill" id="collection-open-btn" title="ごちそうさま図鑑を開く">
-    🏆 ごちそうさま図鑑 <span id="fed-count-label">0/8</span>
+    🏆 <span id="fed-count-label">0/8</span>
   </button>
 </div>
 
@@ -680,7 +711,7 @@
   ];
 
   const LEVEL_SPECS = {
-    1: { label: 'Lv.1 5までの数①', minTotal: 2, maxTotal: 5, minEat: 1, maxEat: 2, allowZero: false },
+    1: { label: 'Lv.1', minTotal: 2, maxTotal: 5, minEat: 1, maxEat: 2, allowZero: false },
     2: { label: 'Lv.2 5までの数②', minTotal: 3, maxTotal: 5, minEat: 1, maxEat: 4, allowZero: false },
     3: { label: 'Lv.3 8までの数',   minTotal: 6, maxTotal: 8, minEat: 1, maxEat: 3, allowZero: false },
     4: { label: 'Lv.4 10までの数',  minTotal: 7, maxTotal: 10, minEat: 2, maxEat: 6, allowZero: false },
