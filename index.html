@@ -232,22 +232,22 @@
             border-radius: 999px;
         }
 
-        /* ===== 超コンパクト 3列アプリアイコングリッド ===== */
+        /* ===== 超コンパクト 4列アプリアイコングリッド ===== */
         .portal-grid-compact {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
         }
         @media (min-width: 600px) {
             .portal-grid-compact {
-                grid-template-columns: repeat(4, 1fr);
-                gap: 10px;
+                grid-template-columns: repeat(5, 1fr);
+                gap: 8px;
             }
         }
         @media (min-width: 900px) {
             .portal-grid-compact {
-                grid-template-columns: repeat(6, 1fr);
-                gap: 12px;
+                grid-template-columns: repeat(7, 1fr);
+                gap: 10px;
             }
         }
 
@@ -255,8 +255,8 @@
         .card-mini-app {
             background: #FFFFFF;
             border: 1.5px solid var(--wood-light);
-            border-radius: 14px;
-            padding: 8px 4px 6px;
+            border-radius: 12px;
+            padding: 6px 3px 5px;
             box-shadow: 0 1px 4px rgba(44, 53, 45, 0.04);
             cursor: pointer;
             transition: all 0.15s ease;
@@ -274,38 +274,39 @@
             background: #F8F9F5;
             box-shadow: 0 1px 2px rgba(58, 90, 64, 0.15);
         }
-        /* 極小可愛いアイコン（34px） */
+        /* 極小可愛いアイコン（32px） */
         .mini-icon-box {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
             background: var(--wood-cream);
             border: 1px solid var(--wood-light);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.35rem;
-            margin-bottom: 4px;
+            font-size: 1.25rem;
+            margin-bottom: 3px;
             flex-shrink: 0;
             box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);
         }
         /* 短いゲーム名 */
         .mini-title {
-            font-size: 0.74rem;
+            font-size: 0.68rem;
             font-weight: 800;
             color: var(--text-main);
             margin: 0;
-            line-height: 1.25;
+            line-height: 1.2;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
             text-overflow: ellipsis;
-            padding: 0 2px;
-            min-height: 2.5em;
+            padding: 0 1px;
+            min-height: 2.4em;
             display: flex;
             align-items: center;
             justify-content: center;
+            word-break: break-all;
         }
 
         /* ===== ハンバーガーポップアップ・ドロワー ===== */
@@ -947,13 +948,13 @@
 
         // ミニ・アプリアイコンカード生成（アイコン＋短い名前のみ）
         function renderMiniCard(g) {
-            const shortTitle = getShortTitle(g);
-            const safeTitleAttr = g.title.replace(/'/g, "\\'");
+            const displayTitle = g.shortTitle || getShortTitle(g);
+            const safeDisplayTitle = displayTitle.replace(/'/g, "\\'");
 
             return `
-                <div class="card-mini-app" onclick="launchGame('${g.file}', '${safeTitleAttr}', '${g.id}')">
+                <div class="card-mini-app" onclick="launchGame('${g.file}', '${safeDisplayTitle}', '${g.id}')">
                     <div class="mini-icon-box">${g.icon || '🎮'}</div>
-                    <div class="mini-title">${shortTitle}</div>
+                    <div class="mini-title">${displayTitle}</div>
                 </div>
             `;
         }
@@ -970,13 +971,13 @@
 
                 html += `<div class="drawer-group-title">${grp.title}</div>`;
                 groupGames.forEach(g => {
-                    const shortTitle = getShortTitle(g);
-                    const safeTitleAttr = g.title.replace(/'/g, "\\'");
+                    const displayTitle = g.shortTitle || getShortTitle(g);
+                    const safeDisplayTitle = displayTitle.replace(/'/g, "\\'");
                     html += `
-                        <div class="drawer-item" onclick="launchFromDrawer('${g.file}', '${safeTitleAttr}', '${g.id}')">
+                        <div class="drawer-item" onclick="launchFromDrawer('${g.file}', '${safeDisplayTitle}', '${g.id}')">
                             <div class="drawer-item-left">
                                 <span class="drawer-item-icon">${g.icon || '🎮'}</span>
-                                <span class="drawer-item-title">${shortTitle}</span>
+                                <span class="drawer-item-title">${displayTitle}</span>
                             </div>
                             <span class="drawer-item-arrow">▶</span>
                         </div>
