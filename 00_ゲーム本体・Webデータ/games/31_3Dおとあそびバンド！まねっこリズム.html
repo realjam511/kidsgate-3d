@@ -1402,6 +1402,7 @@
   const scene = new THREE.Scene();
 
   const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 180);
+  window.camera = camera;
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -1633,6 +1634,7 @@
 
   // ステージ上のキャラクター参照マップ
   const bandMeshes = {};
+  window.bandMeshes = bandMeshes;
 
   function buildMusicStageScene() {
     while (stageGroup.children.length > 0) {
@@ -1667,15 +1669,15 @@
       stageGroup.add(arch);
     });
 
-    // 1) 指揮者フクロウ「ホーホー先生」（左前 x: -3.2, z: 1.3）
+    // 1) 指揮者フクロウ「ホーホー先生」（左前 x: -2.0, z: 0.9）
     bandMeshes.hoho = createBandMember3D('hoho');
-    bandMeshes.hoho.position.set(-3.2, 0, 1.3);
-    bandMeshes.hoho.rotation.y = 0.45;
+    bandMeshes.hoho.position.set(-2.0, 0, 0.9);
+    bandMeshes.hoho.rotation.y = 0.52;
     stageGroup.add(bandMeshes.hoho);
 
     // 2) フロント楽器担当3匹（くま＝たいこ、うさぎ＝すず、こねこ＝ピアノ）
     bandMeshes.drum = createBandMember3D('ponta');
-    bandMeshes.drum.position.set(-2.05, 0, -0.3);
+    bandMeshes.drum.position.set(-1.3, 0, -0.3);
     stageGroup.add(bandMeshes.drum);
 
     bandMeshes.bell = createBandMember3D('mimi');
@@ -1683,17 +1685,17 @@
     stageGroup.add(bandMeshes.bell);
 
     bandMeshes.piano = createBandMember3D('miko');
-    bandMeshes.piano.position.set(2.05, 0, -0.3);
+    bandMeshes.piano.position.set(1.3, 0, -0.3);
     stageGroup.add(bandMeshes.piano);
 
     // 3) 正解するごとに後列に加入する仲間2匹（ぞう＝ラッパ、パンダ＝マラカス）
     bandMeshes.pao = createBandMember3D('pao');
-    bandMeshes.pao.position.set(-1.35, 0, -2.2);
+    bandMeshes.pao.position.set(-0.85, 0, -2.0);
     bandMeshes.pao.visible = false;
     stageGroup.add(bandMeshes.pao);
 
     bandMeshes.rinrin = createBandMember3D('rinrin');
-    bandMeshes.rinrin.position.set(1.35, 0, -2.2);
+    bandMeshes.rinrin.position.set(0.85, 0, -2.0);
     bandMeshes.rinrin.visible = false;
     stageGroup.add(bandMeshes.rinrin);
   }
@@ -2426,14 +2428,16 @@
 
     // カメラ位置（スマホ縦画面オートフレーミング）
     const aspect = window.innerWidth / window.innerHeight;
-    const portraitZoom = aspect < 0.95 ? Math.min(1.36, 0.92 / aspect) : 1.0;
+    const isPortrait = aspect < 0.95;
+    const portraitZoom = isPortrait ? Math.min(1.48, 0.96 / aspect) : 1.0;
+    const camCenterX = isPortrait ? -0.35 : 0;
 
     if (appScreen === 'TITLE') {
-      camera.position.set(Math.sin(elapsed * 0.35) * 2.2, 3.8 * portraitZoom, 10.5 * portraitZoom);
-      camera.lookAt(0, 1.1, -0.5);
+      camera.position.set(camCenterX + Math.sin(elapsed * 0.35) * 1.8, 3.8 * portraitZoom, 10.8 * portraitZoom);
+      camera.lookAt(camCenterX, 1.1, -0.5);
     } else {
-      camera.position.set(0, 4.2 * portraitZoom, 10.8 * portraitZoom);
-      camera.lookAt(0, 1.0, -0.6);
+      camera.position.set(camCenterX, 4.3 * portraitZoom, 11.2 * portraitZoom);
+      camera.lookAt(camCenterX, 1.0, -0.6);
     }
 
     renderer.render(scene, camera);
