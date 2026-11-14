@@ -1145,7 +1145,7 @@ class AudioManager {
     idleHintTimer = 0;
 
     const groupObj = HIRAGANA_GROUPS[lv - 1];
-    document.getElementById('current-level-label').textContent = `Lv.${currentGroupIndex + 1}`;
+    document.getElementById('current-level-label').textContent = `Lv.${lv}`;
     document.querySelectorAll('#level-select-grid .menu-chip').forEach(btn => {
       btn.classList.toggle('selected', Number(btn.dataset.lv) === lv);
     });

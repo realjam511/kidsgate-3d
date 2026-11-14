@@ -1505,7 +1505,7 @@ _stopVoice() {
     document.body.className = theme.bodyClass;
     scene.fog.color.setHex(theme.fogColor);
 
-    document.getElementById('current-stage-label').textContent = `Lv.${currentStage}`;
+    document.getElementById('current-stage-label').textContent = `Lv.${lv}`;
     document.getElementById('stage-theme-icon').textContent = theme.icon;
     document.querySelectorAll('#stage-select-grid .menu-chip').forEach(btn => {
       btn.classList.toggle('selected', Number(btn.dataset.lv) === lv);
