@@ -437,5 +437,19 @@ window.KIDS_GAMES_REGISTRY = [
         file: "games/35_3Dまぜまぜ！カラーじっけんしつ.html",
         isHero: false,
         tag: "いろ"
+    },
+    {
+        id: "game-3Dのびのび！ながさくらべランド",
+        title: "3Dのびのび！ながさくらべランド",
+        shortTitle: "ながさくらべ",
+        desc: "のびるんブロックをつなげて長さを比べよう！長さを合わせてピタッとそろえる楽しい3D知育ゲーム！",
+        icon: "📏",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "math",
+        categoryLabel: "かず・さんすう",
+        file: "games/36_3Dのびのび！ながさくらべランド.html",
+        isHero: false,
+        tag: "ながさ"
     }
 ];
