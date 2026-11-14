@@ -1923,23 +1923,24 @@
       stageGroup.add(pillar);
     });
 
-    // 横長の駅名標サイン（実物駅名標風・fullNameフル表示）
-    // 屋根前端 z = -0.4 に対し、z = -0.35、中心 x = -0.45 を維持
-    // 512x160 (アスペクト比 3.2:1) に合わせて幅 3.52、高さ 1.10 に設定
+    // 横長の駅名標サイン（屋根の上に立つ看板スタイル）
+    // 屋根上面 y = 3.825 の上に設置。吊り下げバーは不要
+    // 看板サイズ: 512x160 (アスペクト比 3.2:1)、幅 3.52、高さ 1.10
+    // 看板中心: x = -0.45、y = 4.45、z = -1.2 (屋根上面の手前寄り)
     const signColor = (st.key === 'savanna') ? '#ea580c' : (st.key === 'snow') ? '#0284c7' : '#0369a1';
     const signSp = createStationNameSignSprite(st.fullName, signColor);
-    signSp.position.set(-0.45, 2.35, -0.35);
+    signSp.position.set(-0.45, 4.45, -1.2);
     signSp.scale.set(3.52, 1.10, 1);
     stageGroup.add(signSp);
 
-    // 屋根から吊り下げる2本の細い吊り下げバー
-    [-0.85, -0.05].forEach(bx => {
-      const bar = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.025, 0.025, 0.85, 8),
-        new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6, roughness: 0.3 })
+    // 屋根の上に立つ小さな自立スタンド脚（2本）
+    [-1.25, 0.35].forEach(bx => {
+      const stand = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.03, 0.03, 0.35, 8),
+        new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.5, roughness: 0.4 })
       );
-      bar.position.set(bx, 3.15, -0.35);
-      stageGroup.add(bar);
+      stand.position.set(bx, 3.98, -1.2);
+      stageGroup.add(stand);
     });
   }
 
@@ -2026,9 +2027,9 @@
     // ホーム上の待機動物3Dモデルを配置
     if (waitingAnimalMesh) stageGroup.remove(waitingAnimalMesh);
     waitingAnimalMesh = createAnimal3D(currentAnimal, isCurrentAnimalGolden);
-    // ホーム上の待機位置：客車と重ならないよう、次に連結される位置の手前に配置
-    const nextWaitX = (questionIndexInStation === 0) ? 1.4 : (2.75 - (questionIndexInStation + 1) * 2.15 + 0.3);
-    waitingAnimalMesh.position.set(nextWaitX, 0.72, -1.1);
+    // ホーム上の待機位置：客車・先頭車・看板と重ならず全身が見えるよう、次に連結される位置の手前中央寄りに配置
+    const nextWaitX = (questionIndexInStation === 0) ? 0.65 : (2.75 - (questionIndexInStation + 1) * 2.15 + 0.3);
+    waitingAnimalMesh.position.set(nextWaitX, 0.72, -1.05);
     stageGroup.add(waitingAnimalMesh);
 
     document.getElementById('q-animal-badge').textContent = currentAnimal.emoji;
