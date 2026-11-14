@@ -409,5 +409,20 @@ window.KIDS_GAMES_REGISTRY = [
         file: "games/33_3Dチクタクとけいステーション！なんじに しゅっぱつ？.html",
         isHero: false,
         tag: "定番"
+    },
+    {
+        id: "game-3Dゆらゆら！おもさくらべシーソーランド",
+        title: "3Dゆらゆら！おもさくらべシーソーランド",
+        shortTitle: "おもさシーソー",
+        desc: "ゆらゆら揺れるシーソーで重さ比べ！同じ重さにしてぴったり釣り合わせよう！",
+        icon: "⚖️",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "math",
+        categoryLabel: "かず・さんすう",
+        file: "games/34_3Dゆらゆら！おもさくらべシーソーランド.html",
+        isHero: false,
+        tag: "おもさ"
     }
+
 ];
