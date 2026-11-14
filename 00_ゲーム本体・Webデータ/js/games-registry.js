@@ -423,6 +423,19 @@ window.KIDS_GAMES_REGISTRY = [
         file: "games/34_3Dゆらゆら！おもさくらべシーソーランド.html",
         isHero: false,
         tag: "おもさ"
+    },
+    {
+        id: "game-3Dまぜまぜ！カラーじっけんしつ",
+        title: "3Dまぜまぜ！カラーじっけんしつ",
+        shortTitle: "カラーじっけんしつ",
+        desc: "えのぐをまぜて新しい色をつくろう！かわいい動物たちのお題に合わせてカラー実験！",
+        icon: "🎨",
+        age: "baby",
+        ageLabel: "0〜2歳向け",
+        category: "puzzle",
+        categoryLabel: "めいろ・パズル",
+        file: "games/35_3Dまぜまぜ！カラーじっけんしつ.html",
+        isHero: false,
+        tag: "いろ"
     }
-
 ];
