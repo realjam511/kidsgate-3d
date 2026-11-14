@@ -1812,27 +1812,42 @@
   }
 
   // カタカナ文字看板スプライト生成
-  function createKanaSignSprite(charText, bgHex = '#f97316') {
+  function createStationNameSignSprite(fullNameText, accentColor = '#f97316') {
     const c = document.createElement('canvas');
-    c.width = 128; c.height = 128;
+    c.width = 512;
+    c.height = 160;
     const ctx = c.getContext('2d');
-    ctx.fillStyle = bgHex;
+
+    // 背景：角丸長方形のクリーンな白地
+    ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.roundRect(8, 8, 112, 112, 24);
+    ctx.roundRect(6, 6, 500, 148, 18);
     ctx.fill();
-    ctx.lineWidth = 8;
-    ctx.strokeStyle = '#fef08a';
+
+    // 外枠ボーダー
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = '#334155';
     ctx.stroke();
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '900 76px "Zen Maru Gothic", sans-serif';
+    // 駅カラーの帯（上部帯＆下部アクセントライン）
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(6, 6, 500, 148, 18);
+    ctx.clip();
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(6, 6, 500, 24);
+    ctx.fillRect(6, 146, 500, 8);
+    ctx.restore();
+
+    // 駅名フルテキスト（ Zen Maru Gothic 900、濃紺 ）
+    ctx.fillStyle = '#0f172a';
+    ctx.font = '900 68px "Zen Maru Gothic", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(charText, 64, 68);
+    ctx.fillText(fullNameText, 256, 90);
 
     const tex = new THREE.CanvasTexture(c);
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
-    sp.scale.set(2.1, 2.1, 1);
     return sp;
   }
 
@@ -1908,12 +1923,13 @@
       stageGroup.add(pillar);
     });
 
-    // カタカナ型の駅シンボル看板（屋根の前面・下端に吊り下げる形で見切れを解消）
-    // 屋根前端 z = -0.4 に対し、z = -0.35 に配置して屋根の影や庇に隠れないようにする
-    // カメラの中心方向（x = -0.45）に合わせて x = -0.45、y = 2.65 に配置
-    const signSp = createKanaSignSprite(st.kanaSign);
-    signSp.position.set(-0.45, 2.65, -0.35);
-    signSp.scale.set(1.65, 1.65, 1);
+    // 横長の駅名標サイン（実物駅名標風・fullNameフル表示）
+    // 屋根前端 z = -0.4 に対し、z = -0.35、中心 x = -0.45 を維持
+    // 512x160 (アスペクト比 3.2:1) に合わせて幅 3.52、高さ 1.10 に設定
+    const signColor = (st.key === 'savanna') ? '#ea580c' : (st.key === 'snow') ? '#0284c7' : '#0369a1';
+    const signSp = createStationNameSignSprite(st.fullName, signColor);
+    signSp.position.set(-0.45, 2.35, -0.35);
+    signSp.scale.set(3.52, 1.10, 1);
     stageGroup.add(signSp);
 
     // 屋根から吊り下げる2本の細い吊り下げバー
